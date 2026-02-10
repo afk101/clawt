@@ -43,7 +43,7 @@ export function registerRunCommand(program: Command): void {
  * @returns {Promise<string>} 用户输入的任务描述
  */
 async function promptTask(): Promise<string> {
-  const task = await multilineInput('请输入任务描述（Enter 确认，Shift/Alt+Enter 换行）:');
+  const task = await multilineInput('请输入任务描述（Enter 换行，连续两次 Enter 提交）:');
 
   const trimmed = task.trim();
   if (!trimmed) {
