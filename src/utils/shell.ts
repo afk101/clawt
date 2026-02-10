@@ -39,3 +39,15 @@ export function spawnProcess(
     stdio: options?.stdio ?? ['pipe', 'pipe', 'pipe'],
   });
 }
+
+/**
+ * 终止所有正在运行的子进程
+ * @param {ChildProcess[]} children - 子进程列表
+ */
+export function killAllChildProcesses(children: ChildProcess[]): void {
+  for (const child of children) {
+    if (!child.killed) {
+      child.kill('SIGTERM');
+    }
+  }
+}

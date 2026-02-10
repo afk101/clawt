@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import type { ChildProcess } from 'node:child_process';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
@@ -8,11 +9,16 @@ import {
   validateClaudeCodeInstalled,
   createWorktrees,
   spawnProcess,
+  killAllChildProcesses,
+  cleanupWorktrees,
+  getConfigValue,
   printSuccess,
   printError,
+  printWarning,
   printInfo,
   printSeparator,
   printDoubleSeparator,
+  confirmAction,
   multilineInput,
 } from '../utils/index.js';
 import type { WorktreeInfo } from '../types/index.js';
@@ -47,27 +53,35 @@ async function promptTask(): Promise<string> {
   return trimmed;
 }
 
+/** executeClaudeTask 的返回结构，包含子进程引用和结果 Promise */
+interface ClaudeTaskHandle {
+  /** 子进程实例，用于在中断时终止 */
+  child: ChildProcess;
+  /** 任务结果 Promise */
+  promise: Promise<TaskResult>;
+}
+
 /**
  * 在指定 worktree 中执行 Claude Code 任务
  * @param {WorktreeInfo} worktree - worktree 信息
  * @param {string} task - 任务描述
- * @returns {Promise<TaskResult>} 任务执行结果
+ * @returns {ClaudeTaskHandle} 包含子进程引用和结果 Promise
  */
-function executeClaudeTask(worktree: WorktreeInfo, task: string): Promise<TaskResult> {
-  return new Promise((resolve) => {
-    const child = spawnProcess(
-      'claude',
-      ['-p', task, '--output-format', 'json', '--permission-mode', 'bypassPermissions'],
-      {
-        cwd: worktree.path,
-        // stdin 必须设置为 'ignore'，不能用 'pipe'
-        // 原因：claude -p 是非交互模式，不需要 stdin 输入。如果 stdin 为 'pipe'，
-        // 父进程会创建一个可写流连接到子进程但从不写入也不关闭，
-        // claude 检测到 stdin 是管道后会尝试读取输入，导致进程永远卡住
-        stdio: ['ignore', 'pipe', 'pipe'],
-      },
-    );
+function executeClaudeTask(worktree: WorktreeInfo, task: string): ClaudeTaskHandle {
+  const child = spawnProcess(
+    'claude',
+    ['-p', task, '--output-format', 'json', '--permission-mode', 'bypassPermissions'],
+    {
+      cwd: worktree.path,
+      // stdin 必须设置为 'ignore'，不能用 'pipe'
+      // 原因：claude -p 是非交互模式，不需要 stdin 输入。如果 stdin 为 'pipe'，
+      // 父进程会创建一个可写流连接到子进程但从不写入也不关闭，
+      // claude 检测到 stdin 是管道后会尝试读取输入，导致进程永远卡住
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
 
+  const promise = new Promise<TaskResult>((resolve) => {
     let stdout = '';
     let stderr = '';
 
@@ -113,6 +127,8 @@ function executeClaudeTask(worktree: WorktreeInfo, task: string): Promise<TaskRe
       });
     });
   });
+
+  return { child, promise };
 }
 
 /**
@@ -154,6 +170,32 @@ function printTaskSummary(summary: TaskSummary): void {
 }
 
 /**
+ * 处理用户中断（Ctrl+C）后的清理流程
+ * 根据全局配置决定自动清理或交互式确认
+ * @param {WorktreeInfo[]} worktrees - 本次创建的 worktree 列表
+ */
+async function handleInterruptCleanup(worktrees: WorktreeInfo[]): Promise<void> {
+  const autoDelete = getConfigValue('autoDeleteBranch');
+
+  if (autoDelete) {
+    // 全局配置了自动删除，直接清理
+    cleanupWorktrees(worktrees);
+    printSuccess(MESSAGES.INTERRUPT_AUTO_CLEANED(worktrees.length));
+    return;
+  }
+
+  // 交互式确认是否清理
+  const shouldClean = await confirmAction(MESSAGES.INTERRUPT_CONFIRM_CLEANUP);
+
+  if (shouldClean) {
+    cleanupWorktrees(worktrees);
+    printSuccess(MESSAGES.INTERRUPT_CLEANED(worktrees.length));
+  } else {
+    printInfo(MESSAGES.INTERRUPT_KEPT);
+  }
+}
+
+/**
  * 执行 run 命令的核心逻辑
  * @param {RunOptions} options - 命令选项
  */
@@ -188,17 +230,51 @@ async function handleRun(options: RunOptions): Promise<void> {
 
   // 并行执行 Claude Code 任务，每个完成时实时通知
   const startTime = Date.now();
-  const taskPromises = worktrees.map((wt, index) => {
+  const handles = worktrees.map((wt, index) => {
     const task = tasks[index];
     logger.info(`启动任务 ${index + 1}: ${task} (worktree: ${wt.path})`);
-    return executeClaudeTask(wt, task).then((result) => {
-      // 实时输出完成通知
-      printTaskNotification(result);
-      return result;
-    });
+    return executeClaudeTask(wt, task);
   });
 
+  // 收集所有子进程引用，用于中断时终止
+  const childProcesses = handles.map((h) => h.child);
+
+  // 监听 SIGINT（Ctrl+C），终止所有子进程并触发清理流程
+  let interrupted = false;
+  const sigintHandler = async () => {
+    if (interrupted) return;
+    interrupted = true;
+
+    printInfo('');
+    printWarning(MESSAGES.INTERRUPTED);
+    killAllChildProcesses(childProcesses);
+
+    // 等待所有子进程退出后再执行清理
+    await Promise.allSettled(handles.map((h) => h.promise));
+
+    await handleInterruptCleanup(worktrees);
+    process.exit(1);
+  };
+  process.on('SIGINT', sigintHandler);
+
+  const taskPromises = handles.map((handle) =>
+    handle.promise.then((result) => {
+      // 被中断时不再输出通知
+      if (!interrupted) {
+        printTaskNotification(result);
+      }
+      return result;
+    }),
+  );
+
   const results = await Promise.all(taskPromises);
+
+  // 正常完成，移除 SIGINT 监听器
+  process.removeListener('SIGINT', sigintHandler);
+
+  // 被中断时不输出汇总（已在 sigintHandler 中处理退出）
+  if (interrupted) return;
+
   const totalDurationMs = Date.now() - startTime;
 
   // 汇总

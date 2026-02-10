@@ -2,9 +2,9 @@ import { join } from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
 import { WORKTREES_DIR } from '../constants/index.js';
 import { logger } from '../logger/index.js';
-import { createWorktree as gitCreateWorktree, getProjectName, gitWorktreeList } from './git.js';
+import { createWorktree as gitCreateWorktree, getProjectName, gitWorktreeList, removeWorktreeByPath, deleteBranch, gitWorktreePrune } from './git.js';
 import { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
-import { ensureDir } from './fs.js';
+import { ensureDir, removeEmptyDir } from './fs.js';
 import type { WorktreeInfo } from '../types/index.js';
 
 /**
@@ -85,4 +85,23 @@ export function getProjectWorktrees(): WorktreeInfo[] {
   }
 
   return worktrees;
+}
+
+/**
+ * 批量清理 worktree 及对应分支
+ * @param {WorktreeInfo[]} worktrees - 待清理的 worktree 列表
+ */
+export function cleanupWorktrees(worktrees: WorktreeInfo[]): void {
+  for (const wt of worktrees) {
+    try {
+      removeWorktreeByPath(wt.path);
+      deleteBranch(wt.branch);
+      logger.info(`已清理 worktree 和分支: ${wt.branch}`);
+    } catch (error) {
+      logger.error(`清理 worktree 失败: ${wt.path} - ${error}`);
+    }
+  }
+  gitWorktreePrune();
+  const projectDir = getProjectWorktreeDir();
+  removeEmptyDir(projectDir);
 }

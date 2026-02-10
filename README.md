@@ -60,6 +60,8 @@ clawt run -b <branchName>
 
 不传 `--tasks` 时会进入交互式多行输入模式，支持粘贴多行文本作为任务描述（Enter 确认，Shift/Alt+Enter 换行），创建 1 个 worktree 执行单个任务。
 
+任务执行过程中按 Ctrl+C 可中断所有任务。中断后会根据配置自动清理或询问是否清理本次创建的 worktree 和分支（`autoDeleteBranch: true` 时自动清理）。
+
 ```bash
 # 多任务并行
 clawt run -b feature-scheme \
@@ -145,7 +147,7 @@ clawt list
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | ------ | ---- | ------ | ---- |
-| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时自动删除对应本地分支；merge 成功后自动清理 worktree 和分支 |
+| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时自动删除对应本地分支；merge 成功后自动清理 worktree 和分支；run 中断后自动清理本次创建的 worktree 和分支 |
 
 ## 分支名规则
 

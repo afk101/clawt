@@ -33,16 +33,18 @@ npm i -g .        # 本地全局安装进行测试
 3. `createWorktrees()` 批量创建 git worktree（串行）
 4. `executeClaudeTask()` 通过 `spawnProcess` 并行调用 `claude -p <task> --output-format json --permission-mode bypassPermissions`
 5. 每个任务完成时实时输出通知，全部完成后输出汇总
+6. SIGINT（Ctrl+C）中断处理：`killAllChildProcesses()` 终止所有子进程 → 等待退出 → `handleInterruptCleanup()` 根据 `autoDeleteBranch` 配置自动或交互式清理 worktree 和分支
 
 ### validate + merge 工作流
 
 - `validate`：将目标 worktree 的变更通过 git stash 迁移到主 worktree，便于在主 worktree 中测试
 - `merge`：在目标 worktree 提交变更 → 合并到主 worktree → pull → push → 可选清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）
+- `run` 中断清理：Ctrl+C 终止所有子进程后，根据 `autoDeleteBranch` 配置自动清理或交互式确认清理本次创建的 worktree 和分支
 
 ### 目录层级
 
 - `src/commands/` — 各命令的注册与处理逻辑
-- `src/utils/` — 工具函数（git 操作、shell 执行、分支名处理、worktree 管理、配置、格式化输出、交互式输入）
+- `src/utils/` — 工具函数（git 操作、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入）
 - `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列）
 - `src/types/` — TypeScript 类型定义
 - `src/errors/` — 自定义 `ClawtError` 错误类（携带退出码）

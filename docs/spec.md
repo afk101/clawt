@@ -263,6 +263,14 @@ clawt run -b <branchName>
    claude -p "<tasks[i]>" --output-format json --permission-mode bypassPermissions
    ```
 5. 进入**事件监听通知**阶段（见 [5.3](#53-任务完成通知机制)）
+6. **中断处理（Ctrl+C / SIGINT）**
+   - 监听 `SIGINT` 信号，用户按下 Ctrl+C 时触发
+   - 向所有正在运行的 Claude Code 子进程发送 `SIGTERM` 终止信号
+   - 等待所有子进程退出后，进入清理流程：
+     - 如果 `autoDeleteBranch` 为 `true`：自动清理本次创建的所有 worktree 和对应分支
+     - 否则：交互式询问用户是否移除刚刚创建的 worktree 和对应分支
+       - 用户选择保留时，提示可使用 `clawt remove` 手动清理
+   - 清理完成后以退出码 `1` 退出
 
 **注意：** 当 `n = 1` 时（只有一个任务），worktree 目录命名规则同 **5.1**（不加 `-1` 后缀）。
 
@@ -572,7 +580,7 @@ clawt merge -b <branchName> -m <commitMessage>
 
 | 配置项             | 类型      | 默认值  | 说明                                               |
 | ------------------ | --------- | ------- | -------------------------------------------------- |
-| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支 |
+| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支；run 任务被中断（Ctrl+C）后是否自动清理本次创建的 worktree 和分支 |
 
 ---
 

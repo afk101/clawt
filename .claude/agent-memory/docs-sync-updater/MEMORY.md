@@ -5,14 +5,17 @@
 ### docs/spec.md
 - 完整的软件规格说明，包含 7 大章节
 - 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.8）
+- run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，流程按步骤编号描述
 - 配置项说明在 `5.7 默认配置文件` 章节的表格中
 - 更新模式：新增步骤时追加编号，配置项影响范围变化时更新说明列
 
 ### CLAUDE.md
 - 面向 Claude Code 的项目架构指引，精简扼要
-- merge 相关描述在 `validate + merge 工作流` 章节，一行式描述用箭头连接流程
-- 更新模式：在箭头链中追加新阶段
+- run 命令流程在 `核心流程（run 命令）` 章节，编号列表描述
+- merge 和 run 中断清理在 `validate + merge 工作流` 章节，一行式描述用箭头连接流程
+- utils 目录描述用括号内逗号分隔列举功能模块
+- 更新模式：编号列表追加步骤，箭头链追加阶段，括号内追加关键词
 
 ### README.md
 - 面向用户的使用文档
@@ -21,6 +24,9 @@
 - 更新模式：更新命令说明段落，配置项表格
 
 ## 关键约定
-- `autoDeleteBranch` 配置项同时影响 remove 命令和 merge 命令
+- `autoDeleteBranch` 配置项影响三处：remove 命令、merge 命令、run 中断清理
 - merge 的清理确认在 merge 操作之前询问（避免交互中断），但清理在 merge 成功后执行
-- 文档中文风格，技术术语保留英文（worktree, merge, branch 等）
+- run 的中断清理在所有子进程退出后执行
+- 文档中文风格，技术术语保留英文（worktree, merge, branch, SIGINT 等）
+- cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
+- killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）

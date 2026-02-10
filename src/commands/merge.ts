@@ -20,10 +20,7 @@ import {
   printInfo,
   getConfigValue,
   confirmAction,
-  removeWorktreeByPath,
-  deleteBranch,
-  gitWorktreePrune,
-  removeEmptyDir,
+  cleanupWorktrees,
 } from '../utils/index.js';
 
 /**
@@ -60,13 +57,9 @@ async function shouldCleanupAfterMerge(branchName: string): Promise<boolean> {
  * 清理已合并的 worktree 和对应分支
  * @param {string} worktreePath - worktree 目录路径
  * @param {string} branchName - 分支名
- * @param {string} projectDir - 项目 worktree 目录
  */
-function cleanupWorktreeAndBranch(worktreePath: string, branchName: string, projectDir: string): void {
-  removeWorktreeByPath(worktreePath);
-  deleteBranch(branchName);
-  gitWorktreePrune();
-  removeEmptyDir(projectDir);
+function cleanupWorktreeAndBranch(worktreePath: string, branchName: string): void {
+  cleanupWorktrees([{ path: worktreePath, branch: branchName }]);
   printSuccess(MESSAGES.WORKTREE_CLEANED(branchName));
 }
 
@@ -125,6 +118,6 @@ async function handleMerge(options: MergeOptions): Promise<void> {
 
   // 步骤 9：merge 成功后清理 worktree 和分支
   if (shouldCleanup) {
-    cleanupWorktreeAndBranch(targetWorktreePath, options.branch, projectDir);
+    cleanupWorktreeAndBranch(targetWorktreePath, options.branch);
   }
 }

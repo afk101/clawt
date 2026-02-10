@@ -1,4 +1,4 @@
-export { execCommand, spawnProcess } from './shell.js';
+export { execCommand, spawnProcess, killAllChildProcesses } from './shell.js';
 export {
   getGitCommonDir,
   getGitTopLevel,
@@ -27,7 +27,7 @@ export {
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled } from './validation.js';
-export { createWorktrees, getProjectWorktrees, getProjectWorktreeDir } from './worktree.js';
+export { createWorktrees, getProjectWorktrees, getProjectWorktreeDir, cleanupWorktrees } from './worktree.js';
 export { loadConfig, getConfigValue, ensureClawtDirs } from './config.js';
 export { printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, confirmAction } from './formatter.js';
 export { ensureDir, removeEmptyDir } from './fs.js';
