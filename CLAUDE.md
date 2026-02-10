@@ -37,7 +37,7 @@ npm i -g .        # 本地全局安装进行测试
 ### validate + merge 工作流
 
 - `validate`：将目标 worktree 的变更通过 git stash 迁移到主 worktree，便于在主 worktree 中测试
-- `merge`：在目标 worktree 提交变更 → 合并到主 worktree → pull → push
+- `merge`：在目标 worktree 提交变更 → 合并到主 worktree → pull → push → 可选清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）
 
 ### 目录层级
 

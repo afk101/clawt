@@ -527,6 +527,23 @@ clawt merge -b <branchName> -m <commitMessage>
   已推送到远程仓库
 ```
 
+9. **merge 成功后清理 worktree 和分支（可选）**
+   - 如果配置文件中 `autoDeleteBranch` 为 `true`，自动执行清理
+   - 否则交互式询问用户是否清理
+   - 用户确认后，依次执行：
+     ```bash
+     # 移除 worktree
+     git worktree remove -f <worktree路径>
+     # 删除本地分支
+     git branch -D <branchName>
+     # 修剪 worktree 引用
+     git worktree prune
+     # 如果项目 worktree 目录为空，则清理空目录
+     ```
+   - 输出清理成功提示：`✓ 已清理 worktree 和分支: <branchName>`
+
+> **注意：** 清理确认在 merge 操作之前询问（避免 merge 成功后因交互中断而遗留未清理的 worktree），但清理操作在 merge 成功后才执行。
+
 ---
 
 ### 5.7 默认配置文件
@@ -555,7 +572,7 @@ clawt merge -b <branchName> -m <commitMessage>
 
 | 配置项             | 类型      | 默认值  | 说明                                               |
 | ------------------ | --------- | ------- | -------------------------------------------------- |
-| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时是否自动删除对应本地分支（无需每次确认） |
+| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支 |
 
 ---
 

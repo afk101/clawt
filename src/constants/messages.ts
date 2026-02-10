@@ -33,6 +33,8 @@ export const MESSAGES = {
     `✓ 分支 ${branch} 已成功合并到当前分支\n  提交信息: ${message}\n  已推送到远程仓库`,
   /** merge 冲突 */
   MERGE_CONFLICT: '合并存在冲突，请手动处理',
+  /** merge 后清理 worktree 和分支成功 */
+  WORKTREE_CLEANED: (branch: string) => `✓ 已清理 worktree 和分支: ${branch}`,
   /** 请提供提交信息 */
   COMMIT_MESSAGE_REQUIRED: '请提供提交信息（-m 参数）',
   /** 分隔线 */

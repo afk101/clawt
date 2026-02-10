@@ -17,7 +17,13 @@ import {
   gitPull,
   gitPush,
   printSuccess,
-  printError,
+  printInfo,
+  getConfigValue,
+  confirmAction,
+  removeWorktreeByPath,
+  deleteBranch,
+  gitWorktreePrune,
+  removeEmptyDir,
 } from '../utils/index.js';
 
 /**
@@ -30,16 +36,45 @@ export function registerMergeCommand(program: Command): void {
     .description('合并某个已验证的 worktree 分支到主 worktree')
     .requiredOption('-b, --branch <branchName>', '要合并的分支名')
     .requiredOption('-m, --message <message>', '提交信息')
-    .action((options: MergeOptions) => {
-      handleMerge(options);
+    .action(async (options: MergeOptions) => {
+      await handleMerge(options);
     });
+}
+
+/**
+ * 判断 merge 成功后是否需要清理 worktree 和分支
+ * 如果全局配置了 autoDeleteBranch 则直接返回 true，否则询问用户
+ * @param {string} branchName - 分支名
+ * @returns {Promise<boolean>} 是否清理
+ */
+async function shouldCleanupAfterMerge(branchName: string): Promise<boolean> {
+  const autoDelete = getConfigValue('autoDeleteBranch');
+  if (autoDelete) {
+    printInfo(`已配置自动删除，merge 成功后将自动清理 worktree 和分支: ${branchName}`);
+    return true;
+  }
+  return confirmAction(`merge 成功后是否删除对应的 worktree 和分支 (${branchName})？`);
+}
+
+/**
+ * 清理已合并的 worktree 和对应分支
+ * @param {string} worktreePath - worktree 目录路径
+ * @param {string} branchName - 分支名
+ * @param {string} projectDir - 项目 worktree 目录
+ */
+function cleanupWorktreeAndBranch(worktreePath: string, branchName: string, projectDir: string): void {
+  removeWorktreeByPath(worktreePath);
+  deleteBranch(branchName);
+  gitWorktreePrune();
+  removeEmptyDir(projectDir);
+  printSuccess(MESSAGES.WORKTREE_CLEANED(branchName));
 }
 
 /**
  * 执行 merge 命令的核心逻辑
  * @param {MergeOptions} options - 命令选项
  */
-function handleMerge(options: MergeOptions): void {
+async function handleMerge(options: MergeOptions): Promise<void> {
   validateMainWorktree();
 
   const mainWorktreePath = getGitTopLevel();
@@ -57,6 +92,9 @@ function handleMerge(options: MergeOptions): void {
   if (!isWorkingDirClean(mainWorktreePath)) {
     throw new ClawtError(MESSAGES.MAIN_WORKTREE_DIRTY);
   }
+
+  // merge 前确认是否清理 worktree 和分支
+  const shouldCleanup = await shouldCleanupAfterMerge(options.branch);
 
   // 步骤 4：在目标 worktree 中提交
   gitAddAll(targetWorktreePath);
@@ -84,4 +122,9 @@ function handleMerge(options: MergeOptions): void {
 
   // 步骤 8：输出成功提示
   printSuccess(MESSAGES.MERGE_SUCCESS(options.branch, options.message));
+
+  // 步骤 9：merge 成功后清理 worktree 和分支
+  if (shouldCleanup) {
+    cleanupWorktreeAndBranch(targetWorktreePath, options.branch, projectDir);
+  }
 }

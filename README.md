@@ -98,7 +98,7 @@ clawt merge -b <branchName> -m <commitMessage>
 | `-b` | 是 | 要合并的分支名 |
 | `-m` | 是 | 提交信息 |
 
-在目标 worktree 中提交变更，然后合并到主 worktree 的当前分支，并推送到远程仓库。
+在目标 worktree 中提交变更，然后合并到主 worktree 的当前分支，并推送到远程仓库。merge 成功后会询问是否清理对应的 worktree 和分支（如果配置了 `autoDeleteBranch: true` 则自动清理）。
 
 ```bash
 clawt merge -b feature-scheme-1 -m "feat: 实现用户登录功能"
@@ -145,7 +145,7 @@ clawt list
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | ------ | ---- | ------ | ---- |
-| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时是否自动删除对应本地分支（无需每次确认） |
+| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时自动删除对应本地分支；merge 成功后自动清理 worktree 和分支 |
 
 ## 分支名规则
 
