@@ -35,7 +35,7 @@
 | 包管理   | npm                           |
 | CLI 框架 | Commander.js                  |
 | 日志库   | winston (按日期滚动文件)       |
-| 交互式   | inquirer (选项选择/确认对话)   |
+| 交互式   | enquirer (选项选择/确认对话)   |
 | 构建     | tsup / tsc                    |
 | 分发     | npm 全局安装 (`npm i -g clawt`) |
 

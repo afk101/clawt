@@ -24,7 +24,6 @@
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
     "enquirer": "^2.4.1",
-    "inquirer": "^12.4.2",
     "winston": "^3.17.0",
     "winston-daily-rotate-file": "^5.0.0"
   },

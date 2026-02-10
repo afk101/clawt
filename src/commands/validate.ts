@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
-import { select } from '@inquirer/prompts';
+import Enquirer from 'enquirer';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
@@ -48,24 +48,25 @@ export function registerValidateCommand(program: Command): void {
 async function handleDirtyMainWorktree(mainWorktreePath: string): Promise<void> {
   printWarning('主 worktree 当前分支有未提交的更改，请选择处理方式：\n');
 
-  const choice = await select({
+  // @ts-expect-error enquirer 类型声明未导出 Select 类，但运行时存在
+  const choice = await new Enquirer.Select({
     message: '选择处理方式',
     choices: [
       {
-        name: 'reset (推荐) - 丢弃所有更改 (git reset --hard HEAD && git clean -fd)',
-        value: 'reset',
+        name: 'reset',
+        message: 'reset (推荐) - 丢弃所有更改 (git reset --hard HEAD && git clean -fd)',
       },
       {
-        name: 'stash        - 暂存更改 (git add . && git stash)',
-        value: 'stash',
+        name: 'stash',
+        message: 'stash        - 暂存更改 (git add . && git stash)',
       },
       {
-        name: 'exit         - 退出，手动处理',
-        value: 'exit',
+        name: 'exit',
+        message: 'exit         - 退出，手动处理',
       },
     ],
-    default: 'reset',
-  });
+    initial: 0,
+  }).run();
 
   if (choice === 'exit') {
     throw new ClawtError('用户选择退出');
