@@ -1,0 +1,55 @@
+import { Command } from 'commander';
+import { ClawtError } from './errors/index.js';
+import { logger } from './logger/index.js';
+import { EXIT_CODES } from './constants/index.js';
+import { printError, ensureClawtDirs } from './utils/index.js';
+import { registerListCommand } from './commands/list.js';
+import { registerCreateCommand } from './commands/create.js';
+import { registerRemoveCommand } from './commands/remove.js';
+import { registerRunCommand } from './commands/run.js';
+import { registerValidateCommand } from './commands/validate.js';
+import { registerMergeCommand } from './commands/merge.js';
+
+// 确保全局目录结构存在
+ensureClawtDirs();
+
+const program = new Command();
+
+program
+  .name('clawt')
+  .description('本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具')
+  .version('1.0.0');
+
+// 注册所有命令
+registerListCommand(program);
+registerCreateCommand(program);
+registerRemoveCommand(program);
+registerRunCommand(program);
+registerValidateCommand(program);
+registerMergeCommand(program);
+
+// 全局未捕获异常处理
+process.on('uncaughtException', (error) => {
+  if (error instanceof ClawtError) {
+    printError(error.message);
+    logger.error(error.message);
+    process.exit(error.exitCode);
+  }
+  printError(error.message || '未知错误');
+  logger.error(`未捕获异常: ${error.message}\n${error.stack}`);
+  process.exit(EXIT_CODES.ERROR);
+});
+
+process.on('unhandledRejection', (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  if (error instanceof ClawtError) {
+    printError(error.message);
+    logger.error(error.message);
+    process.exit(error.exitCode);
+  }
+  printError(error.message || '未知错误');
+  logger.error(`未处理的 Promise 拒绝: ${error.message}`);
+  process.exit(EXIT_CODES.ERROR);
+});
+
+program.parse(process.argv);

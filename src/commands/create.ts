@@ -1,0 +1,49 @@
+import type { Command } from 'commander';
+import { MESSAGES } from '../constants/index.js';
+import { logger } from '../logger/index.js';
+import type { CreateOptions } from '../types/index.js';
+import {
+  validateMainWorktree,
+  createWorktrees,
+  printSuccess,
+  printInfo,
+  printSeparator,
+} from '../utils/index.js';
+
+/**
+ * 注册 create 命令：批量创建 worktree 及对应分支
+ * @param {Command} program - Commander 实例
+ */
+export function registerCreateCommand(program: Command): void {
+  program
+    .command('create')
+    .description('批量创建 worktree 及对应分支')
+    .requiredOption('-b, --branch <branchName>', '分支名')
+    .option('-n, --number <count>', '创建数量', '1')
+    .action((options: CreateOptions) => {
+      handleCreate(options);
+    });
+}
+
+/**
+ * 执行 create 命令的核心逻辑
+ * @param {CreateOptions} options - 命令选项
+ */
+function handleCreate(options: CreateOptions): void {
+  validateMainWorktree();
+
+  const count = Number(options.number);
+  logger.info(`create 命令执行，分支: ${options.branch}，数量: ${count}`);
+
+  const worktrees = createWorktrees(options.branch, count);
+
+  printSuccess(MESSAGES.WORKTREE_CREATED(worktrees.length));
+  printInfo('');
+
+  worktrees.forEach((wt, index) => {
+    printInfo(`目录路径${index + 1}：`);
+    printInfo(`  ${wt.path}`);
+    printInfo(`  分支名: ${wt.branch}`);
+    printSeparator();
+  });
+}

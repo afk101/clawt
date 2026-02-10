@@ -1,12 +1,39 @@
 {
   "name": "clawt",
   "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "clawt": "dist/index.js"
   },
-  "keywords": [],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "postinstall": "node dist/postinstall.js"
+  },
+  "keywords": [
+    "claude",
+    "worktree",
+    "git",
+    "cli"
+  ],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "inquirer": "^12.4.2",
+    "string-width": "^8.1.1",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
