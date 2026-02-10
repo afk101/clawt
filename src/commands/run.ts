@@ -181,6 +181,9 @@ async function handleRun(options: RunOptions): Promise<void> {
   // 创建 worktree
   const worktrees = createWorktrees(options.branch, count);
   printSuccess(MESSAGES.WORKTREE_CREATED(worktrees.length));
+  for (const wt of worktrees) {
+    printInfo(`  分支: ${wt.branch}  路径: ${wt.path}`);
+  }
   printInfo('');
 
   // 并行执行 Claude Code 任务，每个完成时实时通知
