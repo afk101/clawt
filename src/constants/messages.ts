@@ -58,4 +58,6 @@ export const MESSAGES = {
   SEPARATOR: '────────────────────────────────────────',
   /** 粗分隔线 */
   DOUBLE_SEPARATOR: '════════════════════════════════════════',
+  /** 创建数量参数无效 */
+  INVALID_COUNT: (value: string) => `无效的创建数量: "${value}"，请输入正整数`,
 } as const;

@@ -2,8 +2,8 @@
 export interface CreateOptions {
   /** 分支名 */
   branch: string;
-  /** 创建数量，默认 1 */
-  number: number;
+  /** 创建数量（Commander 传入为字符串），默认 '1' */
+  number: string;
 }
 
 /** run 命令选项 */
