@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { MESSAGES } from '../constants/index.js';
 import { createInterface } from 'node:readline';
+import type { WorktreeStatus } from '../types/index.js';
 
 /**
  * 输出成功信息
@@ -64,4 +65,33 @@ export function confirmAction(question: string): Promise<boolean> {
       resolve(answer.toLowerCase() === 'y');
     });
   });
+}
+
+/**
+ * 将 WorktreeStatus 格式化为带颜色的字符串
+ * @param {WorktreeStatus} status - worktree 变更统计信息
+ * @returns {string} 格式化后的状态字符串
+ */
+export function formatWorktreeStatus(status: WorktreeStatus): string {
+  const parts: string[] = [];
+
+  // 提交数（黄色）
+  parts.push(chalk.yellow(`${status.commitCount} 个提交`));
+
+  // 变更统计
+  if (status.insertions === 0 && status.deletions === 0) {
+    parts.push('无变更');
+  } else {
+    const diffParts: string[] = [];
+    diffParts.push(chalk.green(`+${status.insertions}`));
+    diffParts.push(chalk.red(`-${status.deletions}`));
+    parts.push(diffParts.join(' '));
+  }
+
+  // 未提交修改提示（灰色）
+  if (status.hasDirtyFiles) {
+    parts.push(chalk.gray('(未提交修改)'));
+  }
+
+  return parts.join('   ');
 }

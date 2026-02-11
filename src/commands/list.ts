@@ -1,10 +1,13 @@
 import type { Command } from 'commander';
+import chalk from 'chalk';
 import { MESSAGES } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import {
   validateMainWorktree,
   getProjectName,
   getProjectWorktrees,
+  getWorktreeStatus,
+  formatWorktreeStatus,
   printInfo,
 } from '../utils/index.js';
 
@@ -39,7 +42,17 @@ function handleList(): void {
   } else {
     for (const wt of worktrees) {
       printInfo(`  ${wt.path}   [${wt.branch}]`);
+
+      // 获取并展示 worktree 变更状态
+      const status = getWorktreeStatus(wt);
+      if (status) {
+        printInfo(`    ${formatWorktreeStatus(status)}`);
+      } else {
+        printInfo(`    ${chalk.yellow(MESSAGES.WORKTREE_STATUS_UNAVAILABLE)}`);
+      }
+
+      printInfo('');
     }
-    printInfo(`\n共 ${worktrees.length} 个 worktree`);
+    printInfo(`共 ${worktrees.length} 个 worktree`);
   }
 }

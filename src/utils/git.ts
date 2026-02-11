@@ -241,3 +241,58 @@ export function hasLocalCommits(branchName: string, cwd?: string): boolean {
     return false;
   }
 }
+
+/**
+ * 获取目标分支相对于当前分支的新增提交数
+ * @param {string} branchName - 目标分支名
+ * @param {string} [cwd] - 工作目录
+ * @returns {number} 新增提交数
+ */
+export function getCommitCountAhead(branchName: string, cwd?: string): number {
+  const output = execCommand(`git rev-list --count HEAD..${branchName}`, { cwd });
+  return parseInt(output, 10) || 0;
+}
+
+/**
+ * 解析 git diff --shortstat 输出，提取新增行数和删除行数
+ * @param {string} output - shortstat 输出字符串
+ * @returns {{ insertions: number; deletions: number }} 新增和删除行数
+ */
+function parseShortStat(output: string): { insertions: number; deletions: number } {
+  let insertions = 0;
+  let deletions = 0;
+
+  const insertMatch = output.match(/(\d+)\s+insertion/);
+  if (insertMatch) {
+    insertions = parseInt(insertMatch[1], 10);
+  }
+
+  const deleteMatch = output.match(/(\d+)\s+deletion/);
+  if (deleteMatch) {
+    deletions = parseInt(deleteMatch[1], 10);
+  }
+
+  return { insertions, deletions };
+}
+
+/**
+ * 获取目标分支的变更统计（已提交 + 未提交）
+ * @param {string} branchName - 目标分支名
+ * @param {string} worktreePath - worktree 目录路径
+ * @param {string} [cwd] - 执行 git diff HEAD...branch 的工作目录
+ * @returns {{ insertions: number; deletions: number }} 聚合后的新增和删除行数
+ */
+export function getDiffStat(branchName: string, worktreePath: string, cwd?: string): { insertions: number; deletions: number } {
+  // 已提交的变更（当前分支与目标分支的差异）
+  const committedOutput = execCommand(`git diff --shortstat HEAD...${branchName}`, { cwd });
+  const committed = parseShortStat(committedOutput);
+
+  // 未提交的变更（在 worktree 内执行）
+  const uncommittedOutput = execCommand('git diff --shortstat HEAD', { cwd: worktreePath });
+  const uncommitted = parseShortStat(uncommittedOutput);
+
+  return {
+    insertions: committed.insertions + uncommitted.insertions,
+    deletions: committed.deletions + uncommitted.deletions,
+  };
+}

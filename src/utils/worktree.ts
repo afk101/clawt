@@ -2,10 +2,10 @@ import { join } from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
 import { WORKTREES_DIR } from '../constants/index.js';
 import { logger } from '../logger/index.js';
-import { createWorktree as gitCreateWorktree, getProjectName, gitWorktreeList, removeWorktreeByPath, deleteBranch, gitWorktreePrune } from './git.js';
+import { createWorktree as gitCreateWorktree, getProjectName, gitWorktreeList, removeWorktreeByPath, deleteBranch, gitWorktreePrune, getCommitCountAhead, getDiffStat, isWorkingDirClean } from './git.js';
 import { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 import { ensureDir, removeEmptyDir } from './fs.js';
-import type { WorktreeInfo } from '../types/index.js';
+import type { WorktreeInfo, WorktreeStatus } from '../types/index.js';
 
 /**
  * 获取当前项目的 worktree 存放目录
@@ -104,4 +104,23 @@ export function cleanupWorktrees(worktrees: WorktreeInfo[]): void {
   gitWorktreePrune();
   const projectDir = getProjectWorktreeDir();
   removeEmptyDir(projectDir);
+}
+
+/**
+ * 获取 worktree 的变更统计信息
+ * 聚合提交数、变更行数、未提交修改状态
+ * @param {WorktreeInfo} worktree - worktree 信息
+ * @returns {WorktreeStatus | null} 变更统计信息，获取失败时返回 null
+ */
+export function getWorktreeStatus(worktree: WorktreeInfo): WorktreeStatus | null {
+  try {
+    const commitCount = getCommitCountAhead(worktree.branch);
+    const { insertions, deletions } = getDiffStat(worktree.branch, worktree.path);
+    const hasDirtyFiles = !isWorkingDirClean(worktree.path);
+
+    return { commitCount, insertions, deletions, hasDirtyFiles };
+  } catch (error) {
+    logger.error(`获取 worktree 状态失败: ${worktree.path} - ${error}`);
+    return null;
+  }
 }

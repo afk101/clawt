@@ -62,4 +62,6 @@ export const MESSAGES = {
   DOUBLE_SEPARATOR: '════════════════════════════════════════',
   /** 创建数量参数无效 */
   INVALID_COUNT: (value: string) => `无效的创建数量: "${value}"，请输入正整数`,
+  /** worktree 状态获取失败 */
+  WORKTREE_STATUS_UNAVAILABLE: '(状态不可用)',
 } as const;
