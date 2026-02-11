@@ -231,7 +231,7 @@ clawt create -b <branchName> [-n <count>]
 # 方式一：通过 --tasks 参数直接指定任务（多任务并行）
 clawt run -b <branchName> --tasks <task1> --tasks <task2> --tasks <task3>
 
-# 方式二：不传 --tasks，进入交互式输入模式（单任务）
+# 方式二：不传 --tasks，在 worktree 中打开 Claude Code 交互式界面
 clawt run -b <branchName>
 ```
 
@@ -240,21 +240,17 @@ clawt run -b <branchName>
 | 参数      | 必填 | 说明                                                        |
 | --------- | ---- | ----------------------------------------------------------- |
 | `-b`      | 是   | 分支名                                                      |
-| `--tasks` | 否   | 任务描述（可多次指定，每个 --tasks 对应一个任务，任务数量即 worktree 数量）。不传则进入交互式输入模式 |
+| `--tasks` | 否   | 任务描述（可多次指定，每个 --tasks 对应一个任务，任务数量即 worktree 数量）。不传则在 worktree 中打开 Claude Code 交互式界面 |
 
-**交互式输入模式：**
+**交互式 Claude Code 界面模式：**
 
-当不传 `--tasks` 时，会启动一个多行文本输入框，支持：
+当不传 `--tasks` 时，会创建单个 worktree，然后通过 `spawnSync` + `inherit stdio` 在该 worktree 中直接启动 Claude Code CLI 交互式界面，让用户与 Claude Code 直接交互。
 
-- **Enter**：确认提交任务
-- **Shift+Enter / Alt+Enter**：手动换行
-- **粘贴多行文本**：自动识别粘贴操作（通过 Bracketed Paste Mode 检测），粘贴内容中的换行会被保留
-
-交互式输入模式仅支持输入单个任务（创建 1 个 worktree）。
+启动命令通过配置项 `claudeCodeCommand`（默认值 `claude`）指定，支持自定义命令及参数。
 
 **运行流程：**
 
-1. 若传了 `--tasks`，解析得到任务数组 `tasks[]`；若未传，进入交互式输入获取单个任务
+1. 若传了 `--tasks`，解析得到任务数组 `tasks[]`；若未传，创建单个 worktree 并启动 Claude Code 交互式界面（流程结束，不进入后续并行执行阶段）
 2. `n = tasks.length`
 3. 按照 **5.1** 的流程创建 `n` 个 worktree
 4. 对每个 worktree 并行启动 Claude Code CLI：
@@ -572,15 +568,17 @@ clawt merge -b <branchName> -m <commitMessage>
 
 ```json
 {
-  "autoDeleteBranch": false
+  "autoDeleteBranch": false,
+  "claudeCodeCommand": "claude"
 }
 ```
 
 **配置项说明：**
 
-| 配置项             | 类型      | 默认值  | 说明                                               |
-| ------------------ | --------- | ------- | -------------------------------------------------- |
-| `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支；run 任务被中断（Ctrl+C）后是否自动清理本次创建的 worktree 和分支 |
+| 配置项             | 类型      | 默认值    | 说明                                               |
+| ------------------ | --------- | --------- | -------------------------------------------------- |
+| `autoDeleteBranch` | `boolean` | `false`   | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支；run 任务被中断（Ctrl+C）后是否自动清理本次创建的 worktree 和分支 |
+| `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时在 worktree 中打开交互式界面 |
 
 ---
 

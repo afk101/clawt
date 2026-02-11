@@ -30,3 +30,19 @@
 - 文档中文风格，技术术语保留英文（worktree, merge, branch, SIGINT 等）
 - cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
+
+## 配置项同步检查点
+
+配置项变更时需在以下 5 处保持一致：
+1. `src/constants/config.ts` — DEFAULT_CONFIG 对象
+2. `src/types/config.ts` — ClawtConfig 接口
+3. `docs/spec.md` — 5.7 默认配置文件章节（JSON 示例 + 配置项表格）
+4. `CLAUDE.md` — 关键约定段落中的配置描述
+5. `README.md` — 配置文件章节（JSON 示例 + 配置项表格）
+
+## run 命令双模式
+
+run 命令有两种模式（自 claudeCodeCommand 特性后）：
+- 不传 `--tasks`：交互式界面模式（单 worktree + `launchInteractiveClaude` + spawnSync）
+- 传 `--tasks`：并行任务模式（多 worktree + `executeClaudeTask` + spawnProcess）
+- CLAUDE.md 中的核心流程按模式分段描述

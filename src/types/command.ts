@@ -10,7 +10,7 @@ export interface CreateOptions {
 export interface RunOptions {
   /** 分支名 */
   branch: string;
-  /** 任务列表（支持多次 --tasks 传入），不传则进入交互式输入 */
+  /** 任务列表（支持多次 --tasks 传入），不传则在 worktree 中打开 Claude Code 交互式界面 */
   tasks?: string[];
 }
 

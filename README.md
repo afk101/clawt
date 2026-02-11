@@ -47,18 +47,18 @@ clawt create -b feature-scheme -n 3
 # 多任务并行
 clawt run -b <branchName> --tasks <task1> --tasks <task2> --tasks <task3>
 
-# 单任务交互式输入
+# 单 worktree + Claude Code 交互式界面
 clawt run -b <branchName>
 ```
 
 | 参数 | 必填 | 说明 |
 | ---- | ---- | ---- |
 | `-b` | 是 | 分支名 |
-| `--tasks` | 否 | 任务描述，可多次指定，任务数量即 worktree 数量。不传则进入交互式输入 |
+| `--tasks` | 否 | 任务描述，可多次指定，任务数量即 worktree 数量。不传则在 worktree 中打开 Claude Code 交互式界面 |
 
 每个 `--tasks` 对应一个独立的 worktree，Claude Code 会在各自隔离的环境中并行执行任务。任务完成后会实时通知结果，全部完成后输出汇总信息。
 
-不传 `--tasks` 时会进入交互式多行输入模式，支持粘贴多行文本作为任务描述（Enter 换行，连续两次 Enter 提交），创建 1 个 worktree 执行单个任务。
+不传 `--tasks` 时会创建单个 worktree，并在其中直接启动 Claude Code 交互式界面（通过 `spawnSync` + `inherit stdio`），让用户与 Claude Code 直接交互。启动命令由配置项 `claudeCodeCommand` 指定（默认 `claude`）。
 
 任务执行过程中按 Ctrl+C 可中断所有任务。中断后会根据配置自动清理或询问是否清理本次创建的 worktree 和分支（`autoDeleteBranch: true` 时自动清理）。
 
@@ -69,7 +69,7 @@ clawt run -b feature-scheme \
   --tasks "实现用户注册功能" \
   --tasks "实现密码重置功能"
 
-# 单任务，进入交互式输入
+# 单 worktree，打开 Claude Code 交互式界面
 clawt run -b feature-login
 ```
 
@@ -141,13 +141,15 @@ clawt list
 
 ```json
 {
-  "autoDeleteBranch": false
+  "autoDeleteBranch": false,
+  "claudeCodeCommand": "claude"
 }
 ```
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | ------ | ---- | ------ | ---- |
 | `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时自动删除对应本地分支；merge 成功后自动清理 worktree 和分支；run 中断后自动清理本次创建的 worktree 和分支 |
+| `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时在 worktree 中打开交互式界面 |
 
 ## 分支名规则
 

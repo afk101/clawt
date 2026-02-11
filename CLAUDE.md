@@ -28,6 +28,17 @@ npm i -g .        # 本地全局安装进行测试
 
 ### 核心流程（run 命令）
 
+run 命令有两种模式：
+
+**模式一：不传 `--tasks`（交互式界面模式）**
+
+1. `validateMainWorktree()` 确认在主 worktree 根目录
+2. `validateClaudeCodeInstalled()` 确认 claude CLI 可用
+3. `createWorktrees()` 创建单个 worktree
+4. `launchInteractiveClaude()` 通过 `spawnSync` + `inherit stdio` 在 worktree 中直接启动 Claude Code 交互式界面（启动命令由配置项 `claudeCodeCommand` 指定，默认 `claude`）
+
+**模式二：传 `--tasks`（并行任务模式）**
+
 1. `validateMainWorktree()` 确认在主 worktree 根目录
 2. `validateClaudeCodeInstalled()` 确认 claude CLI 可用
 3. `createWorktrees()` 批量创建 git worktree（串行）
@@ -54,7 +65,7 @@ npm i -g .        # 本地全局安装进行测试
 
 - 所有命令执行前都会调用 `validateMainWorktree()` 确保在主 worktree 根目录（`git rev-parse --git-common-dir === ".git"`）
 - Worktree 统一存放在 `~/.clawt/worktrees/<projectName>/` 下
-- 全局配置文件 `~/.clawt/config.json`，postinstall 时自动创建/合并
+- 全局配置文件 `~/.clawt/config.json`，postinstall 时自动创建/合并，包含 `autoDeleteBranch`（是否自动删除分支）和 `claudeCodeCommand`（Claude Code CLI 启动指令）两个配置项
 - shell 命令执行有同步（`execCommand` → `execSync`）和异步（`spawnProcess` → `spawn`）两种方式
 - 项目为纯 ESM（`"type": "module"`），模块导入需带 `.js` 后缀
 - 分支名特殊字符会被 `sanitizeBranchName()` 自动清理
