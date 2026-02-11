@@ -1,5 +1,9 @@
 import type { ClawtConfig } from '../types/index.js';
 
+/** Claude Code 系统约束提示，禁止代码执行完成后构建项目验证 */
+export const APPEND_SYSTEM_PROMPT =
+  'After the code execution is completed, it is prohibited to build the project for verification.';
+
 /** 默认配置 */
 export const DEFAULT_CONFIG: ClawtConfig = {
   autoDeleteBranch: false,
