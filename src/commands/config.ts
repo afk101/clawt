@@ -31,13 +31,18 @@ function handleConfig(): void {
 
   const keys = Object.keys(DEFAULT_CONFIG) as Array<keyof ClawtConfig>;
 
-  for (const key of keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
     const value = config[key];
     const description = CONFIG_DESCRIPTIONS[key];
     const formattedValue = formatConfigValue(value);
 
+    // 第一个配置项前增加空行，与下横线前的空行对称
+    if (i === 0) printInfo('');
     printInfo(`  ${chalk.bold(key)}: ${formattedValue}`);
-    printInfo(`  ${chalk.dim(description)}\n`);
+    printInfo(`  ${chalk.dim(description)}`);
+    // 配置项之间及最后一项与下横线之间保持统一空行间距
+    printInfo('');
   }
 
   printSeparator();
