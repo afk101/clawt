@@ -54,6 +54,8 @@ export const MESSAGES = {
   INTERRUPT_CLEANED: (count: number) => `✓ 已清理 ${count} 个 worktree 和对应分支`,
   /** 中断后保留 worktree */
   INTERRUPT_KEPT: '已保留 worktree，可稍后使用 clawt remove 手动清理',
+  /** 配置文件损坏，已重新生成默认配置 */
+  CONFIG_CORRUPTED: '配置文件损坏或无法解析，已重新生成默认配置',
   /** 分隔线 */
   SEPARATOR: '────────────────────────────────────────',
   /** 粗分隔线 */
