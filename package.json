@@ -10,7 +10,8 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "postinstall": "node dist/postinstall.js"
+    "postinstall": "node dist/postinstall.js",
+    "release": "bash scripts/release.sh"
   },
   "keywords": [
     "claude",
