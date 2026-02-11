@@ -226,3 +226,18 @@ export function gitWorktreeList(cwd?: string): string {
 export function gitWorktreePrune(cwd?: string): void {
   execCommand('git worktree prune', { cwd });
 }
+
+/**
+ * 检查目标分支相对于当前分支是否有本地提交
+ * @param {string} branchName - 目标分支名
+ * @param {string} cwd - 工作目录
+ * @returns {boolean} 是否有本地提交
+ */
+export function hasLocalCommits(branchName: string, cwd?: string): boolean {
+  try {
+    const output = execCommand(`git log HEAD..${branchName} --oneline`, { cwd });
+    return output.trim() !== '';
+  } catch {
+    return false;
+  }
+}

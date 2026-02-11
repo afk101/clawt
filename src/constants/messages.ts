@@ -31,12 +31,19 @@ export const MESSAGES = {
   /** merge 成功 */
   MERGE_SUCCESS: (branch: string, message: string) =>
     `✓ 分支 ${branch} 已成功合并到当前分支\n  提交信息: ${message}\n  已推送到远程仓库`,
+  /** merge 成功（无提交信息，目标 worktree 已提交过） */
+  MERGE_SUCCESS_NO_MESSAGE: (branch: string) =>
+    `✓ 分支 ${branch} 已成功合并到当前分支\n  已推送到远程仓库`,
   /** merge 冲突 */
   MERGE_CONFLICT: '合并存在冲突，请手动处理',
   /** merge 后清理 worktree 和分支成功 */
   WORKTREE_CLEANED: (branch: string) => `✓ 已清理 worktree 和分支: ${branch}`,
   /** 请提供提交信息 */
   COMMIT_MESSAGE_REQUIRED: '请提供提交信息（-m 参数）',
+  /** 目标 worktree 有未提交修改但未指定 -m */
+  TARGET_WORKTREE_DIRTY_NO_MESSAGE: '目标 worktree 有未提交的修改，请通过 -m 参数提供提交信息',
+  /** 目标 worktree 既干净又无本地提交 */
+  TARGET_WORKTREE_NO_CHANGES: '目标 worktree 没有任何可合并的变更（工作区干净且无本地提交）',
   /** 检测到用户中断 */
   INTERRUPTED: '检测到退出指令，已停止 Claude Code 任务',
   /** 中断后自动清理完成 */

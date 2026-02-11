@@ -16,6 +16,7 @@ import {
   hasMergeConflict,
   gitPull,
   gitPush,
+  hasLocalCommits,
   printSuccess,
   printInfo,
   getConfigValue,
@@ -32,7 +33,7 @@ export function registerMergeCommand(program: Command): void {
     .command('merge')
     .description('合并某个已验证的 worktree 分支到主 worktree')
     .requiredOption('-b, --branch <branchName>', '要合并的分支名')
-    .requiredOption('-m, --message <message>', '提交信息')
+    .option('-m, --message <message>', '提交信息（工作区有修改时必填）')
     .action(async (options: MergeOptions) => {
       await handleMerge(options);
     });
@@ -74,7 +75,7 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   const projectDir = getProjectWorktreeDir();
   const targetWorktreePath = join(projectDir, options.branch);
 
-  logger.info(`merge 命令执行，分支: ${options.branch}，提交信息: ${options.message}`);
+  logger.info(`merge 命令执行，分支: ${options.branch}，提交信息: ${options.message ?? '(未提供)'}`);
 
   // 检查目标 worktree 是否存在
   if (!existsSync(targetWorktreePath)) {
@@ -89,9 +90,23 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   // merge 前确认是否清理 worktree 和分支
   const shouldCleanup = await shouldCleanupAfterMerge(options.branch);
 
-  // 步骤 4：在目标 worktree 中提交
-  gitAddAll(targetWorktreePath);
-  gitCommit(options.message, targetWorktreePath);
+  // 步骤 4：根据目标 worktree 状态决定是否需要提交
+  const targetClean = isWorkingDirClean(targetWorktreePath);
+
+  if (!targetClean) {
+    // 目标 worktree 有未提交修改，必须提供 -m
+    if (!options.message) {
+      throw new ClawtError(MESSAGES.TARGET_WORKTREE_DIRTY_NO_MESSAGE);
+    }
+    gitAddAll(targetWorktreePath);
+    gitCommit(options.message, targetWorktreePath);
+  } else {
+    // 目标 worktree 干净，检查是否有本地提交
+    if (!hasLocalCommits(options.branch, mainWorktreePath)) {
+      throw new ClawtError(MESSAGES.TARGET_WORKTREE_NO_CHANGES);
+    }
+    // 有本地提交，跳过提交步骤，直接合并
+  }
 
   // 步骤 5：回到主 worktree 进行合并
   try {
@@ -113,8 +128,12 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   gitPull(mainWorktreePath);
   gitPush(mainWorktreePath);
 
-  // 步骤 8：输出成功提示
-  printSuccess(MESSAGES.MERGE_SUCCESS(options.branch, options.message));
+  // 步骤 8：输出成功提示（根据是否有 message 选择对应模板）
+  if (options.message) {
+    printSuccess(MESSAGES.MERGE_SUCCESS(options.branch, options.message));
+  } else {
+    printSuccess(MESSAGES.MERGE_SUCCESS_NO_MESSAGE(options.branch));
+  }
 
   // 步骤 9：merge 成功后清理 worktree 和分支
   if (shouldCleanup) {

@@ -24,6 +24,7 @@ export {
   gitRestoreStaged,
   gitWorktreeList,
   gitWorktreePrune,
+  hasLocalCommits,
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled } from './validation.js';

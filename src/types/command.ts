@@ -24,8 +24,8 @@ export interface ValidateOptions {
 export interface MergeOptions {
   /** 要合并的分支名 */
   branch: string;
-  /** 提交信息 */
-  message: string;
+  /** 提交信息（工作区有修改时必填） */
+  message?: string;
 }
 
 /** remove 命令选项 */
