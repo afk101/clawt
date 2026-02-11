@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { ClawtError } from './errors/index.js';
 import { logger } from './logger/index.js';
@@ -10,6 +11,10 @@ import { registerRunCommand } from './commands/run.js';
 import { registerValidateCommand } from './commands/validate.js';
 import { registerMergeCommand } from './commands/merge.js';
 
+// 从 package.json 读取版本号，避免硬编码
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json');
+
 // 确保全局目录结构存在
 ensureClawtDirs();
 
@@ -18,7 +23,7 @@ const program = new Command();
 program
   .name('clawt')
   .description('本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具')
-  .version('1.0.0');
+  .version(version);
 
 // 注册所有命令
 registerListCommand(program);
