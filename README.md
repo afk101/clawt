@@ -92,18 +92,22 @@ clawt validate -b feature-scheme-1
 ### `clawt merge` — 合并分支到主 worktree
 
 ```bash
-clawt merge -b <branchName> -m <commitMessage>
+clawt merge -b <branchName> [-m <commitMessage>]
 ```
 
 | 参数 | 必填 | 说明 |
 | ---- | ---- | ---- |
 | `-b` | 是 | 要合并的分支名 |
-| `-m` | 是 | 提交信息 |
+| `-m` | 否 | 提交信息（目标 worktree 工作区有修改时必填） |
 
-在目标 worktree 中提交变更，然后合并到主 worktree 的当前分支，并推送到远程仓库。merge 成功后会询问是否清理对应的 worktree 和分支（如果配置了 `autoDeleteBranch: true` 则自动清理）。
+将目标 worktree 的变更合并到主 worktree 的当前分支，并推送到远程仓库。如果目标 worktree 工作区有未提交的修改，需要通过 `-m` 提供提交信息；如果目标 worktree 已经提交过（工作区干净但有本地提交），可以省略 `-m` 直接合并。merge 成功后会询问是否清理对应的 worktree 和分支（如果配置了 `autoDeleteBranch: true` 则自动清理）。
 
 ```bash
+# 目标 worktree 有未提交修改，需提供 -m
 clawt merge -b feature-scheme-1 -m "feat: 实现用户登录功能"
+
+# 目标 worktree 已提交过，可省略 -m
+clawt merge -b feature-scheme-1
 ```
 
 ### `clawt remove` — 移除 worktree

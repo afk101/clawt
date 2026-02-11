@@ -484,54 +484,65 @@ git branch -D <branchName>
 **命令：**
 
 ```bash
-clawt merge -b <branchName> -m <commitMessage>
+clawt merge -b <branchName> [-m <commitMessage>]
 ```
 
 **参数：**
 
-| 参数 | 必填 | 说明               |
-| ---- | ---- | ------------------ |
-| `-b` | 是   | 要合并的分支名     |
-| `-m` | 是   | 提交信息           |
+| 参数 | 必填 | 说明                                     |
+| ---- | ---- | ---------------------------------------- |
+| `-b` | 是   | 要合并的分支名                           |
+| `-m` | 否   | 提交信息（目标 worktree 工作区有修改时必填） |
 
 **运行流程：**
 
 1. **主 worktree 校验** (2.1)
-2. **参数校验**
-   - 如果用户未提供 `-m`，提示 `请提供提交信息（-m 参数）`，退出
-3. **主 worktree 状态检测**
+2. **主 worktree 状态检测**
    - 执行 `git status --porcelain`
    - 如果有更改 → 提示 `主 worktree 有未提交的更改，请先处理`，退出
    - 无更改 → 继续
-4. **在目标 worktree 中提交**
-   ```bash
-   cd ~/.clawt/worktrees/<project>/<branchName>
-   git add .
-   git commit -m '<commitMessage>'
-   ```
-5. **回到主 worktree 进行合并**
+3. **根据目标 worktree 状态决定是否需要提交**
+   - 检测目标 worktree 工作区是否干净（`git status --porcelain`）
+   - **工作区有未提交修改**：
+     - 如果用户未提供 `-m`，提示 `目标 worktree 有未提交的修改，请通过 -m 参数提供提交信息`，退出
+     - 提供了 `-m` → 执行提交：
+       ```bash
+       cd ~/.clawt/worktrees/<project>/<branchName>
+       git add .
+       git commit -m '<commitMessage>'
+       ```
+   - **工作区干净**：
+     - 检查目标分支相对于主分支是否有本地提交（`git log HEAD..<branchName> --oneline`）
+     - 有本地提交 → 跳过提交步骤，直接进入合并
+     - 无本地提交 → 提示 `目标 worktree 没有任何可合并的变更（工作区干净且无本地提交）`，退出
+4. **回到主 worktree 进行合并**
    ```bash
    cd <主 worktree 路径>
    git merge <branchName>
    ```
-6. **冲突检测**
+5. **冲突检测**
    - 检查 merge 退出码及 `git status` 是否存在冲突
    - **有冲突** → 提示 `合并存在冲突，请手动处理`，退出
    - **无冲突** → 继续
-7. **推送**
+6. **推送**
    ```bash
    git pull
    git push
    ```
-8. **输出成功提示**
+7. **输出成功提示**
 
 ```
+# 提供了 -m 时
 ✓ 分支 feature-scheme-1 已成功合并到当前分支
   提交信息: <commitMessage>
   已推送到远程仓库
+
+# 未提供 -m 时（目标 worktree 已提交过）
+✓ 分支 feature-scheme-1 已成功合并到当前分支
+  已推送到远程仓库
 ```
 
-9. **merge 成功后清理 worktree 和分支（可选）**
+8. **merge 成功后清理 worktree 和分支（可选）**
    - 如果配置文件中 `autoDeleteBranch` 为 `true`，自动执行清理
    - 否则交互式询问用户是否清理
    - 用户确认后，依次执行：
