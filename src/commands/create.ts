@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
-import { MESSAGES } from '../constants/index.js';
+import { MESSAGES, EXIT_CODES } from '../constants/index.js';
+import { ClawtError } from '../errors/index.js';
 import { logger } from '../logger/index.js';
 import type { CreateOptions } from '../types/index.js';
 import {
@@ -33,6 +34,15 @@ function handleCreate(options: CreateOptions): void {
   validateMainWorktree();
 
   const count = Number(options.number);
+
+  // 校验创建数量必须为正整数
+  if (!Number.isInteger(count) || count <= 0) {
+    throw new ClawtError(
+      MESSAGES.INVALID_COUNT(options.number),
+      EXIT_CODES.ARGUMENT_ERROR,
+    );
+  }
+
   logger.info(`create 命令执行，分支: ${options.branch}，数量: ${count}`);
 
   const worktrees = createWorktrees(options.branch, count);
