@@ -1,18 +1,34 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { CONFIG_PATH, CLAWT_HOME, LOGS_DIR, WORKTREES_DIR, DEFAULT_CONFIG } from '../constants/index.js';
+import { CONFIG_PATH, CLAWT_HOME, LOGS_DIR, WORKTREES_DIR, DEFAULT_CONFIG, MESSAGES } from '../constants/index.js';
 import { ensureDir } from './fs.js';
+import { logger } from '../logger/index.js';
 import type { ClawtConfig } from '../types/index.js';
 
 /**
  * 加载全局配置，不存在则返回默认配置
+ * 配置文件损坏或无法解析时，视为不存在，重新生成默认配置
  * @returns {ClawtConfig} 配置对象
  */
 export function loadConfig(): ClawtConfig {
   if (!existsSync(CONFIG_PATH)) {
     return { ...DEFAULT_CONFIG };
   }
-  const raw = readFileSync(CONFIG_PATH, 'utf-8');
-  return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+  try {
+    const raw = readFileSync(CONFIG_PATH, 'utf-8');
+    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+  } catch {
+    // 配置文件损坏或无法解析时，重新生成默认配置
+    logger.warn(MESSAGES.CONFIG_CORRUPTED);
+    writeDefaultConfig();
+    return { ...DEFAULT_CONFIG };
+  }
+}
+
+/**
+ * 将默认配置写入配置文件
+ */
+function writeDefaultConfig(): void {
+  writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2), 'utf-8');
 }
 
 /**
