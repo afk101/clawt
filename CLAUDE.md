@@ -24,7 +24,7 @@ npm i -g .        # 本地全局安装进行测试
 
 每个命令为独立文件 `src/commands/<name>.ts`，导出 `registerXxxCommand(program)` 函数，在 `src/index.ts` 中统一注册到 Commander。命令内部逻辑封装在对应的 `handleXxx` 函数中。
 
-六个命令：`create`、`run`、`list`、`remove`、`validate`、`merge`。
+七个命令：`create`、`run`、`list`、`remove`、`validate`、`merge`、`config`。
 
 ### 核心流程（run 命令）
 
@@ -65,7 +65,7 @@ run 命令有两种模式：
 
 - 所有命令执行前都会调用 `validateMainWorktree()` 确保在主 worktree 根目录（`git rev-parse --git-common-dir === ".git"`）
 - Worktree 统一存放在 `~/.clawt/worktrees/<projectName>/` 下
-- 全局配置文件 `~/.clawt/config.json`，postinstall 时自动创建/合并，包含 `autoDeleteBranch`（是否自动删除分支）和 `claudeCodeCommand`（Claude Code CLI 启动指令）两个配置项
+- 全局配置文件 `~/.clawt/config.json`，postinstall 时自动创建/合并，包含 `autoDeleteBranch`（是否自动删除分支）、`claudeCodeCommand`（Claude Code CLI 启动指令）、`autoPullPush`（merge 后是否自动 pull/push）三个配置项。配置项以 `CONFIG_DEFINITIONS` 为单一数据源，`DEFAULT_CONFIG` 和 `CONFIG_DESCRIPTIONS` 均从中派生
 - shell 命令执行有同步（`execCommand` → `execSync`）和异步（`spawnProcess` → `spawn`）两种方式
 - 项目为纯 ESM（`"type": "module"`），模块导入需带 `.js` 后缀
 - 分支名特殊字符会被 `sanitizeBranchName()` 自动清理

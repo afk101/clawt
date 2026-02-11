@@ -3,4 +3,4 @@ export { INVALID_BRANCH_CHARS } from './branch.js';
 export { MESSAGES } from './messages.js';
 export { EXIT_CODES } from './exitCodes.js';
 export { ENABLE_BRACKETED_PASTE, DISABLE_BRACKETED_PASTE, PASTE_THRESHOLD_MS } from './terminal.js';
-export { DEFAULT_CONFIG, APPEND_SYSTEM_PROMPT } from './config.js';
+export { DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, APPEND_SYSTEM_PROMPT } from './config.js';

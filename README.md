@@ -139,6 +139,14 @@ clawt list
 
 列出当前项目在 `~/.clawt/worktrees/` 下的所有 worktree 及对应分支。
 
+### `clawt config` — 查看全局配置
+
+```bash
+clawt config
+```
+
+读取并展示全局配置文件 `~/.clawt/config.json` 中的所有配置项，包括每项的当前值和描述说明。编辑配置需直接修改配置文件。
+
 ## 配置文件
 
 安装后会自动在 `~/.clawt/config.json` 生成全局配置文件：
@@ -146,7 +154,8 @@ clawt list
 ```json
 {
   "autoDeleteBranch": false,
-  "claudeCodeCommand": "claude"
+  "claudeCodeCommand": "claude",
+  "autoPullPush": false
 }
 ```
 
@@ -154,6 +163,7 @@ clawt list
 | ------ | ---- | ------ | ---- |
 | `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时自动删除对应本地分支；merge 成功后自动清理 worktree 和分支；run 中断后自动清理本次创建的 worktree 和分支 |
 | `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时在 worktree 中打开交互式界面 |
+| `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
 
 ## 分支名规则
 
