@@ -124,9 +124,13 @@ async function handleMerge(options: MergeOptions): Promise<void> {
     throw new ClawtError(MESSAGES.MERGE_CONFLICT);
   }
 
-  // 步骤 7：推送
-  gitPull(mainWorktreePath);
-  gitPush(mainWorktreePath);
+  // 步骤 7：根据配置决定是否自动 pull 和 push
+  if (getConfigValue('autoPullPush')) {
+    gitPull(mainWorktreePath);
+    gitPush(mainWorktreePath);
+  } else {
+    printInfo('已跳过自动 pull/push，请手动执行 git pull && git push');
+  }
 
   // 步骤 8：输出成功提示（根据是否有 message 选择对应模板）
   if (options.message) {
