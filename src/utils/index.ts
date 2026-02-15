@@ -35,3 +35,4 @@ export { loadConfig, getConfigValue, ensureClawtDirs } from './config.js';
 export { printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, confirmAction, formatWorktreeStatus } from './formatter.js';
 export { ensureDir, removeEmptyDir } from './fs.js';
 export { multilineInput } from './prompt.js';
+export { launchInteractiveClaude } from './claude.js';

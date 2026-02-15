@@ -4,16 +4,18 @@
 
 ### docs/spec.md
 - 完整的软件规格说明，包含 7 大章节
-- 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.10）
+- 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.11）
 - run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，流程按步骤编号描述
 - config 命令对应 `5.10 查看全局配置`，只读展示配置
+- resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，查找已有 worktree 并启动交互式界面
 - 配置项说明在 `5.7 默认配置文件` 章节的表格中
 - 更新模式：新增步骤时追加编号，配置项影响范围变化时更新说明列
 
 ### CLAUDE.md
 - 面向 Claude Code 的项目架构指引，精简扼要
 - run 命令流程在 `核心流程（run 命令）` 章节，编号列表描述
+- resume 命令流程在独立的 `### resume 命令流程` 章节，编号列表描述
 - merge 和 run 中断清理在 `validate + merge 工作流` 章节，一行式描述用箭头连接流程
 - utils 目录描述用括号内逗号分隔列举功能模块
 - 更新模式：编号列表追加步骤，箭头链追加阶段，括号内追加关键词
@@ -30,6 +32,7 @@
 - run 的中断清理在所有子进程退出后执行
 - 文档中文风格，技术术语保留英文（worktree, merge, branch, SIGINT 等）
 - cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
+- `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts）
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
 
 ## 配置项同步检查点
@@ -55,6 +58,10 @@ run 命令有两种模式（自 claudeCodeCommand 特性后）：
 - 传 `--tasks`：并行任务模式（多 worktree + `executeClaudeTask` + spawnProcess）
 - CLAUDE.md 中的核心流程按模式分段描述
 
-## 命令清单（7 个）
+## 命令清单（8 个）
 
-`create`、`run`、`list`、`remove`、`validate`、`merge`、`config`
+`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`
+
+Notes:
+- resume 和 run（交互式模式）共用 `launchInteractiveClaude()`，该函数从 run.ts 提取到 src/utils/claude.ts
+- `claudeCodeCommand` 配置项同时影响 run 交互式模式和 resume 命令

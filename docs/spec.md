@@ -22,6 +22,7 @@
   - [5.8 获取当前项目所有 Worktree](#58-获取当前项目所有-worktree)
   - [5.9 日志系统](#59-日志系统)
   - [5.10 查看全局配置](#510-查看全局配置)
+  - [5.11 在已有 Worktree 中恢复会话](#511-在已有-worktree-中恢复会话)
 - [6. 错误处理规范](#6-错误处理规范)
 - [7. 非功能性需求](#7-非功能性需求)
 
@@ -159,6 +160,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt remove`        | 移除 worktree（支持单个/批量/全部）               | 5.5      |
 | `clawt list`          | 列出当前项目所有 worktree                        | 5.8      |
 | `clawt config`        | 查看全局配置                                     | 5.10     |
+| `clawt resume`        | 在已有 worktree 中恢复 Claude Code 交互式会话      | 5.11     |
 
 所有命令执行前，都必须先执行**主 worktree 校验**（见 [2.1](#21-主-worktree-的定义与定位规则)）。
 
@@ -592,7 +594,7 @@ clawt merge -b <branchName> [-m <commitMessage>]
 | 配置项             | 类型      | 默认值    | 说明                                               |
 | ------------------ | --------- | --------- | -------------------------------------------------- |
 | `autoDeleteBranch` | `boolean` | `false`   | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支；run 任务被中断（Ctrl+C）后是否自动清理本次创建的 worktree 和分支 |
-| `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时在 worktree 中打开交互式界面 |
+| `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
 
 ---
@@ -706,6 +708,37 @@ clawt config
 
 ---
 
+### 5.11 在已有 Worktree 中恢复会话
+
+**命令：**
+
+```bash
+clawt resume -b <branchName>
+```
+
+**参数：**
+
+| 参数 | 必填 | 说明                                                  |
+| ---- | ---- | ----------------------------------------------------- |
+| `-b` | 是   | 要恢复的分支名（对应已有 worktree 的分支）               |
+
+**使用场景：**
+
+当用户之前通过 `clawt run` 或 `clawt create` 创建了 worktree 但会话已结束，希望在该 worktree 中重新打开 Claude Code 交互式界面继续工作。
+
+**运行流程：**
+
+1. **主 worktree 校验** (2.1)
+2. **Claude Code CLI 校验**：确认 `claude` CLI 可用
+3. **查找目标 worktree**：在当前项目的 worktree 列表中按分支名查找匹配的 worktree
+   - 未找到 → 报错退出
+   - 找到 → 继续
+4. **启动 Claude Code 交互式界面**：通过 `launchInteractiveClaude()` 在目标 worktree 中启动 Claude Code CLI 交互式界面（使用 `spawnSync` + `inherit stdio`）
+
+启动命令通过配置项 `claudeCodeCommand`（默认值 `claude`）指定，与 `clawt run` 不传 `--tasks` 时的交互式界面行为一致。
+
+---
+
 ## 6. 错误处理规范
 
 ### 6.1 通用错误处理
@@ -714,7 +747,7 @@ clawt config
 | --------------------------------- | ---------------------------------------------------------- |
 | 不在主 worktree 根目录执行         | 输出错误提示，退出 (exit code 1)                            |
 | Git 未安装                        | 输出错误提示，退出 (exit code 1)                            |
-| Claude Code CLI 未安装            | 输出错误提示，退出 (exit code 1)（仅 `clawt run` 时检测）    |
+| Claude Code CLI 未安装            | 输出错误提示，退出 (exit code 1)（`clawt run` 和 `clawt resume` 时检测）    |
 | 分支已存在                        | 输出错误提示，退出 (exit code 1)                            |
 | Worktree 路径已存在               | 输出错误提示，退出 (exit code 1)                            |
 | Git 命令执行失败                  | 捕获 stderr，记录日志，输出错误提示，退出 (exit code 1)      |

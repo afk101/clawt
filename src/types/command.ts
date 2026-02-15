@@ -37,3 +37,9 @@ export interface RemoveOptions {
   /** 指定索引 */
   index?: number;
 }
+
+/** resume 命令选项 */
+export interface ResumeOptions {
+  /** 要恢复的分支名 */
+  branch: string;
+}

@@ -1,9 +1,8 @@
 import type { Command } from 'commander';
 import type { ChildProcess } from 'node:child_process';
-import { spawnSync } from 'node:child_process';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
-import { MESSAGES, APPEND_SYSTEM_PROMPT } from '../constants/index.js';
+import { MESSAGES } from '../constants/index.js';
 import type { RunOptions, ClaudeCodeResult, TaskResult, TaskSummary } from '../types/index.js';
 import {
   validateMainWorktree,
@@ -20,6 +19,7 @@ import {
   printSeparator,
   printDoubleSeparator,
   confirmAction,
+  launchInteractiveClaude,
 } from '../utils/index.js';
 import type { WorktreeInfo } from '../types/index.js';
 
@@ -36,41 +36,6 @@ export function registerRunCommand(program: Command): void {
     .action(async (options: RunOptions) => {
       await handleRun(options);
     });
-}
-
-/**
- * 在指定 worktree 中启动 Claude Code CLI 交互式界面
- * 使用 spawnSync + inherit stdio，让用户直接与 Claude Code 交互
- * @param {WorktreeInfo} worktree - worktree 信息
- */
-function launchInteractiveClaude(worktree: WorktreeInfo): void {
-  const commandStr = getConfigValue('claudeCodeCommand');
-  const parts = commandStr.split(/\s+/).filter(Boolean);
-  const cmd = parts[0];
-  const args = [
-    ...parts.slice(1),
-    '--append-system-prompt',
-    APPEND_SYSTEM_PROMPT,
-  ];
-
-  printInfo(`正在 worktree 中启动 Claude Code 交互式界面...`);
-  printInfo(`  分支: ${worktree.branch}`);
-  printInfo(`  路径: ${worktree.path}`);
-  printInfo(`  指令: ${commandStr}`);
-  printInfo('');
-
-  const result = spawnSync(cmd, args, {
-    cwd: worktree.path,
-    stdio: 'inherit',
-  });
-
-  if (result.error) {
-    throw new ClawtError(`启动 Claude Code 失败: ${result.error.message}`);
-  }
-
-  if (result.status !== null && result.status !== 0) {
-    printWarning(`Claude Code 退出码: ${result.status}`);
-  }
 }
 
 /** executeClaudeTask 的返回结构，包含子进程引用和结果 Promise */
