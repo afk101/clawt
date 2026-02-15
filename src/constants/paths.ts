@@ -12,3 +12,6 @@ export const LOGS_DIR = join(CLAWT_HOME, 'logs');
 
 /** worktree 统一存放目录 ~/.clawt/worktrees/ */
 export const WORKTREES_DIR = join(CLAWT_HOME, 'worktrees');
+
+/** validate 快照目录 ~/.clawt/validate-snapshots/ */
+export const VALIDATE_SNAPSHOTS_DIR = join(CLAWT_HOME, 'validate-snapshots');

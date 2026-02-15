@@ -55,15 +55,19 @@ run 命令有两种模式：
 
 ### validate + merge 工作流
 
-- `validate`：将目标 worktree 的变更通过 git stash 迁移到主 worktree，便于在主 worktree 中测试
-- `merge`：检测目标 worktree 状态（有修改则需 `-m` 提交，已提交则跳过，无变更则报错）→ 合并到主 worktree → pull → push → 可选清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）
+- `validate`：将目标 worktree 的变更通过 git stash 迁移到主 worktree，便于在主 worktree 中测试。支持两种模式：
+  - **首次 validate**（无历史快照）：stash 迁移 → 保存纯净快照 patch → 结果：暂存区=空，工作目录=全量变更
+  - **增量 validate**（存在历史快照）：读取旧 patch → 清空主 worktree → stash 迁移最新变更 → 保存新快照 → 旧 patch 应用到暂存区 → 结果：暂存区=上次快照，工作目录=最新变更（可通过 `git diff` 查看增量差异）
+  - `--clean` 选项：重置主 worktree + 删除对应快照文件
+  - 快照存储路径：`~/.clawt/validate-snapshots/<projectName>/<branchName>.patch`
+- `merge`：检测目标 worktree 状态（有修改则需 `-m` 提交，已提交则跳过，无变更则报错）→ 合并到主 worktree → pull → push → 可选清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）→ 清理对应的 validate 快照
 - `run` 中断清理：Ctrl+C 终止所有子进程后，根据 `autoDeleteBranch` 配置自动清理或交互式确认清理本次创建的 worktree 和分支
 
 ### 目录层级
 
 - `src/commands/` — 各命令的注册与处理逻辑
-- `src/utils/` — 工具函数（git 操作、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入、Claude Code 交互式启动）
-- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列）
+- `src/utils/` — 工具函数（git 操作、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入、Claude Code 交互式启动、validate 快照管理）
+- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录）
 - `src/types/` — TypeScript 类型定义
 - `src/errors/` — 自定义 `ClawtError` 错误类（携带退出码）
 - `src/logger/` — winston 日志（按日期滚动，写入 `~/.clawt/logs/`）
@@ -73,6 +77,6 @@ run 命令有两种模式：
 - 所有命令执行前都会调用 `validateMainWorktree()` 确保在主 worktree 根目录（`git rev-parse --git-common-dir === ".git"`）
 - Worktree 统一存放在 `~/.clawt/worktrees/<projectName>/` 下
 - 全局配置文件 `~/.clawt/config.json`，postinstall 时自动创建/合并，包含 `autoDeleteBranch`（是否自动删除分支）、`claudeCodeCommand`（Claude Code CLI 启动指令，用于 `run` 和 `resume` 的交互式界面）、`autoPullPush`（merge 后是否自动 pull/push）三个配置项。配置项以 `CONFIG_DEFINITIONS` 为单一数据源，`DEFAULT_CONFIG` 和 `CONFIG_DESCRIPTIONS` 均从中派生
-- shell 命令执行有同步（`execCommand` → `execSync`）和异步（`spawnProcess` → `spawn`）两种方式
+- shell 命令执行有同步（`execCommand` → `execSync`）、异步（`spawnProcess` → `spawn`）和同步带 stdin（`execCommandWithInput` → `execFileSync`）三种方式
 - 项目为纯 ESM（`"type": "module"`），模块导入需带 `.js` 后缀
 - 分支名特殊字符会被 `sanitizeBranchName()` 自动清理

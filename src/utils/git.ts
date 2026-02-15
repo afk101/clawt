@@ -1,5 +1,6 @@
 import { basename } from 'node:path';
-import { execCommand } from './shell.js';
+import { execSync } from 'node:child_process';
+import { execCommand, execCommandWithInput } from './shell.js';
 import { logger } from '../logger/index.js';
 
 /**
@@ -295,4 +296,27 @@ export function getDiffStat(branchName: string, worktreePath: string, cwd?: stri
     insertions: committed.insertions + uncommitted.insertions,
     deletions: committed.deletions + uncommitted.deletions,
   };
+}
+
+/**
+ * 获取暂存区相对于 HEAD 的完整 diff（含二进制文件）
+ * 注意：返回原始输出不做 trim，保留 patch 格式完整性
+ * @param {string} [cwd] - 工作目录
+ * @returns {Buffer} diff 原始输出（Buffer 格式，保留二进制数据完整性）
+ */
+export function gitDiffCachedBinary(cwd?: string): Buffer {
+  logger.debug(`执行命令: git diff --cached --binary${cwd ? ` (cwd: ${cwd})` : ''}`);
+  return execSync('git diff --cached --binary', {
+    cwd,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+/**
+ * 将 patch 内容通过 stdin 应用到暂存区
+ * @param {Buffer} patchContent - patch 内容（Buffer 格式）
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitApplyCachedFromStdin(patchContent: Buffer, cwd?: string): void {
+  execCommandWithInput('git', ['apply', '--cached'], { input: patchContent, cwd });
 }

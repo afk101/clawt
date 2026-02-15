@@ -93,17 +93,27 @@ clawt resume -b feature-login
 ### `clawt validate` — 在主 worktree 验证分支变更
 
 ```bash
-clawt validate -b <branchName>
+clawt validate -b <branchName> [--clean]
 ```
 
 | 参数 | 必填 | 说明 |
 | ---- | ---- | ---- |
 | `-b` | 是 | 要验证的分支名 |
+| `--clean` | 否 | 清理 validate 状态（重置主 worktree 并删除快照） |
 
 将目标 worktree 的变更通过 `git stash` 迁移到主 worktree，方便在主 worktree 中直接测试，无需重新安装依赖。
 
+支持增量模式：首次 validate 后会自动保存快照，再次 validate 同一分支时会将上次快照应用到暂存区、最新变更保留在工作目录，用户可通过 `git diff` 查看两次 validate 之间的增量差异。使用 `--clean` 可清理 validate 状态（重置主 worktree 并删除快照文件）。
+
 ```bash
+# 首次验证
 clawt validate -b feature-scheme-1
+
+# 再次验证（增量模式，可通过 git diff 查看增量差异）
+clawt validate -b feature-scheme-1
+
+# 清理 validate 状态
+clawt validate -b feature-scheme-1 --clean
 ```
 
 ### `clawt merge` — 合并分支到主 worktree

@@ -18,6 +18,8 @@ export interface RunOptions {
 export interface ValidateOptions {
   /** 要验证的分支名 */
   branch: string;
+  /** 清理 validate 状态 */
+  clean?: boolean;
 }
 
 /** merge 命令选项 */

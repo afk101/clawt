@@ -64,4 +64,16 @@ export const MESSAGES = {
   INVALID_COUNT: (value: string) => `无效的创建数量: "${value}"，请输入正整数`,
   /** worktree 状态获取失败 */
   WORKTREE_STATUS_UNAVAILABLE: '(状态不可用)',
+  /** 增量 validate 成功提示 */
+  INCREMENTAL_VALIDATE_SUCCESS: (branch: string) =>
+    `✓ 已将分支 ${branch} 的最新变更应用到主 worktree（增量模式）\n  暂存区 = 上次快照，工作目录 = 最新变更`,
+  /** 增量 validate 降级为全量模式提示 */
+  INCREMENTAL_VALIDATE_FALLBACK: '增量对比失败，已降级为全量模式',
+  /** validate 状态已清理 */
+  VALIDATE_CLEANED: (branch: string) => `✓ 分支 ${branch} 的 validate 状态已清理`,
+  /** 增量 validate 检测到脏状态，即将清空 */
+  INCREMENTAL_VALIDATE_RESET: '检测到上次 validate 的残留状态，将清空主 worktree 并重新应用',
+  /** merge 命令检测到 validate 状态的提示 */
+  MERGE_VALIDATE_STATE_HINT: (branch: string) =>
+    `主 worktree 可能存在 validate 残留状态，可先执行 clawt validate -b ${branch} --clean 清理`,
 } as const;

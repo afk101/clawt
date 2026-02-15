@@ -29,11 +29,13 @@
 ## 关键约定
 - `autoDeleteBranch` 配置项影响三处：remove 命令、merge 命令、run 中断清理
 - merge 的清理确认在 merge 操作之前询问（避免交互中断），但清理在 merge 成功后执行
+- merge 成功后自动清理对应的 validate 快照（hasSnapshot + removeSnapshot）
 - run 的中断清理在所有子进程退出后执行
 - 文档中文风格，技术术语保留英文（worktree, merge, branch, SIGINT 等）
 - cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
 - `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts）
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
+- validate 快照管理函数在 `src/utils/validate-snapshot.ts`，被 validate 和 merge 两个命令使用
 
 ## 配置项同步检查点
 
@@ -65,3 +67,17 @@ run 命令有两种模式（自 claudeCodeCommand 特性后）：
 Notes:
 - resume 和 run（交互式模式）共用 `launchInteractiveClaude()`，该函数从 run.ts 提取到 src/utils/claude.ts
 - `claudeCodeCommand` 配置项同时影响 run 交互式模式和 resume 命令
+
+## validate 快照机制
+
+- validate 命令支持首次/增量两种模式，通过 `hasSnapshot()` 判断
+- 快照路径：`~/.clawt/validate-snapshots/<projectName>/<branchName>.patch`
+- 常量 `VALIDATE_SNAPSHOTS_DIR` 定义在 `src/constants/paths.ts`
+- validate 新增 `--clean` 选项（`ValidateOptions.clean?: boolean`）
+- 增量模式核心：旧 patch 应用到暂存区 + 新全量变更在工作目录 → `git diff` 可查看增量差异
+- 增量 apply 失败时自动降级为全量模式
+- shell 层新增 `execCommandWithInput()`（`execFileSync` + stdin），用于 `gitApplyCachedFromStdin()`
+- git 层新增 `gitDiffCachedBinary()`（返回 Buffer）和 `gitApplyCachedFromStdin()`
+- merge 成功后自动清理对应快照；merge 时主 worktree 脏 + 存在快照会输出警告提示
+- docs/spec.md 中 validate 章节（5.4）按 `--clean 模式`、`首次 validate`、`增量 validate` 三段描述
+- CLAUDE.md 中在 validate + merge 工作流章节用缩进列表描述两种模式

@@ -137,6 +137,10 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 ├── logs/                                # 日志目录
 │   ├── clawt-2025-02-06.log
 │   └── ...
+├── validate-snapshots/                  # validate 快照目录
+│   └── <project-name>/                  # 以项目名分组
+│       ├── <branchName>.patch           # 每个分支一个 patch 快照文件
+│       └── ...
 └── worktrees/                           # 所有 worktree 的统一存放目录
     └── <project-name>/                  # 以项目名分组
         ├── <branchName>/                # n=1 时直接使用分支名
@@ -336,14 +340,15 @@ Claude Code CLI 以 `--output-format json` 运行时，退出后会在 stdout �
 **命令：**
 
 ```bash
-clawt validate -b <branchName>
+clawt validate -b <branchName> [--clean]
 ```
 
 **参数：**
 
-| 参数 | 必填 | 说明                                                                     |
-| ---- | ---- | ------------------------------------------------------------------------ |
-| `-b` | 是   | 要验证的 worktree 分支名（例如 `feature-scheme-1`）                        |
+| 参数      | 必填 | 说明                                                                     |
+| --------- | ---- | ------------------------------------------------------------------------ |
+| `-b`      | 是   | 要验证的 worktree 分支名（例如 `feature-scheme-1`）                        |
+| `--clean` | 否   | 清理 validate 状态（重置主 worktree 并删除快照）                            |
 
 > **限制：** 单次只能验证一个分支，不支持批量验证。
 
@@ -351,9 +356,24 @@ clawt validate -b <branchName>
 
 Git worktree 不会包含 `node_modules`、`.venv` 等依赖文件，每次安装依赖耗时较长。利用 `git stash` 可以在所有 worktree 间共享的特性，将目标 worktree 的变更迁移到主 worktree 进行测试，无需重新安装依赖。
 
+**快照机制：**
+
+validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更保存为 patch 文件（`~/.clawt/validate-snapshots/<project>/<branchName>.patch`）。当再次执行 validate 时，通过对比新旧快照，将上次快照应用到暂存区、最新变更保留在工作目录，用户可通过 `git diff` 直接查看两次 validate 之间的增量差异。
+
 **运行流程：**
 
-#### 步骤 1：检测主 worktree 工作区状态
+#### `--clean` 模式
+
+当指定 `--clean` 选项时，执行清理逻辑后直接返回，不进入常规 validate 流程：
+
+1. **主 worktree 校验** (2.1)
+2. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
+3. 删除对应分支的 patch 快照文件
+4. 输出清理成功提示
+
+#### 首次 validate（无历史快照）
+
+##### 步骤 1：检测主 worktree 工作区状态
 
 执行 `git status --porcelain`，判断主 worktree 是否有未提交的更改。
 
@@ -376,7 +396,7 @@ Git worktree 不会包含 `node_modules`、`.venv` 等依赖文件，每次安�
 
 执行完毕后，通过 `git status --porcelain` 再次检测状态，确保工作区干净。如果仍然不干净，报错退出。
 
-#### 步骤 2：在目标 worktree 中创建 stash
+##### 步骤 2：通过 stash 迁移目标 worktree 变更
 
 ```bash
 # 定位目标 worktree
@@ -398,13 +418,10 @@ git restore --staged .
 
 > 此步骤结束后，目标 worktree 的代码保持原样（变更仍然存在于工作区），同时变更已被记录到共享的 stash 中。
 
-#### 步骤 3：在主 worktree 应用 stash
+在主 worktree 中应用 stash：
 
 ```bash
-# 回到主 worktree
 cd <主 worktree 路径>
-
-# 校验 stash@{0} 是否为我们创建的
 git stash list
 ```
 
@@ -417,9 +434,67 @@ git stash list
 git stash pop stash@{0}
 ```
 
-#### 步骤 4：输出成功提示
+##### 步骤 3：保存纯净快照
+
+将主 worktree 工作目录的全量变更保存为 patch 文件：
+
+```bash
+git add .
+git diff --cached --binary > ~/.clawt/validate-snapshots/<project>/<branchName>.patch
+git restore --staged .
+```
+
+> 结果：暂存区=空，工作目录=全量变更。
+
+##### 步骤 4：输出成功提示
 
 ```
+✓ 已将分支 feature-scheme-1 的变更应用到主 worktree
+  可以开始验证了
+```
+
+#### 增量 validate（存在历史快照）
+
+当 `~/.clawt/validate-snapshots/<project>/<branchName>.patch` 存在时，自动进入增量模式：
+
+##### 步骤 1：读取旧 patch
+
+在清空主 worktree 之前，读取上次保存的快照 patch 内容。
+
+##### 步骤 2：清空主 worktree
+
+丢弃上次 validate 留下的变更和用户手动修改：
+
+```bash
+git reset --hard
+git clean -fd
+```
+
+##### 步骤 3：从目标 worktree 获取最新全量变更
+
+检查目标 worktree 是否有更改（无更改则退出）。通过 stash 迁移目标 worktree 的最新变更到主 worktree（流程同首次 validate 的步骤 2）。
+
+##### 步骤 4：保存最新快照
+
+将最新全量变更保存为新的 patch 文件（覆盖旧快照，流程同首次 validate 的步骤 3）。
+
+##### 步骤 5：将旧 patch 应用到暂存区
+
+```bash
+git apply --cached < <旧 patch 内容>
+```
+
+- **应用成功** → 结果：暂存区=上次快照，工作目录=最新全量变更（用户可通过 `git diff` 查看增量差异）
+- **应用失败**（文件结构变化过大）→ 降级为全量模式，暂存区保持为空，等同于首次 validate 的结果
+
+##### 步骤 6：输出成功提示
+
+```
+# 增量模式成功
+✓ 已将分支 feature-scheme-1 的最新变更应用到主 worktree（增量模式）
+  暂存区 = 上次快照，工作目录 = 最新变更
+
+# 增量降级为全量
 ✓ 已将分支 feature-scheme-1 的变更应用到主 worktree
   可以开始验证了
 ```
@@ -503,7 +578,9 @@ clawt merge -b <branchName> [-m <commitMessage>]
 1. **主 worktree 校验** (2.1)
 2. **主 worktree 状态检测**
    - 执行 `git status --porcelain`
-   - 如果有更改 → 提示 `主 worktree 有未提交的更改，请先处理`，退出
+   - 如果有更改：
+     - 如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.patch`），额外输出警告提示用户可先执行 `clawt validate -b <branchName> --clean` 清理
+     - 提示 `主 worktree 有未提交的更改，请先处理`，退出
    - 无更改 → 继续
 3. **根据目标 worktree 状态决定是否需要提交**
    - 检测目标 worktree 工作区是否干净（`git status --porcelain`）
@@ -560,6 +637,9 @@ clawt merge -b <branchName> [-m <commitMessage>]
      # 如果项目 worktree 目录为空，则清理空目录
      ```
    - 输出清理成功提示：`✓ 已清理 worktree 和分支: <branchName>`
+
+9. **清理 validate 快照**
+   - merge 成功后，如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.patch`），自动删除该快照文件（merge 成功后快照已无意义）
 
 > **注意：** 清理确认在 merge 操作之前询问（避免 merge 成功后因交互中断而遗留未清理的 worktree），但清理操作在 merge 成功后才执行。
 

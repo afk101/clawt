@@ -7,6 +7,7 @@ import { MESSAGES } from '../constants/index.js';
 import type { MergeOptions } from '../types/index.js';
 import {
   validateMainWorktree,
+  getProjectName,
   getGitTopLevel,
   getProjectWorktreeDir,
   isWorkingDirClean,
@@ -17,8 +18,11 @@ import {
   gitPull,
   gitPush,
   hasLocalCommits,
+  hasSnapshot,
+  removeSnapshot,
   printSuccess,
   printInfo,
+  printWarning,
   getConfigValue,
   confirmAction,
   cleanupWorktrees,
@@ -82,8 +86,14 @@ async function handleMerge(options: MergeOptions): Promise<void> {
     throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(options.branch));
   }
 
+  const projectName = getProjectName();
+
   // 步骤 3：主 worktree 状态检测
   if (!isWorkingDirClean(mainWorktreePath)) {
+    // 如果存在 validate 快照状态，提示用户先清理
+    if (hasSnapshot(projectName, options.branch)) {
+      printWarning(MESSAGES.MERGE_VALIDATE_STATE_HINT(options.branch));
+    }
     throw new ClawtError(MESSAGES.MAIN_WORKTREE_DIRTY);
   }
 
@@ -142,5 +152,10 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   // 步骤 9：merge 成功后清理 worktree 和分支
   if (shouldCleanup) {
     cleanupWorktreeAndBranch(targetWorktreePath, options.branch);
+  }
+
+  // 步骤 10：清理 validate 快照（merge 成功后快照已无意义）
+  if (hasSnapshot(projectName, options.branch)) {
+    removeSnapshot(projectName, options.branch);
   }
 }

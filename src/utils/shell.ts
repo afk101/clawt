@@ -1,4 +1,4 @@
-import { execSync, spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
+import { execSync, execFileSync, spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { logger } from '../logger/index.js';
 
 /**
@@ -50,4 +50,25 @@ export function killAllChildProcesses(children: ChildProcess[]): void {
       child.kill('SIGTERM');
     }
   }
+}
+
+/**
+ * 同步执行命令，通过 stdin 传入数据
+ * @param {string} command - 要执行的命令
+ * @param {string[]} args - 命令参数
+ * @param {object} options - 配置
+ * @param {Buffer} options.input - 通过 stdin 传入的数据（Buffer 格式，保留二进制完整性）
+ * @param {string} [options.cwd] - 工作目录
+ * @returns {string} 命令的标准输出（已 trim）
+ * @throws {Error} 命令执行失败时抛出
+ */
+export function execCommandWithInput(command: string, args: string[], options: { input: Buffer; cwd?: string }): string {
+  logger.debug(`执行命令(stdin): ${command} ${args.join(' ')}${options.cwd ? ` (cwd: ${options.cwd})` : ''}`);
+  const result = execFileSync(command, args, {
+    cwd: options.cwd,
+    input: options.input,
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  return result.trim();
 }
