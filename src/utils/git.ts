@@ -286,25 +286,14 @@ function parseShortStat(output: string): { insertions: number; deletions: number
 }
 
 /**
- * 获取目标分支的变更统计（已提交 + 未提交）
- * @param {string} branchName - 目标分支名
+ * 获取 worktree 中工作区和暂存区的变更统计
  * @param {string} worktreePath - worktree 目录路径
- * @param {string} [cwd] - 执行 git diff HEAD...branch 的工作目录
- * @returns {{ insertions: number; deletions: number }} 聚合后的新增和删除行数
+ * @returns {{ insertions: number; deletions: number }} 新增和删除行数
  */
-export function getDiffStat(branchName: string, worktreePath: string, cwd?: string): { insertions: number; deletions: number } {
-  // 已提交的变更（当前分支与目标分支的差异）
-  const committedOutput = execCommand(`git diff --shortstat HEAD...${branchName}`, { cwd });
-  const committed = parseShortStat(committedOutput);
-
-  // 未提交的变更（在 worktree 内执行）
-  const uncommittedOutput = execCommand('git diff --shortstat HEAD', { cwd: worktreePath });
-  const uncommitted = parseShortStat(uncommittedOutput);
-
-  return {
-    insertions: committed.insertions + uncommitted.insertions,
-    deletions: committed.deletions + uncommitted.deletions,
-  };
+export function getDiffStat(worktreePath: string): { insertions: number; deletions: number } {
+  // 工作区和暂存区相对于 HEAD 的变更
+  const output = execCommand('git diff --shortstat HEAD', { cwd: worktreePath });
+  return parseShortStat(output);
 }
 
 /**

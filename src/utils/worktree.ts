@@ -115,7 +115,7 @@ export function cleanupWorktrees(worktrees: WorktreeInfo[]): void {
 export function getWorktreeStatus(worktree: WorktreeInfo): WorktreeStatus | null {
   try {
     const commitCount = getCommitCountAhead(worktree.branch);
-    const { insertions, deletions } = getDiffStat(worktree.branch, worktree.path);
+    const { insertions, deletions } = getDiffStat(worktree.path);
     const hasDirtyFiles = !isWorkingDirClean(worktree.path);
 
     return { commitCount, insertions, deletions, hasDirtyFiles };
