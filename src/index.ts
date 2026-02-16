@@ -12,6 +12,7 @@ import { registerResumeCommand } from './commands/resume.js';
 import { registerValidateCommand } from './commands/validate.js';
 import { registerMergeCommand } from './commands/merge.js';
 import { registerConfigCommand } from './commands/config.js';
+import { registerSyncCommand } from './commands/sync.js';
 
 // 从 package.json 读取版本号，避免硬编码
 const require = createRequire(import.meta.url);
@@ -36,6 +37,7 @@ registerResumeCommand(program);
 registerValidateCommand(program);
 registerMergeCommand(program);
 registerConfigCommand(program);
+registerSyncCommand(program);
 
 // 全局未捕获异常处理
 process.on('uncaughtException', (error) => {

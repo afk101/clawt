@@ -23,6 +23,7 @@
   - [5.9 日志系统](#59-日志系统)
   - [5.10 查看全局配置](#510-查看全局配置)
   - [5.11 在已有 Worktree 中恢复会话](#511-在已有-worktree-中恢复会话)
+  - [5.12 将主分支代码同步到目标 Worktree](#512-将主分支代码同步到目标-worktree)
 - [6. 错误处理规范](#6-错误处理规范)
 - [7. 非功能性需求](#7-非功能性需求)
 
@@ -140,6 +141,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 ├── validate-snapshots/                  # validate 快照目录
 │   └── <project-name>/                  # 以项目名分组
 │       ├── <branchName>.patch           # 每个分支一个 patch 快照文件
+│       ├── <branchName>.head            # 对应的主分支 HEAD commit hash（用于增量 validate 一致性校验）
 │       └── ...
 └── worktrees/                           # 所有 worktree 的统一存放目录
     └── <project-name>/                  # 以项目名分组
@@ -165,6 +167,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt list`          | 列出当前项目所有 worktree                        | 5.8      |
 | `clawt config`        | 查看全局配置                                     | 5.10     |
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 交互式会话      | 5.11     |
+| `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
 
 所有命令执行前，都必须先执行**主 worktree 校验**（见 [2.1](#21-主-worktree-的定义与定位规则)）。
 
@@ -354,11 +357,11 @@ clawt validate -b <branchName> [--clean]
 
 **背景说明：**
 
-Git worktree 不会包含 `node_modules`、`.venv` 等依赖文件，每次安装依赖耗时较长。利用 `git stash` 可以在所有 worktree 间共享的特性，将目标 worktree 的变更迁移到主 worktree 进行测试，无需重新安装依赖。
+Git worktree 不会包含 `node_modules`、`.venv` 等依赖文件，每次安装依赖耗时较长。利用 `git diff HEAD...branch --binary`（三点 diff）可以获取目标分支自分叉点以来的全量变更（包含已提交和未提交的修改），将其作为 patch 应用到主 worktree 中进行测试，无需重新安装依赖。
 
 **快照机制：**
 
-validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更保存为 patch 文件（`~/.clawt/validate-snapshots/<project>/<branchName>.patch`）。当再次执行 validate 时，通过对比新旧快照，将上次快照应用到暂存区、最新变更保留在工作目录，用户可通过 `git diff` 直接查看两次 validate 之间的增量差异。
+validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更保存为 patch 文件（`~/.clawt/validate-snapshots/<project>/<branchName>.patch`），同时保存主分支 HEAD commit hash 到 `.head` 文件（用于一致性校验）。当再次执行 validate 时，先校验主分支 HEAD 是否与快照记录一致（不一致则清除旧快照降级为首次模式），然后通过对比新旧快照，将上次快照应用到暂存区、最新变更保留在工作目录，用户可通过 `git diff` 直接查看两次 validate 之间的增量差异。
 
 **运行流程：**
 
@@ -396,57 +399,60 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
 
 执行完毕后，通过 `git status --porcelain` 再次检测状态，确保工作区干净。如果仍然不干净，报错退出。
 
-##### 步骤 2：通过 stash 迁移目标 worktree 变更
+##### 步骤 2：检测目标分支变更
+
+统一检测目标 worktree 的未提交修改和已提交 commit：
 
 ```bash
-# 定位目标 worktree
+# 检测未提交修改
 cd ~/.clawt/worktrees/<project>/<branchName>
-
-# 校验目标 worktree 是否有更改
 git status --porcelain
+
+# 检测已提交 commit（在主 worktree 中执行）
+cd <主 worktree 路径>
+git log HEAD..<branchName> --oneline
 ```
 
-- **无更改** → 输出提示 `该 worktree 的分支上没有任何更改，无需验证`，退出
-- **有更改** → 继续
+- **两者均无** → 输出提示 `该 worktree 的分支上没有任何更改，无需验证`，退出
+- **至少有一项** → 继续
+
+##### 步骤 3：通过 patch 迁移目标分支全量变更
+
+使用三点 diff（`git diff HEAD...branchName --binary`）获取目标分支自分叉点以来的全量变更。如果目标 worktree 有未提交修改，先做临时 commit 以便 diff 能捕获全部变更，diff 完成后撤销临时 commit 恢复原状。
 
 ```bash
+# 如果有未提交修改，先临时提交
+cd ~/.clawt/worktrees/<project>/<branchName>
 git add .
-git stash push -m "clawt:validate:<branchName>"
-git stash apply
+git commit -m "clawt:temp-commit-for-validate"
+
+# 在主 worktree 中执行三点 diff
+cd <主 worktree 路径>
+git diff HEAD...<branchName> --binary | git apply
+
+# 撤销临时 commit，恢复目标 worktree 原状
+cd ~/.clawt/worktrees/<project>/<branchName>
+git reset --soft HEAD~1
 git restore --staged .
 ```
 
-> 此步骤结束后，目标 worktree 的代码保持原样（变更仍然存在于工作区），同时变更已被记录到共享的 stash 中。
+> 此步骤结束后，目标 worktree 的代码保持原样，主 worktree 工作目录包含目标分支的全量变更。
+> 如果 patch apply 失败（目标分支与主分支差异过大），会提示用户先执行 `clawt sync -b <branchName>` 同步主分支后重试。
 
-在主 worktree 中应用 stash：
+##### 步骤 4：保存纯净快照
 
-```bash
-cd <主 worktree 路径>
-git stash list
-```
-
-检查 `stash@{0}` 的消息是否包含 `clawt:validate:<branchName>`：
-
-- **不包含** → 报错：`git stash list 已变更，请重新执行`，退出
-- **包含** → 继续
-
-```bash
-git stash pop stash@{0}
-```
-
-##### 步骤 3：保存纯净快照
-
-将主 worktree 工作目录的全量变更保存为 patch 文件：
+将主 worktree 工作目录的全量变更保存为 patch 文件，同时记录主分支 HEAD commit hash：
 
 ```bash
 git add .
 git diff --cached --binary > ~/.clawt/validate-snapshots/<project>/<branchName>.patch
+git rev-parse HEAD > ~/.clawt/validate-snapshots/<project>/<branchName>.head
 git restore --staged .
 ```
 
 > 结果：暂存区=空，工作目录=全量变更。
 
-##### 步骤 4：输出成功提示
+##### 步骤 5：输出成功提示
 
 ```
 ✓ 已将分支 feature-scheme-1 的变更应用到主 worktree
@@ -457,28 +463,30 @@ git restore --staged .
 
 当 `~/.clawt/validate-snapshots/<project>/<branchName>.patch` 存在时，自动进入增量模式：
 
-##### 步骤 1：读取旧 patch
+##### 步骤 1：校验主分支 HEAD 一致性
+
+读取 `.head` 文件中保存的主分支 HEAD hash，与当前主分支 HEAD 对比：
+
+- **不一致或 `.head` 文件不存在** → 清除旧快照（`.patch` + `.head`），降级为首次 validate 模式
+- **一致** → 继续增量流程
+
+##### 步骤 2：读取旧 patch
 
 在清空主 worktree 之前，读取上次保存的快照 patch 内容。
 
-##### 步骤 2：清空主 worktree
+##### 步骤 3：确保主 worktree 干净
 
-丢弃上次 validate 留下的变更和用户手动修改：
+如果主 worktree 有残留状态，让用户选择处理方式（同首次 validate 步骤 1 的交互），做兜底清理。
 
-```bash
-git reset --hard
-git clean -fd
-```
+##### 步骤 4：从目标分支获取最新全量变更
 
-##### 步骤 3：从目标 worktree 获取最新全量变更
+通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 3）。
 
-检查目标 worktree 是否有更改（无更改则退出）。通过 stash 迁移目标 worktree 的最新变更到主 worktree（流程同首次 validate 的步骤 2）。
+##### 步骤 5：保存最新快照
 
-##### 步骤 4：保存最新快照
+将最新全量变更保存为新的 patch 文件 + HEAD hash（覆盖旧快照，流程同首次 validate 的步骤 4）。
 
-将最新全量变更保存为新的 patch 文件（覆盖旧快照，流程同首次 validate 的步骤 3）。
-
-##### 步骤 5：将旧 patch 应用到暂存区
+##### 步骤 6：将旧 patch 应用到暂存区
 
 ```bash
 git apply --cached < <旧 patch 内容>
@@ -487,7 +495,7 @@ git apply --cached < <旧 patch 内容>
 - **应用成功** → 结果：暂存区=上次快照，工作目录=最新全量变更（用户可通过 `git diff` 查看增量差异）
 - **应用失败**（文件结构变化过大）→ 降级为全量模式，暂存区保持为空，等同于首次 validate 的结果
 
-##### 步骤 6：输出成功提示
+##### 步骤 7：输出成功提示
 
 ```
 # 增量模式成功
@@ -816,6 +824,54 @@ clawt resume -b <branchName>
 4. **启动 Claude Code 交互式界面**：通过 `launchInteractiveClaude()` 在目标 worktree 中启动 Claude Code CLI 交互式界面（使用 `spawnSync` + `inherit stdio`）
 
 启动命令通过配置项 `claudeCodeCommand`（默认值 `claude`）指定，与 `clawt run` 不传 `--tasks` 时的交互式界面行为一致。
+
+---
+
+### 5.12 将主分支代码同步到目标 Worktree
+
+**命令：**
+
+```bash
+clawt sync -b <branchName>
+```
+
+**参数：**
+
+| 参数 | 必填 | 说明                                                  |
+| ---- | ---- | ----------------------------------------------------- |
+| `-b` | 是   | 要同步的分支名（对应已有 worktree 的分支）               |
+
+**使用场景：**
+
+当目标 worktree 的分支与主分支差异过大（例如主分支有了新的提交），导致 `clawt validate` 的 patch apply 失败时，可以通过 `clawt sync` 将主分支最新代码合并到目标 worktree，使其保持与主分支同步。
+
+**运行流程：**
+
+1. **主 worktree 校验** (2.1)
+2. **检查目标 worktree 是否存在**：确认 `~/.clawt/worktrees/<project>/<branchName>` 目录存在
+   - 不存在 → 报错退出
+3. **获取主分支名**：通过 `git rev-parse --abbrev-ref HEAD` 获取主 worktree 当前分支名（不硬编码 main/master）
+4. **自动保存未提交变更**：检查目标 worktree 是否有未提交修改
+   - 有修改 → 自动执行 `git add . && git commit -m "chore: auto-save before sync"` 保存变更
+   - 无修改 → 跳过
+5. **在目标 worktree 中合并主分支**：
+   ```bash
+   cd ~/.clawt/worktrees/<project>/<branchName>
+   git merge <mainBranch>
+   ```
+6. **冲突处理**：
+   - **有冲突** → 输出警告，提示用户进入目标 worktree 手动解决：
+     ```
+     合并存在冲突，请进入目标 worktree 手动解决：
+       cd ~/.clawt/worktrees/<project>/<branchName>
+       解决冲突后执行 git add . && git merge --continue
+     ```
+   - **无冲突** → 继续
+7. **清除 validate 快照**：合并成功后，如果该分支存在 validate 快照（`.patch` + `.head`），自动删除（代码基础已变化，旧快照无效）
+8. **输出成功提示**：
+   ```
+   ✓ 已将 <mainBranch> 的最新代码同步到 <branchName>
+   ```
 
 ---
 

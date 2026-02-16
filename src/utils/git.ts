@@ -191,6 +191,15 @@ export function gitStashPop(index: number = 0, cwd?: string): void {
 }
 
 /**
+ * git stash drop stash@{index}
+ * @param {number} index - stash 索引
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitStashDrop(index: number = 0, cwd?: string): void {
+  execCommand(`git stash drop stash@{${index}}`, { cwd });
+}
+
+/**
  * git stash list
  * @param {string} cwd - 工作目录
  * @returns {string} stash 列表输出
@@ -319,4 +328,55 @@ export function gitDiffCachedBinary(cwd?: string): Buffer {
  */
 export function gitApplyCachedFromStdin(patchContent: Buffer, cwd?: string): void {
   execCommandWithInput('git', ['apply', '--cached'], { input: patchContent, cwd });
+}
+
+/**
+ * 获取当前分支名
+ * @param {string} [cwd] - 工作目录
+ * @returns {string} 当前分支名
+ */
+export function getCurrentBranch(cwd?: string): string {
+  return execCommand('git rev-parse --abbrev-ref HEAD', { cwd });
+}
+
+/**
+ * 获取当前 HEAD 的 commit hash
+ * @param {string} [cwd] - 工作目录
+ * @returns {string} commit hash
+ */
+export function getHeadCommitHash(cwd?: string): string {
+  return execCommand('git rev-parse HEAD', { cwd });
+}
+
+/**
+ * 获取目标分支相对于当前分支的已提交变更（含二进制文件）
+ * 使用三点 diff（HEAD...branchName）获取自分叉点以来的变更
+ * @param {string} branchName - 目标分支名
+ * @param {string} [cwd] - 工作目录（应在主 worktree 中执行）
+ * @returns {Buffer} diff 原始输出
+ */
+export function gitDiffBinaryAgainstBranch(branchName: string, cwd?: string): Buffer {
+  logger.debug(`执行命令: git diff HEAD...${branchName} --binary${cwd ? ` (cwd: ${cwd})` : ''}`);
+  return execSync(`git diff HEAD...${branchName} --binary`, {
+    cwd,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+/**
+ * 将 patch 内容通过 stdin 应用到工作目录（不带 --cached）
+ * @param {Buffer} patchContent - patch 内容
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitApplyFromStdin(patchContent: Buffer, cwd?: string): void {
+  execCommandWithInput('git', ['apply'], { input: patchContent, cwd });
+}
+
+/**
+ * git reset --soft HEAD~<count>，撤销 commit 但保留变更在暂存区
+ * @param {number} count - 撤销的 commit 数量
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitResetSoft(count: number = 1, cwd?: string): void {
+  execCommand(`git reset --soft HEAD~${count}`, { cwd });
 }

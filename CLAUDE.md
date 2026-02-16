@@ -24,7 +24,7 @@ npm i -g .        # 本地全局安装进行测试
 
 每个命令为独立文件 `src/commands/<name>.ts`，导出 `registerXxxCommand(program)` 函数，在 `src/index.ts` 中统一注册到 Commander。命令内部逻辑封装在对应的 `handleXxx` 函数中。
 
-八个命令：`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`。
+九个命令：`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`、`sync`。
 
 ### 核心流程（run 命令）
 
@@ -55,19 +55,31 @@ run 命令有两种模式：
 
 ### validate + merge 工作流
 
-- `validate`：将目标 worktree 的变更通过 git stash 迁移到主 worktree，便于在主 worktree 中测试。支持两种模式：
-  - **首次 validate**（无历史快照）：stash 迁移 → 保存纯净快照 patch → 结果：暂存区=空，工作目录=全量变更
-  - **增量 validate**（存在历史快照）：读取旧 patch → 清空主 worktree → stash 迁移最新变更 → 保存新快照 → 旧 patch 应用到暂存区 → 结果：暂存区=上次快照，工作目录=最新变更（可通过 `git diff` 查看增量差异）
+- `validate`：将目标分支的全量变更（已提交 + 未提交）通过 `git diff HEAD...branch --binary` 的 patch 方式迁移到主 worktree，便于在主 worktree 中测试。支持两种模式：
+  - **首次 validate**（无历史快照）：patch 迁移全量变更 → 保存纯净快照 patch + 主分支 HEAD hash → 结果：暂存区=空，工作目录=全量变更
+  - **增量 validate**（存在历史快照）：校验主分支 HEAD 一致性（不一致则清除旧快照降级为首次模式）→ 读取旧 patch → 确保主 worktree 干净 → patch 迁移最新变更 → 保存新快照 → 旧 patch 应用到暂存区 → 结果：暂存区=上次快照，工作目录=最新变更（可通过 `git diff` 查看增量差异）
   - `--clean` 选项：重置主 worktree + 删除对应快照文件
-  - 快照存储路径：`~/.clawt/validate-snapshots/<projectName>/<branchName>.patch`
+  - 快照存储路径：`~/.clawt/validate-snapshots/<projectName>/<branchName>.patch`（patch 文件）+ `<branchName>.head`（主分支 HEAD hash）
+  - 变更检测：同时检测目标 worktree 的未提交修改和已提交 commit，两者均无则提示无需验证
+  - 未提交修改处理：有未提交修改时先做临时 commit，diff 完成后通过 `git reset --soft` 撤销恢复原状
 - `merge`：检测目标 worktree 状态（有修改则需 `-m` 提交，已提交则跳过，无变更则报错）→ 合并到主 worktree → pull → push → 可选清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）→ 清理对应的 validate 快照
 - `run` 中断清理：Ctrl+C 终止所有子进程后，根据 `autoDeleteBranch` 配置自动清理或交互式确认清理本次创建的 worktree 和分支
+
+### sync 命令流程
+
+1. `validateMainWorktree()` 确认在主 worktree 根目录
+2. 检查目标 worktree 是否存在
+3. 获取主分支名（`getCurrentBranch()`，不硬编码 main/master）
+4. 如果目标 worktree 有未提交变更，自动 `git add . && git commit` 保存
+5. 在目标 worktree 中执行 `git merge <mainBranch>` 合并主分支
+6. 冲突处理：有冲突时提示用户手动解决，无冲突则输出成功
+7. 合并成功后清除该分支的 validate 快照（代码基础已变化，旧快照无效）
 
 ### 目录层级
 
 - `src/commands/` — 各命令的注册与处理逻辑
-- `src/utils/` — 工具函数（git 操作、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入、Claude Code 交互式启动、validate 快照管理）
-- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录）
+- `src/utils/` — 工具函数（git 操作（含三点 diff、分支合并、冲突检测等）、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入、Claude Code 交互式启动、validate 快照管理（含 HEAD hash 一致性校验））
+- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录、sync 相关消息）
 - `src/types/` — TypeScript 类型定义
 - `src/errors/` — 自定义 `ClawtError` 错误类（携带退出码）
 - `src/logger/` — winston 日志（按日期滚动，写入 `~/.clawt/logs/`）

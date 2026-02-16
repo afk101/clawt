@@ -15,6 +15,16 @@ export function getSnapshotPath(projectName: string, branchName: string): string
 }
 
 /**
+ * 获取指定项目和分支的快照 HEAD hash 文件路径
+ * @param {string} projectName - 项目名
+ * @param {string} branchName - 分支名
+ * @returns {string} head 文件的绝对路径
+ */
+function getSnapshotHeadPath(projectName: string, branchName: string): string {
+  return join(VALIDATE_SNAPSHOTS_DIR, projectName, `${branchName}.head`);
+}
+
+/**
  * 判断指定项目和分支是否存在 validate 快照
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
@@ -41,12 +51,17 @@ export function readSnapshot(projectName: string, branchName: string): Buffer {
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
  * @param {Buffer} patch - patch 内容（Buffer 格式）
+ * @param {string} [headHash] - 主分支 HEAD commit hash（用于增量 validate 一致性校验）
  */
-export function writeSnapshot(projectName: string, branchName: string, patch: Buffer): void {
+export function writeSnapshot(projectName: string, branchName: string, patch: Buffer, headHash?: string): void {
   const snapshotPath = getSnapshotPath(projectName, branchName);
   const snapshotDir = join(VALIDATE_SNAPSHOTS_DIR, projectName);
   ensureDir(snapshotDir);
   writeFileSync(snapshotPath, patch);
+  // 保存主分支 HEAD hash，用于下次增量 validate 时校验一致性
+  if (headHash) {
+    writeFileSync(getSnapshotHeadPath(projectName, branchName), headHash, 'utf-8');
+  }
   logger.info(`已保存 validate 快照: ${snapshotPath}`);
 }
 
@@ -61,6 +76,25 @@ export function removeSnapshot(projectName: string, branchName: string): void {
     unlinkSync(snapshotPath);
     logger.info(`已删除 validate 快照: ${snapshotPath}`);
   }
+  // 同时删除对应的 .head 文件
+  const headPath = getSnapshotHeadPath(projectName, branchName);
+  if (existsSync(headPath)) {
+    unlinkSync(headPath);
+  }
+}
+
+/**
+ * 读取快照保存时的主分支 HEAD commit hash
+ * @param {string} projectName - 项目名
+ * @param {string} branchName - 分支名
+ * @returns {string | null} HEAD hash，不存在则返回 null
+ */
+export function readSnapshotHead(projectName: string, branchName: string): string | null {
+  const headPath = getSnapshotHeadPath(projectName, branchName);
+  if (!existsSync(headPath)) {
+    return null;
+  }
+  return readFileSync(headPath, 'utf-8').trim();
 }
 
 /**

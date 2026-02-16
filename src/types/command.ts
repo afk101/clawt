@@ -45,3 +45,9 @@ export interface ResumeOptions {
   /** 要恢复的分支名 */
   branch: string;
 }
+
+/** sync 命令选项 */
+export interface SyncOptions {
+  /** 要同步的分支名 */
+  branch: string;
+}

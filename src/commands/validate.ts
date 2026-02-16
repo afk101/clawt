@@ -13,17 +13,21 @@ import {
   getProjectWorktreeDir,
   isWorkingDirClean,
   gitAddAll,
+  gitCommit,
   gitStashPush,
-  gitStashApply,
-  gitStashPop,
-  gitStashList,
   gitRestoreStaged,
   gitResetHard,
   gitCleanForce,
   gitDiffCachedBinary,
   gitApplyCachedFromStdin,
+  gitDiffBinaryAgainstBranch,
+  gitApplyFromStdin,
+  gitResetSoft,
+  getHeadCommitHash,
+  hasLocalCommits,
   hasSnapshot,
   readSnapshot,
+  readSnapshotHead,
   writeSnapshot,
   removeSnapshot,
   printSuccess,
@@ -92,32 +96,50 @@ async function handleDirtyMainWorktree(mainWorktreePath: string): Promise<void> 
 }
 
 /**
- * 通过 stash 将目标 worktree 的变更迁移到主 worktree
+ * 通过 patch 将目标分支的全量变更（已提交 + 未提交）迁移到主 worktree
+ * 使用 git diff HEAD...branch --binary 获取变更，避免 stash 方式无法检测已提交 commit 的问题
  * @param {string} targetWorktreePath - 目标 worktree 路径
  * @param {string} mainWorktreePath - 主 worktree 路径
  * @param {string} branchName - 分支名
+ * @param {boolean} hasUncommitted - 目标 worktree 是否有未提交修改
  */
-function migrateChangesViaStash(targetWorktreePath: string, mainWorktreePath: string, branchName: string): void {
-  const stashMessage = `clawt:validate:${branchName}`;
-  gitAddAll(targetWorktreePath);
-  gitStashPush(stashMessage, targetWorktreePath);
-  gitStashApply(targetWorktreePath);
-  gitRestoreStaged(targetWorktreePath);
+function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreePath: string, branchName: string, hasUncommitted: boolean): void {
+  let didTempCommit = false;
 
-  // 在主 worktree 验证并应用 stash
-  const stashList = gitStashList(mainWorktreePath);
-  const firstLine = stashList.split('\n')[0] || '';
+  try {
+    // 如果有未提交修改，先做临时 commit 以便 diff 能捕获全部变更
+    if (hasUncommitted) {
+      gitAddAll(targetWorktreePath);
+      gitCommit('clawt:temp-commit-for-validate', targetWorktreePath);
+      didTempCommit = true;
+    }
 
-  if (!firstLine.includes(stashMessage)) {
-    throw new ClawtError(MESSAGES.STASH_CHANGED);
+    // 在主 worktree 执行三点 diff，获取目标分支自分叉点以来的全量变更
+    const patch = gitDiffBinaryAgainstBranch(branchName, mainWorktreePath);
+
+    // 应用 patch 到主 worktree 工作目录
+    if (patch.length > 0) {
+      try {
+        gitApplyFromStdin(patch, mainWorktreePath);
+      } catch (error) {
+        logger.warn(`patch apply 失败: ${error}`);
+        printWarning(MESSAGES.VALIDATE_PATCH_APPLY_FAILED(branchName));
+        throw error;
+      }
+    }
+  } finally {
+    // 确保临时 commit 一定会被撤销，恢复目标 worktree 原状
+    if (didTempCommit) {
+      gitResetSoft(1, targetWorktreePath);
+      gitRestoreStaged(targetWorktreePath);
+    }
   }
-
-  gitStashPop(0, mainWorktreePath);
 }
 
 /**
  * 保存当前主 worktree 工作目录变更为纯净快照 patch
  * 操作序列：git add . → git diff --cached --binary → git restore --staged .
+ * 同时记录主分支 HEAD hash，用于增量 validate 一致性校验
  * @param {string} mainWorktreePath - 主 worktree 路径
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
@@ -127,7 +149,8 @@ function saveCurrentSnapshotPatch(mainWorktreePath: string, projectName: string,
   gitAddAll(mainWorktreePath);
   const patch = gitDiffCachedBinary(mainWorktreePath);
   gitRestoreStaged(mainWorktreePath);
-  writeSnapshot(projectName, branchName, patch);
+  const headHash = getHeadCommitHash(mainWorktreePath);
+  writeSnapshot(projectName, branchName, patch, headHash);
   return patch;
 }
 
@@ -161,10 +184,11 @@ function handleValidateClean(options: ValidateOptions): void {
  * @param {string} mainWorktreePath - 主 worktree 路径
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
+ * @param {boolean} hasUncommitted - 目标 worktree 是否有未提交修改
  */
-function handleFirstValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string): void {
-  // 通过 stash 迁移目标 worktree 变更到主 worktree
-  migrateChangesViaStash(targetWorktreePath, mainWorktreePath, branchName);
+function handleFirstValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string, hasUncommitted: boolean): void {
+  // 通过 patch 迁移目标分支全量变更到主 worktree
+  migrateChangesViaPatch(targetWorktreePath, mainWorktreePath, branchName, hasUncommitted);
 
   // 保存纯净快照到 patch 文件
   saveCurrentSnapshotPatch(mainWorktreePath, projectName, branchName);
@@ -179,21 +203,24 @@ function handleFirstValidate(targetWorktreePath: string, mainWorktreePath: strin
  * @param {string} mainWorktreePath - 主 worktree 路径
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
+ * @param {boolean} hasUncommitted - 目标 worktree 是否有未提交修改
  */
-function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string): void {
+function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string, hasUncommitted: boolean): void {
   // 步骤 1：读取旧 patch（在清空前读取）
   const oldPatch = readSnapshot(projectName, branchName);
 
-  // 步骤 2：清空主 worktree（丢弃手动修改和上次 validate 留下的变更）
-  printInfo(MESSAGES.INCREMENTAL_VALIDATE_RESET);
-  gitResetHard(mainWorktreePath);
-  gitCleanForce(mainWorktreePath);
+  // 步骤 2：确保主 worktree 干净（调用方已通过 handleDirtyMainWorktree 处理）
+  // 这里做兜底清理，防止 handleDirtyMainWorktree 之后仍有残留
+  if (!isWorkingDirClean(mainWorktreePath)) {
+    gitResetHard(mainWorktreePath);
+    gitCleanForce(mainWorktreePath);
+  }
 
-  // 步骤 3：从目标 worktree 获取最新全量变更
-  migrateChangesViaStash(targetWorktreePath, mainWorktreePath, branchName);
+  // 步骤 3：通过 patch 从目标分支获取最新全量变更
+  migrateChangesViaPatch(targetWorktreePath, mainWorktreePath, branchName, hasUncommitted);
 
   // 步骤 4：保存最新快照
-  const newPatch = saveCurrentSnapshotPatch(mainWorktreePath, projectName, branchName);
+  saveCurrentSnapshotPatch(mainWorktreePath, projectName, branchName);
 
   // 步骤 5：将旧 patch 应用到暂存区
   if (oldPatch.length > 0) {
@@ -238,28 +265,41 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
     throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(options.branch));
   }
 
+  // 统一检测未提交修改 + 已提交 commit
+  const hasUncommitted = !isWorkingDirClean(targetWorktreePath);
+  const hasCommitted = hasLocalCommits(options.branch, mainWorktreePath);
+
+  if (!hasUncommitted && !hasCommitted) {
+    printInfo(MESSAGES.TARGET_WORKTREE_CLEAN);
+    return;
+  }
+
   // 判断是否为增量 validate
-  const isIncremental = hasSnapshot(projectName, options.branch);
+  let isIncremental = hasSnapshot(projectName, options.branch);
+
+  // 主分支 HEAD 发生变化或旧快照无 .head 记录时，清除后走首次全量模式
+  if (isIncremental) {
+    const savedHead = readSnapshotHead(projectName, options.branch);
+    const currentHead = getHeadCommitHash(mainWorktreePath);
+    if (!savedHead || savedHead !== currentHead) {
+      logger.info(`主分支 HEAD 不匹配 (${savedHead ?? 'null'} → ${currentHead})，清除旧快照`);
+      removeSnapshot(projectName, options.branch);
+      isIncremental = false;
+    }
+  }
 
   if (isIncremental) {
-    // 增量模式：检查目标 worktree 是否有变更
-    if (isWorkingDirClean(targetWorktreePath)) {
-      printInfo(MESSAGES.TARGET_WORKTREE_CLEAN);
-      return;
+    // 增量模式：主 worktree 有残留状态时让用户选择处理方式
+    if (!isWorkingDirClean(mainWorktreePath)) {
+      await handleDirtyMainWorktree(mainWorktreePath);
     }
-    handleIncrementalValidate(targetWorktreePath, mainWorktreePath, projectName, options.branch);
+    handleIncrementalValidate(targetWorktreePath, mainWorktreePath, projectName, options.branch, hasUncommitted);
   } else {
     // 首次模式：先确保主 worktree 干净
     if (!isWorkingDirClean(mainWorktreePath)) {
       await handleDirtyMainWorktree(mainWorktreePath);
     }
 
-    // 检查目标 worktree 是否有变更
-    if (isWorkingDirClean(targetWorktreePath)) {
-      printInfo(MESSAGES.TARGET_WORKTREE_CLEAN);
-      return;
-    }
-
-    handleFirstValidate(targetWorktreePath, mainWorktreePath, projectName, options.branch);
+    handleFirstValidate(targetWorktreePath, mainWorktreePath, projectName, options.branch, hasUncommitted);
   }
 }

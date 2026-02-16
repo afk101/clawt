@@ -101,9 +101,11 @@ clawt validate -b <branchName> [--clean]
 | `-b` | 是 | 要验证的分支名 |
 | `--clean` | 否 | 清理 validate 状态（重置主 worktree 并删除快照） |
 
-将目标 worktree 的变更通过 `git stash` 迁移到主 worktree，方便在主 worktree 中直接测试，无需重新安装依赖。
+将目标 worktree 的变更通过 `git diff`（三点 diff）迁移到主 worktree，方便在主 worktree 中直接测试，无需重新安装依赖。同时检测未提交修改和已提交 commit，确保所有变更都能被捕获。
 
-支持增量模式：首次 validate 后会自动保存快照，再次 validate 同一分支时会将上次快照应用到暂存区、最新变更保留在工作目录，用户可通过 `git diff` 查看两次 validate 之间的增量差异。使用 `--clean` 可清理 validate 状态（重置主 worktree 并删除快照文件）。
+支持增量模式：首次 validate 后会自动保存快照（patch + 主分支 HEAD hash），再次 validate 同一分支时会先校验主分支 HEAD 一致性（不一致则降级为首次模式），然后将上次快照应用到暂存区、最新变更保留在工作目录，用户可通过 `git diff` 查看两次 validate 之间的增量差异。使用 `--clean` 可清理 validate 状态（重置主 worktree 并删除快照文件）。
+
+> **提示：** 如果 validate 时 patch apply 失败（目标分支与主分支差异过大），可先执行 `clawt sync -b <branchName>` 同步主分支后重试。
 
 ```bash
 # 首次验证
@@ -114,6 +116,23 @@ clawt validate -b feature-scheme-1
 
 # 清理 validate 状态
 clawt validate -b feature-scheme-1 --clean
+```
+
+### `clawt sync` — 将主分支代码同步到目标 worktree
+
+```bash
+clawt sync -b <branchName>
+```
+
+| 参数 | 必填 | 说明 |
+| ---- | ---- | ---- |
+| `-b` | 是 | 要同步的分支名 |
+
+将主分支最新代码合并到目标 worktree 的分支中。如果目标 worktree 有未提交的修改，会自动保存后再合并。存在冲突时会提示用户手动解决。合并成功后会自动清除该分支的 validate 快照（代码基础已变化，旧快照无效）。
+
+```bash
+# 将主分支最新代码同步到目标 worktree
+clawt sync -b feature-scheme-1
 ```
 
 ### `clawt merge` — 合并分支到主 worktree

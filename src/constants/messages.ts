@@ -23,8 +23,6 @@ export const MESSAGES = {
   MAIN_WORKTREE_DIRTY: '主 worktree 有未提交的更改，请先处理',
   /** 目标 worktree 无更改 */
   TARGET_WORKTREE_CLEAN: '该 worktree 的分支上没有任何更改，无需验证',
-  /** stash 已变更 */
-  STASH_CHANGED: 'git stash list 已变更，请重新执行',
   /** validate 成功 */
   VALIDATE_SUCCESS: (branch: string) =>
     `✓ 已将分支 ${branch} 的变更应用到主 worktree\n  可以开始验证了`,
@@ -71,9 +69,22 @@ export const MESSAGES = {
   INCREMENTAL_VALIDATE_FALLBACK: '增量对比失败，已降级为全量模式',
   /** validate 状态已清理 */
   VALIDATE_CLEANED: (branch: string) => `✓ 分支 ${branch} 的 validate 状态已清理`,
-  /** 增量 validate 检测到脏状态，即将清空 */
-  INCREMENTAL_VALIDATE_RESET: '检测到上次 validate 的残留状态，将清空主 worktree 并重新应用',
   /** merge 命令检测到 validate 状态的提示 */
   MERGE_VALIDATE_STATE_HINT: (branch: string) =>
     `主 worktree 可能存在 validate 残留状态，可先执行 clawt validate -b ${branch} --clean 清理`,
+  /** sync 自动保存未提交变更 */
+  SYNC_AUTO_COMMITTED: (branch: string) =>
+    `已自动保存 ${branch} 分支的未提交变更`,
+  /** sync 开始合并 */
+  SYNC_MERGING: (targetBranch: string, mainBranch: string) =>
+    `正在将 ${mainBranch} 合并到 ${targetBranch} ...`,
+  /** sync 成功 */
+  SYNC_SUCCESS: (targetBranch: string, mainBranch: string) =>
+    `✓ 已将 ${mainBranch} 的最新代码同步到 ${targetBranch}`,
+  /** sync 冲突 */
+  SYNC_CONFLICT: (worktreePath: string) =>
+    `合并存在冲突，请进入目标 worktree 手动解决：\n  cd ${worktreePath}\n  解决冲突后执行 git add . && git merge --continue`,
+  /** validate patch apply 失败，提示用户同步主分支 */
+  VALIDATE_PATCH_APPLY_FAILED: (branch: string) =>
+    `变更迁移失败：目标分支与主分支差异过大\n  请先执行 clawt sync -b ${branch} 同步主分支后重试`,
 } as const;
