@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
-import { MESSAGES } from '../constants/index.js';
+import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
 import type { MergeOptions } from '../types/index.js';
 import {
   validateMainWorktree,
@@ -26,6 +26,10 @@ import {
   getConfigValue,
   confirmAction,
   cleanupWorktrees,
+  hasCommitWithMessage,
+  gitMergeBase,
+  gitResetSoftTo,
+  getCurrentBranch,
 } from '../utils/index.js';
 
 /**
@@ -41,6 +45,52 @@ export function registerMergeCommand(program: Command): void {
     .action(async (options: MergeOptions) => {
       await handleMerge(options);
     });
+}
+
+/**
+ * 检测并处理目标分支的 auto-save 提交压缩
+ * 如果检测到 sync 产生的临时提交，提示用户是否将所有提交压缩为一个
+ * @param {string} targetWorktreePath - 目标 worktree 路径
+ * @param {string} mainWorktreePath - 主 worktree 路径
+ * @param {string} branchName - 分支名
+ * @param {string} [commitMessage] - 用户提供的提交信息
+ * @returns {Promise<boolean>} 是否需要退出 merge 流程（用户选择 squash 但未提供 -m 时返回 true）
+ */
+async function handleSquashIfNeeded(
+  targetWorktreePath: string,
+  mainWorktreePath: string,
+  branchName: string,
+  commitMessage?: string,
+): Promise<boolean> {
+  // 检查目标分支是否存在 auto-save commit
+  if (!hasCommitWithMessage(branchName, AUTO_SAVE_COMMIT_MESSAGE, mainWorktreePath)) {
+    return false;
+  }
+
+  // 提示用户是否压缩
+  const shouldSquash = await confirmAction(MESSAGES.MERGE_SQUASH_PROMPT);
+  if (!shouldSquash) {
+    return false;
+  }
+
+  // 获取当前主分支名并计算分叉点
+  const mainBranch = getCurrentBranch(mainWorktreePath);
+  const mergeBase = gitMergeBase(mainBranch, branchName, mainWorktreePath);
+  logger.info(`squash: merge-base = ${mergeBase}, 分支 = ${branchName}`);
+
+  // 在目标 worktree 中执行 reset --soft 到分叉点
+  gitResetSoftTo(mergeBase, targetWorktreePath);
+
+  if (commitMessage) {
+    // 有 -m 参数，直接提交
+    gitCommit(commitMessage, targetWorktreePath);
+    printSuccess(MESSAGES.MERGE_SQUASH_COMMITTED(branchName));
+    return false;
+  }
+
+  // 没有 -m 参数，提示用户自行提交
+  printInfo(MESSAGES.MERGE_SQUASH_PENDING(targetWorktreePath, branchName));
+  return true;
 }
 
 /**
@@ -95,6 +145,12 @@ async function handleMerge(options: MergeOptions): Promise<void> {
       printWarning(MESSAGES.MERGE_VALIDATE_STATE_HINT(options.branch));
     }
     throw new ClawtError(MESSAGES.MAIN_WORKTREE_DIRTY);
+  }
+
+  // 步骤 3.5：检测是否需要 squash（sync 临时提交压缩）
+  const shouldExit = await handleSquashIfNeeded(targetWorktreePath, mainWorktreePath, options.branch, options.message);
+  if (shouldExit) {
+    return;
   }
 
   // merge 前确认是否清理 worktree 和分支

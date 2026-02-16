@@ -87,4 +87,12 @@ export const MESSAGES = {
   /** validate patch apply 失败，提示用户同步主分支 */
   VALIDATE_PATCH_APPLY_FAILED: (branch: string) =>
     `变更迁移失败：目标分支与主分支差异过大\n  请先执行 clawt sync -b ${branch} 同步主分支后重试`,
+  /** merge 检测到 auto-save 提交，提示用户是否压缩 */
+  MERGE_SQUASH_PROMPT: '检测到 sync 产生的临时提交，是否将所有提交压缩为一个？\n  压缩后变更将保留在目标worktree的暂存区，需要重新提交（可使用 Claude Code Cli或其他工具生成提交信息）',
+  /** squash 完成且通过 -m 直接提交后的提示 */
+  MERGE_SQUASH_COMMITTED: (branch: string) =>
+    `✓ 已将分支 ${branch} 的所有提交压缩为一个`,
+  /** squash 完成但未提供 -m，提示用户自行提交 */
+  MERGE_SQUASH_PENDING: (worktreePath: string, branch: string) =>
+    `✓ 已将所有提交压缩到暂存区\n  请在目标 worktree 中提交后重新执行 merge：\n  cd ${worktreePath}\n  提交完成后执行：clawt merge -b ${branch}`,
 } as const;

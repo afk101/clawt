@@ -369,3 +369,41 @@ export function gitApplyFromStdin(patchContent: Buffer, cwd?: string): void {
 export function gitResetSoft(count: number = 1, cwd?: string): void {
   execCommand(`git reset --soft HEAD~${count}`, { cwd });
 }
+
+/**
+ * 获取两个分支的分叉点（merge-base）
+ * @param {string} branchA - 分支 A
+ * @param {string} branchB - 分支 B
+ * @param {string} [cwd] - 工作目录
+ * @returns {string} merge-base 的 commit hash
+ */
+export function gitMergeBase(branchA: string, branchB: string, cwd?: string): string {
+  return execCommand(`git merge-base ${branchA} ${branchB}`, { cwd });
+}
+
+/**
+ * 检查目标分支相对于当前分支是否存在指定前缀的 commit message
+ * 通过 git log HEAD..<branch> 遍历所有新增 commit 的 message
+ * @param {string} branchName - 目标分支名
+ * @param {string} messagePrefix - 要匹配的 commit message 前缀
+ * @param {string} [cwd] - 工作目录
+ * @returns {boolean} 是否存在匹配的 commit
+ */
+export function hasCommitWithMessage(branchName: string, messagePrefix: string, cwd?: string): boolean {
+  try {
+    const output = execCommand(`git log HEAD..${branchName} --format=%s`, { cwd });
+    if (!output.trim()) return false;
+    return output.trim().split('\n').some((msg) => msg.startsWith(messagePrefix));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * git reset --soft <commitHash>，将指定 commit 之后的所有提交撤销到暂存区
+ * @param {string} commitHash - 目标 commit hash（reset 到此处）
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitResetSoftTo(commitHash: string, cwd?: string): void {
+  execCommand(`git reset --soft ${commitHash}`, { cwd });
+}

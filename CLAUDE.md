@@ -62,7 +62,7 @@ run 命令有两种模式：
   - 快照存储路径：`~/.clawt/validate-snapshots/<projectName>/<branchName>.patch`（patch 文件）+ `<branchName>.head`（主分支 HEAD hash）
   - 变更检测：同时检测目标 worktree 的未提交修改和已提交 commit，两者均无则提示无需验证
   - 未提交修改处理：有未提交修改时先做临时 commit，diff 完成后通过 `git reset --soft` 撤销恢复原状
-- `merge`：检测目标 worktree 状态（有修改则需 `-m` 提交，已提交则跳过，无变更则报错）→ 合并到主 worktree → pull → push → 可选清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）→ 清理对应的 validate 快照
+- `merge`：检测目标 worktree 状态（有修改则需 `-m` 提交，已提交则跳过，无变更则报错）→ **squash 检测**（检查目标分支是否存在 `AUTO_SAVE_COMMIT_MESSAGE` 前缀的 auto-save commit，如有则提示用户是否压缩所有提交：用户确认后通过 `gitMergeBase` 计算分叉点、`gitResetSoftTo` 将所有 commit reset 到暂存区；有 `-m` 则直接提交继续流程，无 `-m` 则提示用户自行提交后退出）→ 合并到主 worktree → pull → push → 可选清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）→ 清理对应的 validate 快照
 - `run` 中断清理：Ctrl+C 终止所有子进程后，根据 `autoDeleteBranch` 配置自动清理或交互式确认清理本次创建的 worktree 和分支
 
 ### sync 命令流程
@@ -78,8 +78,8 @@ run 命令有两种模式：
 ### 目录层级
 
 - `src/commands/` — 各命令的注册与处理逻辑
-- `src/utils/` — 工具函数（git 操作（含三点 diff、分支合并、冲突检测等）、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入、Claude Code 交互式启动、validate 快照管理（含 HEAD hash 一致性校验））
-- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录、sync 相关消息）
+- `src/utils/` — 工具函数（git 操作（含三点 diff、分支合并、冲突检测、merge-base 计算、commit message 检测、soft reset 到指定 commit 等）、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入、Claude Code 交互式启动、validate 快照管理（含 HEAD hash 一致性校验））
+- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录、sync 相关消息、git 常量（如 `AUTO_SAVE_COMMIT_MESSAGE`）、squash 相关消息）
 - `src/types/` — TypeScript 类型定义
 - `src/errors/` — 自定义 `ClawtError` 错误类（携带退出码）
 - `src/logger/` — winston 日志（按日期滚动，写入 `~/.clawt/logs/`）

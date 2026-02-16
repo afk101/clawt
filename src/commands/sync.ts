@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import type { Command } from 'commander';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
-import { MESSAGES } from '../constants/index.js';
+import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
 import type { SyncOptions } from '../types/index.js';
 import {
   validateMainWorktree,
@@ -43,7 +43,7 @@ export function registerSyncCommand(program: Command): void {
  */
 function autoSaveChanges(worktreePath: string, branch: string): void {
   gitAddAll(worktreePath);
-  gitCommit('chore: auto-save before sync', worktreePath);
+  gitCommit(AUTO_SAVE_COMMIT_MESSAGE, worktreePath);
   printInfo(MESSAGES.SYNC_AUTO_COMMITTED(branch));
   logger.info(`已自动保存 ${branch} 分支的未提交变更`);
 }

@@ -148,6 +148,8 @@ clawt merge -b <branchName> [-m <commitMessage>]
 
 将目标 worktree 的变更合并到主 worktree 的当前分支，并推送到远程仓库。如果目标 worktree 工作区有未提交的修改，需要通过 `-m` 提供提交信息；如果目标 worktree 已经提交过（工作区干净但有本地提交），可以省略 `-m` 直接合并。merge 成功后会询问是否清理对应的 worktree 和分支（如果配置了 `autoDeleteBranch: true` 则自动清理）。
 
+如果检测到目标分支存在 `clawt sync` 产生的临时提交（auto-save commit），会自动提示是否将所有提交压缩（squash）为一个。用户选择压缩后，所有 commit 会被 reset 到暂存区：如果提供了 `-m` 则直接提交并继续合并流程；如果未提供 `-m` 则提示用户前往目标 worktree 自行提交后重新执行 merge。
+
 ```bash
 # 目标 worktree 有未提交修改，需提供 -m
 clawt merge -b feature-scheme-1 -m "feat: 实现用户登录功能"

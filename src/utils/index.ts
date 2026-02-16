@@ -35,6 +35,9 @@ export {
   gitDiffBinaryAgainstBranch,
   gitApplyFromStdin,
   gitResetSoft,
+  gitMergeBase,
+  hasCommitWithMessage,
+  gitResetSoftTo,
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled } from './validation.js';
