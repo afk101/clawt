@@ -168,11 +168,11 @@ clawt remove [options]
 # 移除当前项目下所有 worktree
 clawt remove --all
 
-# 移除指定分支名下的所有 worktree
+# 移除指定分支名下的所有 worktree（匹配 feature-scheme 和 feature-scheme-*）
 clawt remove -b feature-scheme
 
-# 移除指定分支名的某一个 worktree
-clawt remove -b feature-scheme -i 2
+# 移除单个 worktree（直接写完整分支名）
+clawt remove -b feature-scheme-2
 ```
 
 移除时会询问是否同时删除对应的本地分支。
