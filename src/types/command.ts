@@ -36,8 +36,6 @@ export interface RemoveOptions {
   all?: boolean;
   /** 分支名 */
   branch?: string;
-  /** 指定索引 */
-  index?: number;
 }
 
 /** resume 命令选项 */

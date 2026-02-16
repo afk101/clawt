@@ -1,6 +1,4 @@
 import type { Command } from 'commander';
-import { join } from 'node:path';
-import { existsSync, readdirSync } from 'node:fs';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
@@ -29,8 +27,7 @@ export function registerRemoveCommand(program: Command): void {
     .command('remove')
     .description('移除 worktree（支持单个/批量/全部）')
     .option('--all', '移除当前项目下所有 worktree')
-    .option('-b, --branch <branchName>', '指定分支名')
-    .option('-i, --index <index>', '指定索引（配合 -b 使用）')
+    .option('-b, --branch <branchName>', '指定分支名（完整分支名精确匹配）')
     .action(async (options: RemoveOptions) => {
       await handleRemove(options);
     });
@@ -42,7 +39,6 @@ export function registerRemoveCommand(program: Command): void {
  * @returns {Array<{path: string, branch: string}>} 待移除的 worktree 列表
  */
 function resolveWorktreesToRemove(options: RemoveOptions): Array<{ path: string; branch: string }> {
-  const projectDir = getProjectWorktreeDir();
   const allWorktrees = getProjectWorktrees();
 
   if (options.all) {
@@ -53,23 +49,12 @@ function resolveWorktreesToRemove(options: RemoveOptions): Array<{ path: string;
     throw new ClawtError('请指定 --all 或 -b <branchName> 参数');
   }
 
-  if (options.index !== undefined) {
-    // 单个移除：branchName-<index>
-    const targetName = `${options.branch}-${options.index}`;
-    const targetPath = join(projectDir, targetName);
-    const found = allWorktrees.find((wt) => wt.path === targetPath);
-    if (!found) {
-      throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(targetName));
-    }
-    return [found];
-  }
-
   // 分支级移除：匹配 branchName 或 branchName-*
   const matched = allWorktrees.filter(
     (wt) => wt.branch === options.branch || wt.branch.startsWith(`${options.branch}-`),
   );
   if (matched.length === 0) {
-    throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(options.branch!));
+    throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(options.branch));
   }
   return matched;
 }

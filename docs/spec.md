@@ -522,8 +522,7 @@ clawt remove [options]
 | 参数      | 说明                                                       |
 | --------- | ---------------------------------------------------------- |
 | `--all`   | 移除当前项目 (`~/.clawt/worktrees/<project>/`) 下所有 worktree |
-| `-b <branchName>` | 移除指定 branchName 下的所有 worktree               |
-| `-b <branchName> -i <index>` | 移除指定 branchName 的某一个 worktree (如 `branchName-2`) |
+| `-b <branchName>` | 移除匹配 branchName 或 branchName-* 的 worktree      |
 
 **三种移除粒度：**
 
@@ -531,7 +530,7 @@ clawt remove [options]
 | ---- | ---------------------------------------- | ------------------------------------------------------------- |
 | 全部 | `clawt remove --all`                     | `~/.clawt/worktrees/<project>/` 下所有 worktree                |
 | 分支 | `clawt remove -b feature-scheme`         | `~/.clawt/worktrees/<project>/feature-scheme-*` 的所有 worktree |
-| 单个 | `clawt remove -b feature-scheme -i 2`    | 仅移除 `~/.clawt/worktrees/<project>/feature-scheme-2`          |
+| 单个 | `clawt remove -b feature-scheme-2`       | 仅移除 `feature-scheme-2` 对应的 worktree（完整分支名精确匹配）    |
 
 **运行流程：**
 
