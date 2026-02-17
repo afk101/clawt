@@ -24,7 +24,7 @@ npm i -g .        # 本地全局安装进行测试
 
 每个命令为独立文件 `src/commands/<name>.ts`，导出 `registerXxxCommand(program)` 函数，在 `src/index.ts` 中统一注册到 Commander。命令内部逻辑封装在对应的 `handleXxx` 函数中。
 
-九个命令：`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`、`sync`。
+十个命令：`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`、`sync`、`reset`。
 
 ### 核心流程（run 命令）
 
@@ -75,11 +75,18 @@ run 命令有两种模式：
 6. 冲突处理：有冲突时提示用户手动解决，无冲突则输出成功
 7. 合并成功后清除该分支的 validate 快照（代码基础已变化，旧快照无效）
 
+### reset 命令流程
+
+1. `validateMainWorktree()` 确认在主 worktree 根目录
+2. 检测主 worktree 工作区和暂存区是否干净（`isWorkingDirClean()`）
+3. 不干净 → `gitResetHard()` + `gitCleanForce()` 重置工作区和暂存区（保留 validate 快照）
+4. 已干净 → 提示无需重置
+
 ### 目录层级
 
 - `src/commands/` — 各命令的注册与处理逻辑
 - `src/utils/` — 工具函数（git 操作（含三点 diff、分支合并、冲突检测、merge-base 计算、commit message 检测、soft reset 到指定 commit 等）、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入、Claude Code 交互式启动、validate 快照管理（含 HEAD hash 一致性校验））
-- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录、sync 相关消息、git 常量（如 `AUTO_SAVE_COMMIT_MESSAGE`）、squash 相关消息）
+- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录、sync 相关消息、git 常量（如 `AUTO_SAVE_COMMIT_MESSAGE`）、squash 相关消息、reset 相关消息）
 - `src/types/` — TypeScript 类型定义
 - `src/errors/` — 自定义 `ClawtError` 错误类（携带退出码）
 - `src/logger/` — winston 日志（按日期滚动，写入 `~/.clawt/logs/`）

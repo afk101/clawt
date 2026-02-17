@@ -24,6 +24,7 @@
   - [5.10 查看全局配置](#510-查看全局配置)
   - [5.11 在已有 Worktree 中恢复会话](#511-在已有-worktree-中恢复会话)
   - [5.12 将主分支代码同步到目标 Worktree](#512-将主分支代码同步到目标-worktree)
+  - [5.13 重置主 Worktree 工作区和暂存区](#513-重置主-worktree-工作区和暂存区)
 - [6. 错误处理规范](#6-错误处理规范)
 - [7. 非功能性需求](#7-非功能性需求)
 
@@ -168,6 +169,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt config`        | 查看全局配置                                     | 5.10     |
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 交互式会话      | 5.11     |
 | `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
+| `clawt reset`         | 重置主 worktree 工作区和暂存区                       | 5.13     |
 
 所有命令执行前，都必须先执行**主 worktree 校验**（见 [2.1](#21-主-worktree-的定义与定位规则)）。
 
@@ -885,6 +887,38 @@ clawt sync -b <branchName>
 8. **输出成功提示**：
    ```
    ✓ 已将 <mainBranch> 的最新代码同步到 <branchName>
+   ```
+
+---
+
+### 5.13 重置主 Worktree 工作区和暂存区
+
+**命令：**
+
+```bash
+clawt reset
+```
+
+**无参数。**
+
+**使用场景：**
+
+当用户通过 `clawt validate` 将分支变更迁移到主 worktree 后，希望快速清除工作区和暂存区的所有修改，恢复到干净状态。与 `clawt validate --clean` 的区别在于：`reset` 仅重置工作区和暂存区，**不删除** validate 快照文件，适用于只想清空变更而保留快照以便后续增量 validate 的场景。
+
+**运行流程：**
+
+1. **主 worktree 校验** (2.1)
+2. **检测工作区状态**：通过 `git status --porcelain` 检测主 worktree 是否有未提交的更改
+   - **工作区干净** → 输出提示 `主 worktree 工作区和暂存区已是干净状态，无需重置`，退出
+   - **工作区不干净** → 继续
+3. **重置工作区和暂存区**：
+   ```bash
+   git reset --hard
+   git clean -f
+   ```
+4. **输出成功提示**：
+   ```
+   ✓ 主 worktree 工作区和暂存区已重置
    ```
 
 ---

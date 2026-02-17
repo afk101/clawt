@@ -4,7 +4,7 @@
 
 ### docs/spec.md
 - 完整的软件规格说明，包含 7 大章节
-- 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.11）
+- 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.13）
 - run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，流程按步骤编号描述
 - config 命令对应 `5.10 查看全局配置`，只读展示配置
@@ -60,13 +60,14 @@ run 命令有两种模式（自 claudeCodeCommand 特性后）：
 - 传 `--tasks`：并行任务模式（多 worktree + `executeClaudeTask` + spawnProcess）
 - CLAUDE.md 中的核心流程按模式分段描述
 
-## 命令清单（8 个）
+## 命令清单（10 个）
 
-`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`
+`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`、`sync`、`reset`
 
 Notes:
 - resume 和 run（交互式模式）共用 `launchInteractiveClaude()`，该函数从 run.ts 提取到 src/utils/claude.ts
 - `claudeCodeCommand` 配置项同时影响 run 交互式模式和 resume 命令
+- reset 命令与 validate --clean 的区别：reset 不删除快照文件，validate --clean 会删除快照
 
 ## validate 快照机制
 

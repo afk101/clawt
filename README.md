@@ -187,6 +187,19 @@ clawt list
 
 列出当前项目在 `~/.clawt/worktrees/` 下的所有 worktree 及对应分支。
 
+### `clawt reset` — 重置主 worktree 工作区和暂存区
+
+```bash
+clawt reset
+```
+
+重置主 worktree 的工作区和暂存区（`git reset --hard` + `git clean -f`），恢复到干净状态。与 `clawt validate --clean` 不同，`reset` 不会删除 validate 快照文件，适用于只想清空变更而保留快照以便后续增量 validate 的场景。如果工作区和暂存区已是干净状态，会提示无需重置。
+
+```bash
+# 重置主 worktree 工作区和暂存区
+clawt reset
+```
+
 ### `clawt config` — 查看全局配置
 
 ```bash
