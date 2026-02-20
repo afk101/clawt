@@ -40,8 +40,8 @@ export interface RemoveOptions {
 
 /** resume 命令选项 */
 export interface ResumeOptions {
-  /** 要恢复的分支名 */
-  branch: string;
+  /** 要恢复的分支名（可选，不传则列出所有分支供选择） */
+  branch?: string;
 }
 
 /** sync 命令选项 */

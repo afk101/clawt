@@ -50,7 +50,9 @@ run 命令有两种模式：
 
 1. `validateMainWorktree()` 确认在主 worktree 根目录
 2. `validateClaudeCodeInstalled()` 确认 claude CLI 可用
-3. `findWorktreeByBranch()` 在当前项目的 worktree 列表中按分支名查找已有 worktree
+3. `resolveTargetWorktree()` 解析目标 worktree（`-b` 可选）：
+   - 未传 `-b`：仅 1 个 worktree 直接使用，多个通过 `promptSelectBranch()`（Enquirer.Select）交互选择
+   - 传了 `-b`：`findExactMatch()` 精确匹配 → `findFuzzyMatches()` 子串模糊匹配（大小写不敏感，唯一直接使用，多个交互选择） → 无匹配报错并列出可用分支
 4. `launchInteractiveClaude()` 在目标 worktree 中启动 Claude Code 交互式界面
 
 ### validate + merge 工作流
@@ -87,7 +89,7 @@ run 命令有两种模式：
 
 - `src/commands/` — 各命令的注册与处理逻辑
 - `src/utils/` — 工具函数（git 操作（含三点 diff、分支合并、冲突检测、merge-base 计算、commit message 检测、soft reset 到指定 commit、write-tree/read-tree 等）、shell 执行与子进程管理、分支名处理、worktree 管理与批量清理、配置、格式化输出、交互式输入、Claude Code 交互式启动、validate 快照管理（基于 git tree 对象））
-- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录、sync 相关消息、git 常量（如 `AUTO_SAVE_COMMIT_MESSAGE`）、squash 相关消息、reset 相关消息）
+- `src/constants/` — 常量定义（路径、退出码、消息模板、分支规则、配置默认值、终端控制序列、validate 快照目录、sync 相关消息、git 常量（如 `AUTO_SAVE_COMMIT_MESSAGE`）、squash 相关消息、reset 相关消息、resume 相关消息）
 - `src/types/` — TypeScript 类型定义
 - `src/errors/` — 自定义 `ClawtError` 错误类（携带退出码）
 - `src/logger/` — winston 日志（按日期滚动，写入 `~/.clawt/logs/`）
