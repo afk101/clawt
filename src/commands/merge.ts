@@ -191,7 +191,8 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   }
 
   // 步骤 7：根据配置决定是否自动 pull 和 push
-  if (getConfigValue('autoPullPush')) {
+  const autoPullPush = getConfigValue('autoPullPush');
+  if (autoPullPush) {
     gitPull(mainWorktreePath);
     gitPush(mainWorktreePath);
   } else {
@@ -200,9 +201,9 @@ async function handleMerge(options: MergeOptions): Promise<void> {
 
   // 步骤 8：输出成功提示（根据是否有 message 选择对应模板）
   if (options.message) {
-    printSuccess(MESSAGES.MERGE_SUCCESS(options.branch, options.message));
+    printSuccess(MESSAGES.MERGE_SUCCESS(options.branch, options.message, autoPullPush));
   } else {
-    printSuccess(MESSAGES.MERGE_SUCCESS_NO_MESSAGE(options.branch));
+    printSuccess(MESSAGES.MERGE_SUCCESS_NO_MESSAGE(options.branch, autoPullPush));
   }
 
   // 步骤 9：merge 成功后清理 worktree 和分支

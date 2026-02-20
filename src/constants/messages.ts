@@ -27,11 +27,11 @@ export const MESSAGES = {
   VALIDATE_SUCCESS: (branch: string) =>
     `✓ 已将分支 ${branch} 的变更应用到主 worktree\n  可以开始验证了`,
   /** merge 成功 */
-  MERGE_SUCCESS: (branch: string, message: string) =>
-    `✓ 分支 ${branch} 已成功合并到当前分支\n  提交信息: ${message}\n  已推送到远程仓库`,
+  MERGE_SUCCESS: (branch: string, message: string, pushed: boolean) =>
+    `✓ 分支 ${branch} 已成功合并到当前分支\n  提交信息: ${message}${pushed ? '\n  已推送到远程仓库' : ''}`,
   /** merge 成功（无提交信息，目标 worktree 已提交过） */
-  MERGE_SUCCESS_NO_MESSAGE: (branch: string) =>
-    `✓ 分支 ${branch} 已成功合并到当前分支`,
+  MERGE_SUCCESS_NO_MESSAGE: (branch: string, pushed: boolean) =>
+    `✓ 分支 ${branch} 已成功合并到当前分支${pushed ? '\n  已推送到远程仓库' : ''}`,
   /** merge 冲突 */
   MERGE_CONFLICT: '合并存在冲突，请手动处理',
   /** merge 后清理 worktree 和分支成功 */
