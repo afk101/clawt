@@ -46,7 +46,7 @@ interface ClaudeTaskHandle {
 }
 
 /**
- * 在指定 worktree 中执行 Claude Code 任务
+ * 在指定 worktree 中执行 Claude Code 任务，由于是--output-format json形式，所以这里固定claude code cli的启动命令
  * @param {WorktreeInfo} worktree - worktree 信息
  * @param {string} task - 任务描述
  * @returns {ClaudeTaskHandle} 包含子进程引用和结果 Promise
