@@ -106,6 +106,7 @@ const projectName = path.basename(projectRoot);
 1. 将所有非法字符替换为 `-`
 2. 将连续的 `-` 压缩为一个 `-`
 3. 去除首尾 `-`
+4. 如果转换后结果为空串（原始分支名不包含任何合法字符），报错退出
 
 **示例输出：**
 
@@ -262,7 +263,7 @@ clawt run -b <branchName>
 
 **运行流程：**
 
-1. 若传了 `--tasks`，解析得到任务数组 `tasks[]`；若未传，创建单个 worktree 并启动 Claude Code 交互式界面（流程结束，不进入后续并行执行阶段）
+1. 若传了 `--tasks`，解析得到任务数组 `tasks[]`；若未传，先检测分支是否已存在（已存在则提示使用 `clawt resume -b <branchName>` 恢复会话），然后创建单个 worktree 并启动 Claude Code 交互式界面（流程结束，不进入后续并行执行阶段）
 2. `n = tasks.length`
 3. 按照 **5.1** 的流程创建 `n` 个 worktree
 4. 对每个 worktree 并行启动 Claude Code CLI：
@@ -371,9 +372,10 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
 当指定 `--clean` 选项时，执行清理逻辑后直接返回，不进入常规 validate 流程：
 
 1. **主 worktree 校验** (2.1)
-2. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
-3. 删除对应分支的快照文件
-4. 输出清理成功提示
+2. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
+3. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
+4. 删除对应分支的快照文件
+5. 输出清理成功提示
 
 #### 首次 validate（无历史快照）
 
@@ -550,11 +552,17 @@ git worktree remove -f <worktree路径>
 
 # 如果用户选择了删除分支
 git branch -D <branchName>
+
+# 清理该分支对应的 validate 快照
 ```
 
 6. 如果配置文件 `~/.clawt/config.json` 中 `autoDeleteBranch` 为 `true`，则跳过询问，直接删除分支。
 
-7. 移除完成后，清理空目录（如果 `~/.clawt/worktrees/<project>/` 下已无 worktree，则删除该项目目录）。
+7. 如果使用 `--all` 模式，额外清理整个项目的 validate 快照目录。
+
+8. 移除完成后，清理空目录（如果 `~/.clawt/worktrees/<project>/` 下已无 worktree，则删除该项目目录）。
+
+9. 批量移除时，单个 worktree 移除失败不会中断整个流程，而是收集所有失败项，最后汇总报告。
 
 ---
 
@@ -620,22 +628,30 @@ clawt merge -b <branchName> [-m <commitMessage>]
    - 检查 merge 退出码及 `git status` 是否存在冲突
    - **有冲突** → 提示 `合并存在冲突，请手动处理`，退出
    - **无冲突** → 继续
-7. **推送**
+7. **推送（受 `autoPullPush` 配置控制）**
    ```bash
+   # 仅当 autoPullPush 为 true 时执行
    git pull
    git push
    ```
 8. **输出成功提示**
 
 ```
-# 提供了 -m 时
+# 提供了 -m 且已推送时
 ✓ 分支 feature-scheme-1 已成功合并到当前分支
   提交信息: <commitMessage>
   已推送到远程仓库
 
-# 未提供 -m 时（目标 worktree 已提交过）
+# 提供了 -m 但未推送时
+✓ 分支 feature-scheme-1 已成功合并到当前分支
+  提交信息: <commitMessage>
+
+# 未提供 -m 且已推送时
 ✓ 分支 feature-scheme-1 已成功合并到当前分支
   已推送到远程仓库
+
+# 未提供 -m 且未推送时
+✓ 分支 feature-scheme-1 已成功合并到当前分支
 ```
 
 9. **merge 成功后清理 worktree 和分支（可选）**
@@ -680,7 +696,8 @@ clawt merge -b <branchName> [-m <commitMessage>]
 {
   "autoDeleteBranch": false,
   "claudeCodeCommand": "claude",
-  "autoPullPush": false
+  "autoPullPush": false,
+  "confirmDestructiveOps": true
 }
 ```
 
@@ -691,6 +708,7 @@ clawt merge -b <branchName> [-m <commitMessage>]
 | `autoDeleteBranch` | `boolean` | `false`   | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支；run 任务被中断（Ctrl+C）后是否自动清理本次创建的 worktree 和分支 |
 | `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
+| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean）前是否提示确认 |
 
 ---
 
@@ -797,6 +815,9 @@ clawt config
   autoPullPush: false
   merge 成功后是否自动执行 git pull 和 git push
 
+  confirmDestructiveOps: true
+  执行破坏性操作（reset、validate --clean）前是否提示确认
+
 ────────────────────────────────────────
 
 ```
@@ -872,6 +893,7 @@ clawt sync -b <branchName>
      合并存在冲突，请进入目标 worktree 手动解决：
        cd ~/.clawt/worktrees/<project>/<branchName>
        解决冲突后执行 git add . && git merge --continue
+       clawt validate -b <branch> 验证变更
      ```
    - **无冲突** → 继续
 7. **清除 validate 快照**：合并成功后，如果该分支存在 validate 快照（`.tree` 文件），自动删除（代码基础已变化，旧快照无效）
@@ -902,12 +924,13 @@ clawt reset
 2. **检测工作区状态**：通过 `git status --porcelain` 检测主 worktree 是否有未提交的更改
    - **工作区干净** → 输出提示 `主 worktree 工作区和暂存区已是干净状态，无需重置`，退出
    - **工作区不干净** → 继续
-3. **重置工作区和暂存区**：
+3. **确认破坏性操作**：如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
+4. **重置工作区和暂存区**：
    ```bash
    git reset --hard
    git clean -f
    ```
-4. **输出成功提示**：
+5. **输出成功提示**：
    ```
    ✓ 主 worktree 工作区和暂存区已重置
    ```

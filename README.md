@@ -58,7 +58,7 @@ clawt run -b <branchName>
 
 每个 `--tasks` 对应一个独立的 worktree，Claude Code 会在各自隔离的环境中并行执行任务。任务完成后会实时通知结果，全部完成后输出汇总信息。
 
-不传 `--tasks` 时会创建单个 worktree，并在其中直接启动 Claude Code 交互式界面（通过 `spawnSync` + `inherit stdio`），让用户与 Claude Code 直接交互。启动命令由配置项 `claudeCodeCommand` 指定（默认 `claude`）。
+不传 `--tasks` 时会创建单个 worktree，并在其中直接启动 Claude Code 交互式界面（通过 `spawnSync` + `inherit stdio`），让用户与 Claude Code 直接交互。启动命令由配置项 `claudeCodeCommand` 指定（默认 `claude`）。如果指定的分支已存在，会提示使用 `clawt resume -b <branchName>` 恢复会话。
 
 任务执行过程中按 Ctrl+C 可中断所有任务。中断后会根据配置自动清理或询问是否清理本次创建的 worktree 和分支（`autoDeleteBranch: true` 时自动清理）。
 
@@ -146,7 +146,7 @@ clawt merge -b <branchName> [-m <commitMessage>]
 | `-b` | 是 | 要合并的分支名 |
 | `-m` | 否 | 提交信息（目标 worktree 工作区有修改时必填） |
 
-将目标 worktree 的变更合并到主 worktree 的当前分支，并推送到远程仓库。如果目标 worktree 工作区有未提交的修改，需要通过 `-m` 提供提交信息；如果目标 worktree 已经提交过（工作区干净但有本地提交），可以省略 `-m` 直接合并。merge 成功后会询问是否清理对应的 worktree 和分支（如果配置了 `autoDeleteBranch: true` 则自动清理）。
+将目标 worktree 的变更合并到主 worktree 的当前分支。如果配置了 `autoPullPush: true`，合并后会自动推送到远程仓库。如果目标 worktree 工作区有未提交的修改，需要通过 `-m` 提供提交信息；如果目标 worktree 已经提交过（工作区干净但有本地提交），可以省略 `-m` 直接合并。merge 成功后会询问是否清理对应的 worktree 和分支（如果配置了 `autoDeleteBranch: true` 则自动清理）。
 
 如果检测到目标分支存在 `clawt sync` 产生的临时提交（auto-save commit），会自动提示是否将所有提交压缩（squash）为一个。用户选择压缩后，所有 commit 会被 reset 到暂存区：如果提供了 `-m` 则直接提交并继续合并流程；如果未提供 `-m` 则提示用户前往目标 worktree 自行提交后重新执行 merge。
 
@@ -177,7 +177,7 @@ clawt remove -b feature-scheme
 clawt remove -b feature-scheme-2
 ```
 
-移除时会询问是否同时删除对应的本地分支。
+移除时会询问是否同时删除对应的本地分支。移除 worktree 时会自动清理对应的 validate 快照；`--all` 模式还会清理整个项目的快照目录。批量移除时单个失败不会中断整个流程，最后汇总报告失败项。
 
 ### `clawt list` — 列出当前项目所有 worktree
 
@@ -193,7 +193,7 @@ clawt list
 clawt reset
 ```
 
-重置主 worktree 的工作区和暂存区（`git reset --hard` + `git clean -f`），恢复到干净状态。与 `clawt validate --clean` 不同，`reset` 不会删除 validate 快照文件，适用于只想清空变更而保留快照以便后续增量 validate 的场景。如果工作区和暂存区已是干净状态，会提示无需重置。
+重置主 worktree 的工作区和暂存区（`git reset --hard` + `git clean -f`），恢复到干净状态。如果配置了 `confirmDestructiveOps: true`（默认），执行前会提示确认。与 `clawt validate --clean` 不同，`reset` 不会删除 validate 快照文件，适用于只想清空变更而保留快照以便后续增量 validate 的场景。如果工作区和暂存区已是干净状态，会提示无需重置。
 
 ```bash
 # 重置主 worktree 工作区和暂存区
@@ -216,7 +216,8 @@ clawt config
 {
   "autoDeleteBranch": false,
   "claudeCodeCommand": "claude",
-  "autoPullPush": false
+  "autoPullPush": false,
+  "confirmDestructiveOps": true
 }
 ```
 
@@ -225,6 +226,7 @@ clawt config
 | `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时自动删除对应本地分支；merge 成功后自动清理 worktree 和分支；run 中断后自动清理本次创建的 worktree 和分支 |
 | `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
+| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean）前是否提示确认 |
 
 ## 分支名规则
 

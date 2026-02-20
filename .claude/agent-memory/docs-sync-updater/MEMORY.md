@@ -28,14 +28,21 @@
 
 ## 关键约定
 - `autoDeleteBranch` 配置项影响三处：remove 命令、merge 命令、run 中断清理
+- `confirmDestructiveOps` 配置项影响两处：reset 命令、validate --clean
 - merge 的清理确认在 merge 操作之前询问（避免交互中断），但清理在 merge 成功后执行
 - merge 成功后自动清理对应的 validate 快照（hasSnapshot + removeSnapshot）
+- merge 成功消息根据 `autoPullPush` 配置动态显示推送状态
 - run 的中断清理在所有子进程退出后执行
+- run 交互式模式在创建 worktree 前检测分支是否已存在，已存在则提示使用 resume
+- remove 命令删除 worktree 时自动清理对应快照，`--all` 模式额外清理项目快照目录
+- remove 批量操作时收集错误继续处理，最后汇总报告
 - 文档中文风格，技术术语保留英文（worktree, merge, branch, SIGINT 等）
 - cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
 - `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts）
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
-- validate 快照管理函数在 `src/utils/validate-snapshot.ts`，被 validate 和 merge 两个命令使用
+- validate 快照管理函数在 `src/utils/validate-snapshot.ts`，被 validate、merge 和 remove 三个命令使用
+- `confirmDestructiveAction` 在 `src/utils/formatter.ts`，被 reset 和 validate --clean 使用
+- sanitizeBranchName 清理后为空串时抛出 BRANCH_NAME_EMPTY 错误
 
 ## 配置项同步检查点
 
