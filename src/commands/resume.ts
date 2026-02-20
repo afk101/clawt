@@ -19,8 +19,8 @@ export function registerResumeCommand(program: Command): void {
     .command('resume')
     .description('在已有 worktree 中恢复 Claude Code 交互式会话')
     .requiredOption('-b, --branch <branchName>', '要恢复的分支名')
-    .action(async (options: ResumeOptions) => {
-      await handleResume(options);
+    .action((options: ResumeOptions) => {
+      handleResume(options);
     });
 }
 
@@ -46,7 +46,7 @@ function findWorktreeByBranch(branchName: string): WorktreeInfo {
  * 查找已有 worktree 并恢复 Claude Code 会话
  * @param {ResumeOptions} options - 命令选项
  */
-async function handleResume(options: ResumeOptions): Promise<void> {
+function handleResume(options: ResumeOptions): void {
   validateMainWorktree();
   validateClaudeCodeInstalled();
 
