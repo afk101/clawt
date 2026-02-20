@@ -3,18 +3,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { homedir } from 'node:os';
-import { DEFAULT_CONFIG } from '../src/constants/index.js';
-
-/** clawt 主目录 */
-const CLAWT_HOME = join(homedir(), '.clawt');
-/** 配置文件路径 */
-const CONFIG_PATH = join(CLAWT_HOME, 'config.json');
-/** 日志目录 */
-const LOGS_DIR = join(CLAWT_HOME, 'logs');
-/** worktree 目录 */
-const WORKTREES_DIR = join(CLAWT_HOME, 'worktrees');
+import { DEFAULT_CONFIG, CLAWT_HOME, CONFIG_PATH, LOGS_DIR, WORKTREES_DIR } from '../src/constants/index.js';
 
 /**
  * 确保目录存在，不存在则递归创建
