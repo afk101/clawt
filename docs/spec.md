@@ -654,7 +654,7 @@ clawt merge -b <branchName> [-m <commitMessage>]
 ✓ 分支 feature-scheme-1 已成功合并到当前分支
 ```
 
-9. **merge 成功后清理 worktree 和分支（可选）**
+9. **merge 成功后确认并清理 worktree 和分支（可选）**
    - 如果配置文件中 `autoDeleteBranch` 为 `true`，自动执行清理
    - 否则交互式询问用户是否清理
    - 用户确认后，依次执行：
@@ -672,7 +672,7 @@ clawt merge -b <branchName> [-m <commitMessage>]
 10. **清理 validate 快照**
     - merge 成功后，如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），自动删除该快照文件（merge 成功后快照已无意义）
 
-> **注意：** 清理确认在 merge 操作之前询问（避免 merge 成功后因交互中断而遗留未清理的 worktree），但清理操作在 merge 成功后才执行。
+> **注意：** 清理确认和清理操作均在 merge 成功后执行。只有 merge 成功才会询问用户是否清理 worktree 和分支，避免 merge 冲突时用户被提前询问造成困惑。
 
 ---
 
