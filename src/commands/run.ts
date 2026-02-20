@@ -3,7 +3,7 @@ import type { ChildProcess } from 'node:child_process';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
-import type { RunOptions, ClaudeCodeResult, TaskResult, TaskSummary } from '../types/index.js';
+import type { RunOptions, ClaudeCodeResult, TaskResult, TaskSummary, WorktreeInfo } from '../types/index.js';
 import {
   validateMainWorktree,
   validateClaudeCodeInstalled,
@@ -21,7 +21,6 @@ import {
   confirmAction,
   launchInteractiveClaude,
 } from '../utils/index.js';
-import type { WorktreeInfo } from '../types/index.js';
 
 /**
  * 注册 run 命令：批量创建 worktree 并执行 Claude Code 任务
