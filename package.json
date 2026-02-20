@@ -1,6 +1,6 @@
 {
   "name": "clawt",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具",
   "type": "module",
   "main": "dist/index.js",
