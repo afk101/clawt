@@ -2,6 +2,7 @@ import type { Command } from 'commander';
 import chalk from 'chalk';
 import { MESSAGES } from '../constants/index.js';
 import { logger } from '../logger/index.js';
+import type { ListOptions } from '../types/index.js';
 import {
   validateMainWorktree,
   getProjectName,
@@ -10,6 +11,7 @@ import {
   formatWorktreeStatus,
   printInfo,
 } from '../utils/index.js';
+// getWorktreeStatus 和 formatWorktreeStatus 仅在文本模式下使用
 
 /**
  * 注册 list 命令：列出当前项目所有 worktree
@@ -19,15 +21,17 @@ export function registerListCommand(program: Command): void {
   program
     .command('list')
     .description('列出当前项目所有 worktree')
-    .action(() => {
-      handleList();
+    .option('--json', '以 JSON 格式输出')
+    .action((options: ListOptions) => {
+      handleList(options);
     });
 }
 
 /**
  * 执行 list 命令的核心逻辑
+ * @param {ListOptions} options - 命令选项
  */
-function handleList(): void {
+function handleList(options: ListOptions): void {
   validateMainWorktree();
 
   const projectName = getProjectName();
@@ -35,6 +39,38 @@ function handleList(): void {
 
   logger.info(`list 命令执行，项目: ${projectName}，共 ${worktrees.length} 个 worktree`);
 
+  if (options.json) {
+    printListAsJson(projectName, worktrees);
+    return;
+  }
+
+  printListAsText(projectName, worktrees);
+}
+
+/**
+ * 以 JSON 格式输出 worktree 列表（仅包含 path 和 branch）
+ * @param {string} projectName - 项目名称
+ * @param {import('../types/index.js').WorktreeInfo[]} worktrees - worktree 列表
+ */
+function printListAsJson(projectName: string, worktrees: import('../types/index.js').WorktreeInfo[]): void {
+  const result = {
+    project: projectName,
+    total: worktrees.length,
+    worktrees: worktrees.map((wt) => ({
+      path: wt.path,
+      branch: wt.branch,
+    })),
+  };
+
+  console.log(JSON.stringify(result, null, 2));
+}
+
+/**
+ * 以文本格式输出 worktree 列表
+ * @param {string} projectName - 项目名称
+ * @param {import('../types/index.js').WorktreeInfo[]} worktrees - worktree 列表
+ */
+function printListAsText(projectName: string, worktrees: import('../types/index.js').WorktreeInfo[]): void {
   printInfo(`当前项目: ${projectName}\n`);
 
   if (worktrees.length === 0) {

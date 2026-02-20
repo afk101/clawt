@@ -165,7 +165,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt validate`      | 在主 worktree 验证某个 worktree 分支的变更        | 5.4      |
 | `clawt merge`         | 合并某个已验证的 worktree 分支到主 worktree       | 5.6      |
 | `clawt remove`        | 移除 worktree（支持单个/批量/全部）               | 5.5      |
-| `clawt list`          | 列出当前项目所有 worktree                        | 5.8      |
+| `clawt list`          | 列出当前项目所有 worktree（支持 `--json` 格式输出） | 5.8      |
 | `clawt config`        | 查看全局配置                                     | 5.10     |
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 交互式会话      | 5.11     |
 | `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
@@ -717,8 +717,14 @@ clawt merge -b <branchName> [-m <commitMessage>]
 **命令：**
 
 ```bash
-clawt list
+clawt list [--json]
 ```
+
+**参数：**
+
+| 参数     | 必填 | 说明                                     |
+| -------- | ---- | ---------------------------------------- |
+| `--json` | 否   | 以 JSON 格式输出（仅包含 path 和 branch） |
 
 **运行流程：**
 
@@ -726,9 +732,11 @@ clawt list
 2. **获取项目名** (2.2)
 3. 扫描 `~/.clawt/worktrees/<project>/` 目录
 4. 对每个子目录，验证是否为有效的 git worktree（`git worktree list` 交叉验证）
-5. 输出列表
+5. 根据 `--json` 选项决定输出格式：
+   - 指定 `--json` → 以 JSON 格式输出
+   - 未指定 → 以文本格式输出
 
-**输出格式：**
+**文本输出格式（默认）：**
 
 ```
 当前项目: main-project
@@ -747,6 +755,25 @@ clawt list
 当前项目: main-project
 
   (无 worktree)
+```
+
+**JSON 输出格式（`--json`）：**
+
+```json
+{
+  "project": "main-project",
+  "total": 4,
+  "worktrees": [
+    {
+      "path": "~/.clawt/worktrees/main-project/feature-scheme-1",
+      "branch": "feature-scheme-1"
+    },
+    {
+      "path": "~/.clawt/worktrees/main-project/feature-scheme-2",
+      "branch": "feature-scheme-2"
+    }
+  ]
+}
 ```
 
 ---
