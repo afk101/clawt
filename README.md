@@ -103,7 +103,7 @@ clawt validate -b <branchName> [--clean]
 
 将目标 worktree 的变更通过 `git diff`（三点 diff）迁移到主 worktree，方便在主 worktree 中直接测试，无需重新安装依赖。同时检测未提交修改和已提交 commit，确保所有变更都能被捕获。
 
-支持增量模式：首次 validate 后会自动保存快照（patch + 主分支 HEAD hash），再次 validate 同一分支时会先校验主分支 HEAD 一致性（不一致则降级为首次模式），然后将上次快照应用到暂存区、最新变更保留在工作目录，用户可通过 `git diff` 查看两次 validate 之间的增量差异。使用 `--clean` 可清理 validate 状态（重置主 worktree 并删除快照文件）。
+支持增量模式：首次 validate 后会自动保存快照（通过 `git write-tree` 将变更存储为 git tree 对象），再次 validate 同一分支时会通过 `git read-tree` 将上次快照载入暂存区、最新变更保留在工作目录，用户可通过 `git diff` 查看两次 validate 之间的增量差异。使用 `--clean` 可清理 validate 状态（重置主 worktree 并删除快照文件）。
 
 > **提示：** 如果 validate 时 patch apply 失败（目标分支与主分支差异过大），可先执行 `clawt sync -b <branchName>` 同步主分支后重试。
 

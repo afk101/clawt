@@ -141,8 +141,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 │   └── ...
 ├── validate-snapshots/                  # validate 快照目录
 │   └── <project-name>/                  # 以项目名分组
-│       ├── <branchName>.patch           # 每个分支一个 patch 快照文件
-│       ├── <branchName>.head            # 对应的主分支 HEAD commit hash（用于增量 validate 一致性校验）
+│       ├── <branchName>.tree            # 每个分支一个 tree hash 快照文件（存储 git tree 对象的 hash）
 │       └── ...
 └── worktrees/                           # 所有 worktree 的统一存放目录
     └── <project-name>/                  # 以项目名分组
@@ -363,7 +362,7 @@ Git worktree 不会包含 `node_modules`、`.venv` 等依赖文件，每次安�
 
 **快照机制：**
 
-validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更保存为 patch 文件（`~/.clawt/validate-snapshots/<project>/<branchName>.patch`），同时保存主分支 HEAD commit hash 到 `.head` 文件（用于一致性校验）。当再次执行 validate 时，先校验主分支 HEAD 是否与快照记录一致（不一致则清除旧快照降级为首次模式），然后通过对比新旧快照，将上次快照应用到暂存区、最新变更保留在工作目录，用户可通过 `git diff` 直接查看两次 validate 之间的增量差异。
+validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更通过 `git write-tree` 保存为 git tree 对象，并将 tree hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`）。当再次执行 validate 时，通过 `git read-tree` 将上次快照的 tree 对象载入暂存区、最新变更保留在工作目录，用户可通过 `git diff` 直接查看两次 validate 之间的增量差异。由于 tree 对象存储在 git 对象库中，不依赖主分支 HEAD，无需一致性校验。
 
 **运行流程：**
 
@@ -373,7 +372,7 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
 
 1. **主 worktree 校验** (2.1)
 2. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
-3. 删除对应分支的 patch 快照文件
+3. 删除对应分支的快照文件
 4. 输出清理成功提示
 
 #### 首次 validate（无历史快照）
@@ -441,14 +440,13 @@ git restore --staged .
 > 此步骤结束后，目标 worktree 的代码保持原样，主 worktree 工作目录包含目标分支的全量变更。
 > 如果 patch apply 失败（目标分支与主分支差异过大），会提示用户先执行 `clawt sync -b <branchName>` 同步主分支后重试。
 
-##### 步骤 4：保存纯净快照
+##### 步骤 4：保存快照为 git tree 对象
 
-将主 worktree 工作目录的全量变更保存为 patch 文件，同时记录主分支 HEAD commit hash：
+将主 worktree 工作目录的全量变更保存为 git tree 对象：
 
 ```bash
 git add .
-git diff --cached --binary > ~/.clawt/validate-snapshots/<project>/<branchName>.patch
-git rev-parse HEAD > ~/.clawt/validate-snapshots/<project>/<branchName>.head
+git write-tree  # → 返回 tree hash，写入 ~/.clawt/validate-snapshots/<project>/<branchName>.tree
 git restore --staged .
 ```
 
@@ -463,41 +461,34 @@ git restore --staged .
 
 #### 增量 validate（存在历史快照）
 
-当 `~/.clawt/validate-snapshots/<project>/<branchName>.patch` 存在时，自动进入增量模式：
+当 `~/.clawt/validate-snapshots/<project>/<branchName>.tree` 存在时，自动进入增量模式：
 
-##### 步骤 1：校验主分支 HEAD 一致性
+##### 步骤 1：读取旧 tree hash
 
-读取 `.head` 文件中保存的主分支 HEAD hash，与当前主分支 HEAD 对比：
+在清空主 worktree 之前，读取上次保存的快照 tree hash。
 
-- **不一致或 `.head` 文件不存在** → 清除旧快照（`.patch` + `.head`），降级为首次 validate 模式
-- **一致** → 继续增量流程
-
-##### 步骤 2：读取旧 patch
-
-在清空主 worktree 之前，读取上次保存的快照 patch 内容。
-
-##### 步骤 3：确保主 worktree 干净
+##### 步骤 2：确保主 worktree 干净
 
 如果主 worktree 有残留状态，让用户选择处理方式（同首次 validate 步骤 1 的交互），做兜底清理。
 
-##### 步骤 4：从目标分支获取最新全量变更
+##### 步骤 3：从目标分支获取最新全量变更
 
 通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 3）。
 
-##### 步骤 5：保存最新快照
+##### 步骤 4：保存最新快照为 git tree 对象
 
-将最新全量变更保存为新的 patch 文件 + HEAD hash（覆盖旧快照，流程同首次 validate 的步骤 4）。
+将最新全量变更保存为新的 tree 对象（覆盖旧快照，流程同首次 validate 的步骤 4）。
 
-##### 步骤 6：将旧 patch 应用到暂存区
+##### 步骤 5：将旧 tree 对象载入暂存区
 
 ```bash
-git apply --cached < <旧 patch 内容>
+git read-tree <旧 tree hash>
 ```
 
-- **应用成功** → 结果：暂存区=上次快照，工作目录=最新全量变更（用户可通过 `git diff` 查看增量差异）
-- **应用失败**（文件结构变化过大）→ 降级为全量模式，暂存区保持为空，等同于首次 validate 的结果
+- **读取成功** → 结果：暂存区=上次快照，工作目录=最新全量变更（用户可通过 `git diff` 查看增量差异）
+- **读取失败**（tree 对象可能被 git gc 回收）→ 降级为全量模式，暂存区保持为空，等同于首次 validate 的结果
 
-##### 步骤 7：输出成功提示
+##### 步骤 6：输出成功提示
 
 ```
 # 增量模式成功
@@ -588,7 +579,7 @@ clawt merge -b <branchName> [-m <commitMessage>]
 2. **主 worktree 状态检测**
    - 执行 `git status --porcelain`
    - 如果有更改：
-     - 如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.patch`），额外输出警告提示用户可先执行 `clawt validate -b <branchName> --clean` 清理
+     - 如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），额外输出警告提示用户可先执行 `clawt validate -b <branchName> --clean` 清理
      - 提示 `主 worktree 有未提交的更改，请先处理`，退出
    - 无更改 → 继续
 3. **Squash 检测与执行（auto-save 临时提交压缩）**
@@ -663,7 +654,7 @@ clawt merge -b <branchName> [-m <commitMessage>]
    - 输出清理成功提示：`✓ 已清理 worktree 和分支: <branchName>`
 
 10. **清理 validate 快照**
-    - merge 成功后，如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.patch`），自动删除该快照文件（merge 成功后快照已无意义）
+    - merge 成功后，如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），自动删除该快照文件（merge 成功后快照已无意义）
 
 > **注意：** 清理确认在 merge 操作之前询问（避免 merge 成功后因交互中断而遗留未清理的 worktree），但清理操作在 merge 成功后才执行。
 
@@ -883,7 +874,7 @@ clawt sync -b <branchName>
        解决冲突后执行 git add . && git merge --continue
      ```
    - **无冲突** → 继续
-7. **清除 validate 快照**：合并成功后，如果该分支存在 validate 快照（`.patch` + `.head`），自动删除（代码基础已变化，旧快照无效）
+7. **清除 validate 快照**：合并成功后，如果该分支存在 validate 快照（`.tree` 文件），自动删除（代码基础已变化，旧快照无效）
 8. **输出成功提示**：
    ```
    ✓ 已将 <mainBranch> 的最新代码同步到 <branchName>

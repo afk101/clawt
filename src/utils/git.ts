@@ -407,3 +407,21 @@ export function hasCommitWithMessage(branchName: string, messagePrefix: string, 
 export function gitResetSoftTo(commitHash: string, cwd?: string): void {
   execCommand(`git reset --soft ${commitHash}`, { cwd });
 }
+
+/**
+ * 将当前暂存区内容写入 git tree 对象并返回其 hash
+ * @param {string} [cwd] - 工作目录
+ * @returns {string} tree 对象的 hash
+ */
+export function gitWriteTree(cwd?: string): string {
+  return execCommand('git write-tree', { cwd });
+}
+
+/**
+ * 将指定 tree 对象的内容载入暂存区（不影响工作目录）
+ * @param {string} treeHash - tree 对象的 hash
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitReadTree(treeHash: string, cwd?: string): void {
+  execCommand(`git read-tree ${treeHash}`, { cwd });
+}

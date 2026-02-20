@@ -38,6 +38,8 @@ export {
   gitMergeBase,
   hasCommitWithMessage,
   gitResetSoftTo,
+  gitWriteTree,
+  gitReadTree,
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled } from './validation.js';
@@ -47,4 +49,4 @@ export { printSuccess, printError, printWarning, printInfo, printSeparator, prin
 export { ensureDir, removeEmptyDir } from './fs.js';
 export { multilineInput } from './prompt.js';
 export { launchInteractiveClaude } from './claude.js';
-export { getSnapshotPath, hasSnapshot, readSnapshot, writeSnapshot, removeSnapshot, removeProjectSnapshots, readSnapshotHead } from './validate-snapshot.js';
+export { getSnapshotPath, hasSnapshot, readSnapshotTreeHash, writeSnapshot, removeSnapshot, removeProjectSnapshots } from './validate-snapshot.js';
