@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Command } from 'commander';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
@@ -81,7 +82,7 @@ async function handleSync(options: SyncOptions): Promise<void> {
 
   // 检查目标 worktree 是否存在
   const projectWorktreeDir = getProjectWorktreeDir();
-  const targetWorktreePath = `${projectWorktreeDir}/${branch}`;
+  const targetWorktreePath = join(projectWorktreeDir, branch);
 
   if (!existsSync(targetWorktreePath)) {
     throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(branch));
