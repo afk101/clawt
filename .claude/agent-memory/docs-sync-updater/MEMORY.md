@@ -8,14 +8,14 @@
 - run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，流程按步骤编号描述
 - config 命令对应 `5.10 查看全局配置`，只读展示配置
-- resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，查找已有 worktree 并启动交互式界面
+- resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，支持模糊匹配和交互式分支选择（-b 可选）
 - 配置项说明在 `5.7 默认配置文件` 章节的表格中
 - 更新模式：新增步骤时追加编号，配置项影响范围变化时更新说明列
 
 ### CLAUDE.md
 - 面向 Claude Code 的项目架构指引，精简扼要
 - run 命令流程在 `核心流程（run 命令）` 章节，编号列表描述
-- resume 命令流程在独立的 `### resume 命令流程` 章节，编号列表描述
+- resume 命令流程在独立的 `### resume 命令流程` 章节，编号列表 + 缩进列表描述匹配策略
 - merge 和 run 中断清理在 `validate + merge 工作流` 章节，一行式描述用箭头连接流程
 - utils 目录描述用括号内逗号分隔列举功能模块
 - 更新模式：编号列表追加步骤，箭头链追加阶段，括号内追加关键词
@@ -75,6 +75,8 @@ Notes:
 - resume 和 run（交互式模式）共用 `launchInteractiveClaude()`，该函数从 run.ts 提取到 src/utils/claude.ts
 - `claudeCodeCommand` 配置项同时影响 run 交互式模式和 resume 命令
 - reset 命令与 validate --clean 的区别：reset 不删除快照文件，validate --clean 会删除快照
+- resume 的 `-b` 参数为可选，核心函数 `resolveTargetWorktree()` 封装匹配策略：精确→模糊（子串，大小写不敏感）→交互选择
+- resume 的交互式选择使用 Enquirer.Select（`promptSelectBranch()`），消息常量在 `MESSAGES.RESUME_*`
 
 ## validate 快照机制
 

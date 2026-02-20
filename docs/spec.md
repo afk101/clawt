@@ -829,14 +829,18 @@ clawt config
 **命令：**
 
 ```bash
+# 指定分支名（支持模糊匹配）
 clawt resume -b <branchName>
+
+# 不指定分支名（列出所有分支供选择）
+clawt resume
 ```
 
 **参数：**
 
 | 参数 | 必填 | 说明                                                  |
 | ---- | ---- | ----------------------------------------------------- |
-| `-b` | 是   | 要恢复的分支名（对应已有 worktree 的分支）               |
+| `-b` | 否   | 要恢复的分支名（支持模糊匹配，不传则列出所有分支供选择） |
 
 **使用场景：**
 
@@ -846,9 +850,18 @@ clawt resume -b <branchName>
 
 1. **主 worktree 校验** (2.1)
 2. **Claude Code CLI 校验**：确认 `claude` CLI 可用
-3. **查找目标 worktree**：在当前项目的 worktree 列表中按分支名查找匹配的 worktree
-   - 未找到 → 报错退出
-   - 找到 → 继续
+3. **解析目标 worktree**：根据 `-b` 参数解析目标 worktree，匹配策略如下：
+   - **未传 `-b` 参数**：
+     - 获取当前项目所有 worktree
+     - 无可用 worktree → 报错退出
+     - 仅 1 个 worktree → 直接使用，无需选择
+     - 多个 worktree → 通过交互式列表（Enquirer.Select）让用户选择
+   - **传了 `-b` 参数**：
+     1. **精确匹配优先**：在 worktree 列表中查找分支名完全相同的 worktree，找到则直接使用
+     2. **模糊匹配**（子串匹配，大小写不敏感）：
+        - 唯一匹配 → 直接使用
+        - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
+     3. **无匹配** → 报错退出，并列出所有可用分支名
 4. **启动 Claude Code 交互式界面**：通过 `launchInteractiveClaude()` 在目标 worktree 中启动 Claude Code CLI 交互式界面（使用 `spawnSync` + `inherit stdio`）
 
 启动命令通过配置项 `claudeCodeCommand`（默认值 `claude`）指定，与 `clawt run` 不传 `--tasks` 时的交互式界面行为一致。

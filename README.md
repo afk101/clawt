@@ -76,18 +76,32 @@ clawt run -b feature-login
 ### `clawt resume` — 在已有 worktree 中恢复 Claude Code 会话
 
 ```bash
+# 指定分支名（支持模糊匹配）
 clawt resume -b <branchName>
+
+# 不指定分支名（列出所有分支供选择）
+clawt resume
 ```
 
 | 参数 | 必填 | 说明 |
 | ---- | ---- | ---- |
-| `-b` | 是 | 要恢复的分支名 |
+| `-b` | 否 | 要恢复的分支名（支持模糊匹配，不传则列出所有分支供选择） |
 
 在之前通过 `clawt run` 或 `clawt create` 创建的 worktree 中重新打开 Claude Code 交互式界面，继续之前的工作。启动命令由配置项 `claudeCodeCommand` 指定（默认 `claude`）。
 
+**分支匹配策略：**
+- 传 `-b` 时，优先精确匹配分支名；未精确匹配则进行模糊匹配（子串匹配，大小写不敏感）；模糊匹配到多个时通过交互列表选择；无匹配时报错并列出所有可用分支
+- 不传 `-b` 时，列出当前项目所有可用分支供交互式选择（仅 1 个时自动使用）
+
 ```bash
-# 在已有 worktree 中恢复会话
+# 精确匹配
 clawt resume -b feature-login
+
+# 模糊匹配（匹配包含 "login" 的分支）
+clawt resume -b login
+
+# 交互式选择所有分支
+clawt resume
 ```
 
 ### `clawt validate` — 在主 worktree 验证分支变更

@@ -51,7 +51,9 @@ run 命令有两种模式：
 
 1. `validateMainWorktree()` 确认在主 worktree 根目录
 2. `validateClaudeCodeInstalled()` 确认 claude CLI 可用
-3. `findWorktreeByBranch()` 在当前项目的 worktree 列表中按分支名查找已有 worktree
+3. `resolveTargetWorktree()` 解析目标 worktree（`-b` 可选）：
+   - 未传 `-b`：仅 1 个 worktree 直接使用，多个通过 `promptSelectBranch()`（Enquirer.Select）交互选择
+   - 传了 `-b`：`findExactMatch()` 精确匹配 → `findFuzzyMatches()` 子串模糊匹配（大小写不敏感，唯一直接使用，多个交互选择） → 无匹配报错并列出可用分支
 4. `launchInteractiveClaude()` 在目标 worktree 中启动 Claude Code 交互式界面
 
 ### validate + merge 工作流
