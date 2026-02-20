@@ -8,6 +8,8 @@ import {
   validateMainWorktree,
   validateClaudeCodeInstalled,
   createWorktrees,
+  sanitizeBranchName,
+  checkBranchExists,
   spawnProcess,
   killAllChildProcesses,
   cleanupWorktrees,
@@ -191,6 +193,12 @@ async function handleRun(options: RunOptions): Promise<void> {
 
   // 未传 --tasks 时，创建单个 worktree 并打开 Claude Code 交互式界面
   if (!options.tasks || options.tasks.length === 0) {
+    // 分支已存在时，提示用户使用 resume 恢复会话
+    const sanitized = sanitizeBranchName(options.branch);
+    if (checkBranchExists(sanitized)) {
+      throw new ClawtError(MESSAGES.BRANCH_EXISTS_USE_RESUME(sanitized));
+    }
+
     const worktrees = createWorktrees(options.branch, 1);
     const worktree = worktrees[0];
     printSuccess(MESSAGES.WORKTREE_CREATED(1));
