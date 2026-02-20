@@ -17,6 +17,8 @@ import {
   printSuccess,
   printError,
   confirmAction,
+  removeSnapshot,
+  removeProjectSnapshots,
 } from '../utils/index.js';
 
 /**
@@ -100,12 +102,19 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
       if (shouldDeleteBranch) {
         deleteBranch(wt.branch);
       }
+      // 清理该分支对应的 validate 快照
+      removeSnapshot(projectName, wt.branch);
       printSuccess(MESSAGES.WORKTREE_REMOVED(wt.path));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(`移除 worktree 失败: ${wt.path} - ${error}`);
       failures.push({ path: wt.path, error: errorMessage });
     }
+  }
+
+  // --all 模式下清理整个项目的 validate 快照目录
+  if (options.all) {
+    removeProjectSnapshots(projectName);
   }
 
   // 清理 worktree 并清除空目录

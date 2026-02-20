@@ -86,7 +86,7 @@ export const MESSAGES = {
     `✓ 已将 ${mainBranch} 的最新代码同步到 ${targetBranch}`,
   /** sync 冲突 */
   SYNC_CONFLICT: (worktreePath: string) =>
-    `合并存在冲突，请进入目标 worktree 手动解决：\n  cd ${worktreePath}\n  解决冲突后执行 git add . && git merge --continue`,
+    `合并存在冲突，请进入目标 worktree 手动解决：\n  cd ${worktreePath}\n  解决冲突后执行 git add . && git merge --continue\n  clawt validate -b <branch> 验证变更`,
   /** validate patch apply 失败，提示用户同步主分支 */
   VALIDATE_PATCH_APPLY_FAILED: (branch: string) =>
     `变更迁移失败：目标分支与主分支差异过大\n  请先执行 clawt sync -b ${branch} 同步主分支后重试`,
