@@ -11,6 +11,7 @@ import {
   getProjectName,
   getGitTopLevel,
   getProjectWorktreeDir,
+  getConfigValue,
   isWorkingDirClean,
   gitAddAll,
   gitCommit,
@@ -28,6 +29,7 @@ import {
   readSnapshotTreeHash,
   writeSnapshot,
   removeSnapshot,
+  confirmDestructiveAction,
   printSuccess,
   printWarning,
   printInfo,
@@ -163,13 +165,25 @@ function saveCurrentSnapshotTree(mainWorktreePath: string, projectName: string, 
  * 处理 --clean 选项：清理 validate 状态
  * @param {ValidateOptions} options - 命令选项
  */
-function handleValidateClean(options: ValidateOptions): void {
+async function handleValidateClean(options: ValidateOptions): Promise<void> {
   validateMainWorktree();
 
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();
 
   logger.info(`validate --clean 执行，分支: ${options.branch}`);
+
+  // 根据配置决定是否需要确认
+  if (getConfigValue('confirmDestructiveOps')) {
+    const confirmed = await confirmDestructiveAction(
+      'git reset --hard + git clean -fd',
+      `重置主 worktree 并删除分支 ${options.branch} 的 validate 快照`,
+    );
+    if (!confirmed) {
+      printInfo(MESSAGES.DESTRUCTIVE_OP_CANCELLED);
+      return;
+    }
+  }
 
   // 清空主 worktree
   if (!isWorkingDirClean(mainWorktreePath)) {
@@ -250,7 +264,7 @@ function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath:
 async function handleValidate(options: ValidateOptions): Promise<void> {
   // 处理 --clean 选项
   if (options.clean) {
-    handleValidateClean(options);
+    await handleValidateClean(options);
     return;
   }
 

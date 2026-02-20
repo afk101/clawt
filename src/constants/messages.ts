@@ -98,6 +98,8 @@ export const MESSAGES = {
   /** squash 完成但未提供 -m，提示用户自行提交 */
   MERGE_SQUASH_PENDING: (worktreePath: string, branch: string) =>
     `✓ 已将所有提交压缩到暂存区\n  请在目标 worktree 中提交后重新执行 merge：\n  cd ${worktreePath}\n  提交完成后执行：clawt merge -b ${branch}`,
+  /** 用户取消破坏性操作 */
+  DESTRUCTIVE_OP_CANCELLED: '已取消操作',
   /** reset 成功 */
   RESET_SUCCESS: '✓ 主 worktree 工作区和暂存区已重置',
   /** reset 时工作区和暂存区已干净 */

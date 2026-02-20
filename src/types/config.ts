@@ -6,6 +6,8 @@ export interface ClawtConfig {
   claudeCodeCommand: string;
   /** merge 成功后是否自动执行 git pull 和 git push */
   autoPullPush: boolean;
+  /** 执行破坏性操作（reset、validate --clean）前是否提示确认 */
+  confirmDestructiveOps: boolean;
 }
 
 /** 单个配置项的完整定义（默认值 + 描述） */

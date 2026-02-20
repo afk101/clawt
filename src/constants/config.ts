@@ -21,6 +21,10 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     defaultValue: false,
     description: 'merge 成功后是否自动执行 git pull 和 git push',
   },
+  confirmDestructiveOps: {
+    defaultValue: true,
+    description: '执行破坏性操作（reset、validate --clean）前是否提示确认',
+  },
 };
 
 /**

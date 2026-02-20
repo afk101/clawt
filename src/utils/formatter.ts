@@ -68,6 +68,17 @@ export function confirmAction(question: string): Promise<boolean> {
 }
 
 /**
+ * 破坏性操作确认：先输出带高亮危险指令的警告，再等待用户确认
+ * @param {string} dangerousCommand - 即将执行的危险指令（会用红色加粗高亮）
+ * @param {string} description - 操作后果描述
+ * @returns {Promise<boolean>} 用户是否确认
+ */
+export function confirmDestructiveAction(dangerousCommand: string, description: string): Promise<boolean> {
+  printWarning(`即将执行 ${chalk.red.bold(dangerousCommand)}，${description}`);
+  return confirmAction('是否继续？');
+}
+
+/**
  * 将 WorktreeStatus 格式化为带颜色的字符串
  * @param {WorktreeStatus} status - worktree 变更统计信息
  * @returns {string} 格式化后的状态字符串
