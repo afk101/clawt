@@ -15,6 +15,10 @@ export function sanitizeBranchName(branchName: string): string {
     .replace(/-{2,}/g, '-')
     .replace(/^-|-$/g, '');
 
+  if (!sanitized) {
+    throw new ClawtError(MESSAGES.BRANCH_NAME_EMPTY(branchName));
+  }
+
   if (sanitized !== branchName) {
     logger.warn(MESSAGES.BRANCH_SANITIZED(branchName, sanitized));
     printWarning(MESSAGES.BRANCH_SANITIZED(branchName, sanitized));
