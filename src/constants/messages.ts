@@ -8,6 +8,9 @@ export const MESSAGES = {
   CLAUDE_NOT_INSTALLED: 'Claude Code CLI 未安装，请先安装：npm install -g @anthropic-ai/claude-code',
   /** 分支已存在 */
   BRANCH_EXISTS: (name: string) => `分支 ${name} 已存在，无法创建`,
+  /** 分支已存在时提示使用 resume */
+  BRANCH_EXISTS_USE_RESUME: (name: string) =>
+    `分支 ${name} 已存在，请使用 clawt resume -b ${name} 恢复会话`,
   /** 分支名清理后为空 */
   BRANCH_NAME_EMPTY: (original: string) =>
     `分支名 "${original}" 中不包含合法字符，无法创建分支`,
