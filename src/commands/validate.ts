@@ -127,9 +127,18 @@ function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreePath: st
     }
   } finally {
     // 确保临时 commit 一定会被撤销，恢复目标 worktree 原状
+    // 每个操作独立 try-catch，避免前一个失败导致后续操作不执行
     if (didTempCommit) {
-      gitResetSoft(1, targetWorktreePath);
-      gitRestoreStaged(targetWorktreePath);
+      try {
+        gitResetSoft(1, targetWorktreePath);
+      } catch (error) {
+        logger.error(`撤销临时 commit 失败: ${error}`);
+      }
+      try {
+        gitRestoreStaged(targetWorktreePath);
+      } catch (error) {
+        logger.error(`恢复暂存区失败: ${error}`);
+      }
     }
   }
 }
