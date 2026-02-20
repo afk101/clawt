@@ -99,4 +99,7 @@ export const MESSAGES = {
   RESET_SUCCESS: '✓ 主 worktree 工作区和暂存区已重置',
   /** reset 时工作区和暂存区已干净 */
   RESET_ALREADY_CLEAN: '主 worktree 工作区和暂存区已是干净状态，无需重置',
+  /** 批量移除部分失败 */
+  REMOVE_PARTIAL_FAILURE: (failures: Array<{ path: string; error: string }>) =>
+    `以下 worktree 移除失败：\n${failures.map((f) => `  ✗ ${f.path}: ${f.error}`).join('\n')}`,
 } as const;

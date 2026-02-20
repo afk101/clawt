@@ -15,6 +15,7 @@ import {
   removeEmptyDir,
   printInfo,
   printSuccess,
+  printError,
   confirmAction,
 } from '../utils/index.js';
 
@@ -91,7 +92,8 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
     shouldDeleteBranch = await confirmAction('是否同时删除对应的本地分支？');
   }
 
-  // 执行移除
+  // 执行移除，收集失败项
+  const failures: Array<{ path: string; error: string }> = [];
   for (const wt of worktreesToRemove) {
     try {
       removeWorktreeByPath(wt.path);
@@ -100,8 +102,9 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
       }
       printSuccess(MESSAGES.WORKTREE_REMOVED(wt.path));
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error(`移除 worktree 失败: ${wt.path} - ${error}`);
-      throw error;
+      failures.push({ path: wt.path, error: errorMessage });
     }
   }
 
@@ -109,4 +112,12 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   gitWorktreePrune();
   const projectDir = getProjectWorktreeDir();
   removeEmptyDir(projectDir);
+
+  // 汇总报告失败项
+  if (failures.length > 0) {
+    printError(MESSAGES.REMOVE_PARTIAL_FAILURE(failures));
+    throw new ClawtError(
+      `${failures.length} 个 worktree 移除失败`,
+    );
+  }
 }
