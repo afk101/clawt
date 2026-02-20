@@ -66,7 +66,7 @@ run 命令有两种模式：
   - tree 对象不依赖主分支 HEAD，无需一致性校验
   - 变更检测：同时检测目标 worktree 的未提交修改和已提交 commit，两者均无则提示无需验证
   - 未提交修改处理：有未提交修改时先做临时 commit，diff 完成后通过 `git reset --soft` 撤销恢复原状
-- `merge`：检测目标 worktree 状态（有修改则需 `-m` 提交，已提交则跳过，无变更则报错）→ **squash 检测**（检查目标分支是否存在 `AUTO_SAVE_COMMIT_MESSAGE` 前缀的 auto-save commit，如有则提示用户是否压缩所有提交：用户确认后通过 `gitMergeBase` 计算分叉点、`gitResetSoftTo` 将所有 commit reset 到暂存区；有 `-m` 则直接提交继续流程，无 `-m` 则提示用户自行提交后退出）→ 合并到主 worktree → 根据 `autoPullPush` 配置决定是否 pull + push（成功消息动态显示推送状态）→ 可选清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）→ 清理对应的 validate 快照
+- `merge`：检测目标 worktree 状态（有修改则需 `-m` 提交，已提交则跳过，无变更则报错）→ **squash 检测**（检查目标分支是否存在 `AUTO_SAVE_COMMIT_MESSAGE` 前缀的 auto-save commit，如有则提示用户是否压缩所有提交：用户确认后通过 `gitMergeBase` 计算分叉点、`gitResetSoftTo` 将所有 commit reset 到暂存区；有 `-m` 则直接提交继续流程，无 `-m` 则提示用户自行提交后退出）→ 合并到主 worktree → 根据 `autoPullPush` 配置决定是否 pull + push（成功消息动态显示推送状态）→ merge 成功后确认并清理 worktree 和分支（受 `autoDeleteBranch` 配置或交互式确认控制）→ 清理对应的 validate 快照
 - `run` 中断清理：Ctrl+C 终止所有子进程后，根据 `autoDeleteBranch` 配置自动清理或交互式确认清理本次创建的 worktree 和分支
 
 ### sync 命令流程

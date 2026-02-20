@@ -105,7 +105,7 @@ async function shouldCleanupAfterMerge(branchName: string): Promise<boolean> {
     printInfo(`已配置自动删除，merge 成功后将自动清理 worktree 和分支: ${branchName}`);
     return true;
   }
-  return confirmAction(`merge 成功后是否删除对应的 worktree 和分支 (${branchName})？`);
+  return confirmAction(`是否删除对应的 worktree 和分支 (${branchName})？`);
 }
 
 /**
@@ -152,9 +152,6 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   if (shouldExit) {
     return;
   }
-
-  // merge 前确认是否清理 worktree 和分支
-  const shouldCleanup = await shouldCleanupAfterMerge(options.branch);
 
   // 步骤 4：根据目标 worktree 状态决定是否需要提交
   const targetClean = isWorkingDirClean(targetWorktreePath);
@@ -206,7 +203,8 @@ async function handleMerge(options: MergeOptions): Promise<void> {
     printSuccess(MESSAGES.MERGE_SUCCESS_NO_MESSAGE(options.branch, autoPullPush));
   }
 
-  // 步骤 9：merge 成功后清理 worktree 和分支
+  // 步骤 9：merge 成功后确认并清理 worktree 和分支
+  const shouldCleanup = await shouldCleanupAfterMerge(options.branch);
   if (shouldCleanup) {
     cleanupWorktreeAndBranch(targetWorktreePath, options.branch);
   }

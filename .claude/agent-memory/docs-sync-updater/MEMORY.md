@@ -29,7 +29,7 @@
 ## 关键约定
 - `autoDeleteBranch` 配置项影响三处：remove 命令、merge 命令、run 中断清理
 - `confirmDestructiveOps` 配置项影响两处：reset 命令、validate --clean
-- merge 的清理确认在 merge 操作之前询问（避免交互中断），但清理在 merge 成功后执行
+- merge 的清理确认和清理操作均在 merge 成功后执行（避免 merge 冲突时提前询问用户造成困惑）
 - merge 成功后自动清理对应的 validate 快照（hasSnapshot + removeSnapshot）
 - merge 成功消息根据 `autoPullPush` 配置动态显示推送状态
 - run 的中断清理在所有子进程退出后执行
