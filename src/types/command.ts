@@ -49,3 +49,9 @@ export interface SyncOptions {
   /** 要同步的分支名 */
   branch: string;
 }
+
+/** list 命令选项 */
+export interface ListOptions {
+  /** 以 JSON 格式输出 */
+  json?: boolean;
+}

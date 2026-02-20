@@ -182,10 +182,22 @@ clawt remove -b feature-scheme-2
 ### `clawt list` — 列出当前项目所有 worktree
 
 ```bash
-clawt list
+clawt list [--json]
 ```
 
-列出当前项目在 `~/.clawt/worktrees/` 下的所有 worktree 及对应分支。
+| 参数 | 必填 | 说明 |
+| ---- | ---- | ---- |
+| `--json` | 否 | 以 JSON 格式输出（仅包含 path 和 branch） |
+
+列出当前项目在 `~/.clawt/worktrees/` 下的所有 worktree 及对应分支。指定 `--json` 时以 JSON 格式输出，便于脚本解析。
+
+```bash
+# 文本格式输出（默认）
+clawt list
+
+# JSON 格式输出
+clawt list --json
+```
 
 ### `clawt reset` — 重置主 worktree 工作区和暂存区
 
