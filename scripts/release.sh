@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================
 # release.sh - Clawt 自动发布脚本
-# 功能: 构建 → 交互式选择版本级别 → 更新 package.json → 提交 → 打 tag → push → npm publish
+# 功能: 构建 → 交互式选择版本级别 → 更新 package.json → 提交 → 打 tag → push → pnpm publish
 # 用法: bash scripts/release.sh
 # ============================================================
 
@@ -138,7 +138,7 @@ echo ""
 
 TAG="v${NEW_VERSION}"
 
-# 回滚函数：npm publish 失败时撤销 commit、tag、push
+# 回滚函数：pnpm publish 失败时撤销 commit、tag、push
 # 参数 $1: 是否已推送到远程（"pushed" 表示已推送）
 rollback() {
   local pushed="${1:-}"
@@ -166,7 +166,7 @@ rollback() {
 # ────────────────────────────────────────
 
 print_step "构建项目..."
-npm run build
+pnpm build
 print_success "构建完成"
 
 # ────────────────────────────────────────
@@ -174,8 +174,8 @@ print_success "构建完成"
 # ────────────────────────────────────────
 
 print_step "更新版本号: ${CURRENT_VERSION} → ${NEW_VERSION}"
-# 使用 npm version 更新版本号，--no-git-tag-version 避免 npm 自动打 tag
-npm version "$NEW_VERSION" --no-git-tag-version > /dev/null
+# 使用 pnpm version 更新版本号，--no-git-tag-version 避免自动打 tag
+pnpm version "$NEW_VERSION" --no-git-tag-version > /dev/null
 print_success "版本号已更新"
 
 # ────────────────────────────────────────
@@ -183,7 +183,7 @@ print_success "版本号已更新"
 # ────────────────────────────────────────
 
 print_step "提交版本变更..."
-git add package.json package-lock.json 2>/dev/null || git add package.json
+git add package.json pnpm-lock.yaml 2>/dev/null || git add package.json
 git commit -m "build: bump version to ${NEW_VERSION}"
 print_success "版本变更已提交"
 
@@ -197,14 +197,14 @@ print_success "tag 已创建: ${TAG}"
 
 # ────────────────────────────────────────
 # 步骤 5: 发布到 npm（先发布，成功后再推送 git）
-# 调整顺序：npm publish 放在 git push 之前
+# 调整顺序：pnpm publish 放在 git push 之前
 # 如果 publish 失败，只需回滚本地 commit 和 tag，无需处理远程
 # ────────────────────────────────────────
 
 print_step "发布到 npm..."
-# 临时关闭 set -e，手动捕获 npm publish 的退出码
+# 临时关闭 set -e，手动捕获 pnpm publish 的退出码
 set +e
-NPM_OUTPUT=$(npm publish --access public --registry https://registry.npmjs.org/ 2>&1)
+NPM_OUTPUT=$(pnpm publish --access public --registry https://registry.npmjs.org/ --no-git-checks 2>&1)
 NPM_EXIT_CODE=$?
 set -e
 

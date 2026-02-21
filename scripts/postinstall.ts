@@ -1,5 +1,5 @@
 /**
- * postinstall 脚本：npm 全局安装后初始化 ~/.clawt/ 目录
+ * postinstall 脚本：全局安装后初始化 ~/.clawt/ 目录
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
