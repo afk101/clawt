@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { ClawtError } from './errors/index.js';
-import { logger } from './logger/index.js';
+import { logger, enableConsoleTransport } from './logger/index.js';
 import { EXIT_CODES } from './constants/index.js';
 import { printError, ensureClawtDirs } from './utils/index.js';
 import { registerListCommand } from './commands/list.js';
@@ -27,7 +27,15 @@ const program = new Command();
 program
   .name('clawt')
   .description('本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具')
-  .version(version);
+  .version(version)
+  .option('--debug', '输出详细调试信息到终端');
+
+// 在子命令 action 执行前检查 --debug 选项，按需启用控制台日志
+program.hook('preAction', (thisCommand) => {
+  if (thisCommand.opts().debug) {
+    enableConsoleTransport();
+  }
+});
 
 // 注册所有命令
 registerListCommand(program);

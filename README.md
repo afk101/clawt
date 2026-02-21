@@ -18,6 +18,19 @@ npm i -g clawt
 
 所有命令**必须在主 worktree 的仓库根目录**下执行（即包含 `.git` 目录的原始仓库）。在子 worktree 或子目录中执行会被拒绝。
 
+## 全局选项
+
+| 选项 | 说明 |
+| ---- | ---- |
+| `--debug` | 输出详细调试信息到终端，实时显示带颜色和时间戳的日志 |
+
+`--debug` 可与任意子命令组合使用：
+
+```bash
+clawt run -b feature-login --debug
+clawt validate -b scheme --debug
+```
+
 ## 命令
 
 ### `clawt create` — 批量创建 worktree
@@ -313,4 +326,4 @@ feature/a.b  →  feature-a-b
 
 ## 日志
 
-日志保存在 `~/.clawt/logs/` 目录，按日期滚动，保留 30 天。
+日志保存在 `~/.clawt/logs/` 目录，按日期滚动，保留 30 天。使用 `--debug` 全局选项可在终端实时查看调试日志。
