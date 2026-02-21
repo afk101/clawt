@@ -7,7 +7,7 @@
 - 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.13）
 - run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，-b 可选，支持模糊匹配（与 resume/validate 共享匹配逻辑），流程按步骤编号描述
-- config 命令对应 `5.10 查看全局配置`，只读展示配置
+- config 命令对应 `5.10 查看和管理全局配置`，包含查看配置和 config reset 子命令两部分（使用 `####` 子标题区分）
 - resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，支持模糊匹配和交互式分支选择（-b 可选）
 - validate 命令对应 `5.4 在主 Worktree 验证其他分支`，-b 可选，支持模糊匹配（与 resume 共享匹配逻辑）
 - sync 命令对应 `5.12 将主分支代码同步到目标 Worktree`，-b 可选，支持模糊匹配（与 resume/validate/merge 共享匹配逻辑）
@@ -22,7 +22,7 @@
 
 ## 关键约定
 - `autoDeleteBranch` 配置项影响三处：remove 命令、merge 命令、run 中断清理
-- `confirmDestructiveOps` 配置项影响两处：reset 命令、validate --clean
+- `confirmDestructiveOps` 配置项影响三处：reset 命令、validate --clean、config reset
 - merge 的清理确认和清理操作均在 merge 成功后执行（避免 merge 冲突时提前询问用户造成困惑）
 - merge 成功后自动清理对应的 validate 快照（hasSnapshot + removeSnapshot）
 - merge 成功消息根据 `autoPullPush` 配置动态显示推送状态
@@ -35,7 +35,7 @@
 - `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts）
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
 - validate 快照管理函数在 `src/utils/validate-snapshot.ts`，被 validate、merge 和 remove 三个命令使用
-- `confirmDestructiveAction` 在 `src/utils/formatter.ts`，被 reset 和 validate --clean 使用
+- `confirmDestructiveAction` 在 `src/utils/formatter.ts`，被 reset、validate --clean 和 config reset 使用
 - sanitizeBranchName 清理后为空串时抛出 BRANCH_NAME_EMPTY 错误
 
 ## 配置项同步检查点

@@ -21,7 +21,7 @@
   - [5.7 默认配置文件](#57-默认配置文件)
   - [5.8 获取当前项目所有 Worktree](#58-获取当前项目所有-worktree)
   - [5.9 日志系统](#59-日志系统)
-  - [5.10 查看全局配置](#510-查看全局配置)
+  - [5.10 查看和管理全局配置](#510-查看和管理全局配置)
   - [5.11 在已有 Worktree 中恢复会话](#511-在已有-worktree-中恢复会话)
   - [5.12 将主分支代码同步到目标 Worktree](#512-将主分支代码同步到目标-worktree)
   - [5.13 重置主 Worktree 工作区和暂存区](#513-重置主-worktree-工作区和暂存区)
@@ -168,6 +168,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt remove`        | 移除 worktree（支持单个/批量/全部）               | 5.5      |
 | `clawt list`          | 列出当前项目所有 worktree（支持 `--json` 格式输出） | 5.8      |
 | `clawt config`        | 查看全局配置                                     | 5.10     |
+| `clawt config reset`  | 将配置恢复为默认值                                | 5.10     |
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 交互式会话      | 5.11     |
 | `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
 | `clawt reset`         | 重置主 worktree 工作区和暂存区                       | 5.13     |
@@ -775,7 +776,7 @@ clawt merge [-m <commitMessage>]
 | `autoDeleteBranch` | `boolean` | `false`   | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支；run 任务被中断（Ctrl+C）后是否自动清理本次创建的 worktree 和分支 |
 | `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
-| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean）前是否提示确认 |
+| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean、config reset）前是否提示确认 |
 
 ---
 
@@ -878,13 +879,19 @@ clawt list [--json]
 
 ---
 
-### 5.10 查看全局配置
+### 5.10 查看和管理全局配置
 
 **命令：**
 
 ```bash
+# 查看全局配置
 clawt config
+
+# 将配置恢复为默认值
+clawt config reset
 ```
+
+#### 查看配置
 
 **运行流程：**
 
@@ -915,6 +922,14 @@ clawt config
 ────────────────────────────────────────
 
 ```
+
+#### 恢复默认配置
+
+**运行流程：**
+
+1. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的操作和后果：当前配置将被覆盖为默认值），用户取消则退出
+2. 将默认配置写入 `~/.clawt/config.json`（覆盖现有配置文件）
+3. 输出成功提示：`✓ 配置已恢复为默认值`
 
 ---
 

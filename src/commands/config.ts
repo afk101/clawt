@@ -1,20 +1,27 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
-import { CONFIG_PATH, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS } from '../constants/index.js';
+import { CONFIG_PATH, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, MESSAGES } from '../constants/index.js';
 import { logger } from '../logger/index.js';
-import { loadConfig, printInfo, printSeparator } from '../utils/index.js';
+import { loadConfig, writeDefaultConfig, printInfo, printSuccess, printSeparator, confirmDestructiveAction } from '../utils/index.js';
 import type { ClawtConfig } from '../types/index.js';
 
 /**
- * 注册 config 命令：查看全局配置
+ * 注册 config 命令组：查看和管理全局配置
  * @param {Command} program - Commander 实例
  */
 export function registerConfigCommand(program: Command): void {
-  program
+  const configCmd = program
     .command('config')
-    .description('查看全局配置')
+    .description('查看和管理全局配置')
     .action(() => {
       handleConfig();
+    });
+
+  configCmd
+    .command('reset')
+    .description('将配置恢复为默认值')
+    .action(async () => {
+      await handleConfigReset();
     });
 }
 
@@ -46,6 +53,26 @@ function handleConfig(): void {
   }
 
   printSeparator();
+}
+
+/**
+ * 执行 config reset 子命令的核心逻辑，将配置恢复为默认值
+ */
+async function handleConfigReset(): Promise<void> {
+  logger.info('config reset 命令执行，恢复默认配置');
+
+  const confirmed = await confirmDestructiveAction(
+    'config reset',
+    '当前配置将被覆盖为默认值',
+  );
+
+  if (!confirmed) {
+    printInfo(MESSAGES.DESTRUCTIVE_OP_CANCELLED);
+    return;
+  }
+
+  writeDefaultConfig();
+  printSuccess(MESSAGES.CONFIG_RESET_SUCCESS);
 }
 
 /**

@@ -269,13 +269,19 @@ clawt reset
 clawt reset
 ```
 
-### `clawt config` — 查看全局配置
+### `clawt config` — 查看和管理全局配置
 
 ```bash
+# 查看全局配置
 clawt config
+
+# 将配置恢复为默认值
+clawt config reset
 ```
 
 读取并展示全局配置文件 `~/.clawt/config.json` 中的所有配置项，包括每项的当前值和描述说明。编辑配置需直接修改配置文件。
+
+`config reset` 子命令可将配置文件恢复为默认值，执行前会弹出确认提示（受 `confirmDestructiveOps` 配置项控制）。
 
 ## 配置文件
 
@@ -295,7 +301,7 @@ clawt config
 | `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时自动删除对应本地分支；merge 成功后自动清理 worktree 和分支；run 中断后自动清理本次创建的 worktree 和分支 |
 | `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
-| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean）前是否提示确认 |
+| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean、config reset）前是否提示确认 |
 
 ## 分支名规则
 
