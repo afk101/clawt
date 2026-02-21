@@ -3,4 +3,7 @@ dist/
 .env
 .DS_Store
 
+# 测试覆盖率报告
+coverage/
+
 

@@ -308,3 +308,21 @@ feature/a.b  →  feature-a-b
 ## 日志
 
 日志保存在 `~/.clawt/logs/` 目录，按日期滚动，保留 30 天。
+
+## 开发
+
+### 测试
+
+项目使用 [Vitest](https://vitest.dev/) 作为测试框架，搭配 `@vitest/coverage-v8` 生成覆盖率报告。
+
+```bash
+# 执行全部测试
+npm test
+
+# 监听模式（文件变更后自动重新运行）
+npm run test:watch
+
+# 执行测试并生成覆盖率报告
+npm run test:coverage
+```
+

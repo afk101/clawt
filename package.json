@@ -10,6 +10,9 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "postinstall": "node dist/postinstall.js",
     "release": "bash scripts/release.sh"
   },
@@ -30,8 +33,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "tsup": "^8.3.6",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18"
