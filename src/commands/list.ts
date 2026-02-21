@@ -9,6 +9,7 @@ import {
   getProjectWorktrees,
   getWorktreeStatus,
   formatWorktreeStatus,
+  isWorktreeIdle,
   printInfo,
 } from '../utils/index.js';
 // getWorktreeStatus 和 formatWorktreeStatus 仅在文本模式下使用
@@ -77,10 +78,15 @@ function printListAsText(projectName: string, worktrees: import('../types/index.
     printInfo(`  ${MESSAGES.NO_WORKTREES}`);
   } else {
     for (const wt of worktrees) {
-      printInfo(`  ${wt.path}   [${wt.branch}]`);
-
       // 获取并展示 worktree 变更状态
       const status = getWorktreeStatus(wt);
+
+      // 空闲状态的 worktree 路径用橙色高亮，提示用户关注
+      const isIdle = status ? isWorktreeIdle(status) : false;
+      const pathDisplay = isIdle ? chalk.hex('#FF8C00')(wt.path) : wt.path;
+
+      printInfo(`  ${pathDisplay}   [${wt.branch}]`);
+
       if (status) {
         printInfo(`    ${formatWorktreeStatus(status)}`);
       } else {
