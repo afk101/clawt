@@ -5,6 +5,10 @@
 ## 安装
 
 ```bash
+# 推荐
+pnpm add -g clawt
+
+# 或使用 npm
 npm i -g clawt
 ```
 

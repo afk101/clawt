@@ -36,12 +36,12 @@
 | -------- | ----------------------------- |
 | 运行时   | Node.js >= 18                 |
 | 语言     | TypeScript                    |
-| 包管理   | npm                           |
+| 包管理   | pnpm                          |
 | CLI 框架 | Commander.js                  |
 | 日志库   | winston (按日期滚动文件)       |
 | 交互式   | enquirer (选项选择/确认对话)   |
 | 构建     | tsup / tsc                    |
-| 分发     | npm 全局安装 (`npm i -g clawt`) |
+| 分发     | pnpm 全局安装 (`pnpm add -g clawt`) |
 
 ---
 
@@ -747,7 +747,7 @@ clawt merge [-m <commitMessage>]
 
 **路径：** `~/.clawt/config.json`
 
-**生成时机：** npm 全局安装后自动生成（通过 npm 的 `postinstall` 脚本）。
+**生成时机：** 全局安装后自动生成（通过 `postinstall` 脚本）。
 
 **升级策略：** 配置文件已存在时，执行增量合并而非简单跳过：
 
