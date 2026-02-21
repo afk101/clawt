@@ -55,3 +55,9 @@ export interface ListOptions {
   /** 以 JSON 格式输出 */
   json?: boolean;
 }
+
+/** status 命令选项 */
+export interface StatusOptions {
+  /** 以 JSON 格式输出 */
+  json?: boolean;
+}

@@ -264,6 +264,22 @@ export function getCommitCountAhead(branchName: string, cwd?: string): number {
 }
 
 /**
+ * 获取目标分支落后于当前分支的提交数
+ * 即当前分支有多少提交是目标分支没有的
+ * @param {string} branchName - 目标分支名
+ * @param {string} [cwd] - 工作目录
+ * @returns {number} 落后的提交数
+ */
+export function getCommitCountBehind(branchName: string, cwd?: string): number {
+  try {
+    const output = execCommand(`git rev-list --count ${branchName}..HEAD`, { cwd });
+    return parseInt(output, 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * 解析 git diff --shortstat 输出，提取新增行数和删除行数
  * @param {string} output - shortstat 输出字符串
  * @returns {{ insertions: number; deletions: number }} 新增和删除行数
