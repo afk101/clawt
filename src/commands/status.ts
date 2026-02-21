@@ -258,14 +258,24 @@ function printWorktreeItem(wt: WorktreeDetailedStatus): void {
 
   // 差异统计行
   const parts: string[] = [];
-  parts.push(`${chalk.green(`+${wt.insertions}`)} ${chalk.red(`-${wt.deletions}`)}`);
-  parts.push(`${chalk.yellow(`${wt.commitsAhead} 个提交`)} (领先)`);
 
+  // 行数变更（仅在有变更时展示）
+  if (wt.insertions > 0 || wt.deletions > 0) {
+    parts.push(`${chalk.green(`+${wt.insertions}`)} ${chalk.red(`-${wt.deletions}`)}`);
+  }
+
+  // 本地提交数
+  if (wt.commitsAhead > 0) {
+    parts.push(chalk.yellow(`${wt.commitsAhead} 个本地提交`));
+  }
+
+  // 与主分支的同步状态
   if (wt.commitsBehind > 0) {
     parts.push(chalk.yellow(`落后主分支 ${wt.commitsBehind} 个提交`));
   } else {
     parts.push(chalk.green('与主分支同步'));
   }
+
   printInfo(`    ${parts.join('   ')}`);
 
   // 快照状态

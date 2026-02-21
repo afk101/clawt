@@ -4,13 +4,14 @@
 
 ### docs/spec.md
 - 完整的软件规格说明，包含 7 大章节
-- 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.13）
+- 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.14）
 - run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，-b 可选，支持模糊匹配（与 resume/validate 共享匹配逻辑），流程按步骤编号描述
 - config 命令对应 `5.10 查看和管理全局配置`，包含查看配置和 config reset 子命令两部分（使用 `####` 子标题区分）
 - resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，支持模糊匹配和交互式分支选择（-b 可选）
 - validate 命令对应 `5.4 在主 Worktree 验证其他分支`，-b 可选，支持模糊匹配（与 resume 共享匹配逻辑）
 - sync 命令对应 `5.12 将主分支代码同步到目标 Worktree`，-b 可选，支持模糊匹配（与 resume/validate/merge 共享匹配逻辑）
+- status 命令对应 `5.14 项目全局状态总览`，支持 `--json` 格式输出，展示主 worktree 状态、各 worktree 详细状态、未清理快照
 - 配置项说明在 `5.7 默认配置文件` 章节的表格中
 - 更新模式：新增步骤时追加编号，配置项影响范围变化时更新说明列
 
@@ -36,7 +37,7 @@
 - cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
 - `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts）
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
-- validate 快照管理函数在 `src/utils/validate-snapshot.ts`，被 validate、merge 和 remove 三个命令使用
+- validate 快照管理函数在 `src/utils/validate-snapshot.ts`，被 validate、merge、remove 和 status 四个命令使用
 - `confirmDestructiveAction` 在 `src/utils/formatter.ts`，被 reset、validate --clean 和 config reset 使用
 - sanitizeBranchName 清理后为空串时抛出 BRANCH_NAME_EMPTY 错误
 
@@ -61,9 +62,9 @@ run 命令有两种模式（自 claudeCodeCommand 特性后）：
 - 不传 `--tasks`：交互式界面模式（单 worktree + `launchInteractiveClaude` + spawnSync）
 - 传 `--tasks`：并行任务模式（多 worktree + `executeClaudeTask` + spawnProcess）
 
-## 命令清单（10 个）
+## 命令清单（11 个）
 
-`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`、`sync`、`reset`
+`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`、`sync`、`reset`、`status`
 
 Notes:
 - resume 和 run（交互式模式）共用 `launchInteractiveClaude()`，该函数从 run.ts 提取到 src/utils/claude.ts
@@ -71,7 +72,7 @@ Notes:
 - reset 命令与 validate --clean 的区别：reset 不删除快照文件，validate --clean 会删除快照
 - `resolveTargetWorktree()` 是 resume、validate、merge 和 sync 共用的分支匹配函数（在 src/utils/worktree-matcher.ts）
 - `WorktreeResolveMessages` 接口实现命令间消息解耦，每个命令传入各自的提示文案
-- resume 的消息常量在 `MESSAGES.RESUME_*`，validate 的消息常量在 `MESSAGES.VALIDATE_*`，merge 的消息常量在 `MESSAGES.MERGE_*`，sync 的消息常量在 `MESSAGES.SYNC_*`
+- resume 的消息常量在 `MESSAGES.RESUME_*`，validate 的消息常量在 `MESSAGES.VALIDATE_*`，merge 的消息常量在 `MESSAGES.MERGE_*`，sync 的消息常量在 `MESSAGES.SYNC_*`，status 的消息常量在 `MESSAGES.STATUS_*`
 - resume、validate、merge 和 sync 的 `-b` 参数均为可选，匹配策略一致：精确→模糊（子串，大小写不敏感）→交互选择
 - validate 的交互式选择和 resume 使用同一个 `promptSelectBranch()`（Enquirer.Select）
 
