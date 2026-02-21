@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MESSAGES } from '../../../src/constants/messages.js';
+import { MESSAGES } from '../../../src/constants/messages/index.js';
 
 describe('MESSAGES', () => {
   describe('纯字符串消息', () => {
