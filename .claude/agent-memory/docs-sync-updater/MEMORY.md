@@ -12,14 +12,6 @@
 - 配置项说明在 `5.7 默认配置文件` 章节的表格中
 - 更新模式：新增步骤时追加编号，配置项影响范围变化时更新说明列
 
-### CLAUDE.md
-- 面向 Claude Code 的项目架构指引，精简扼要
-- run 命令流程在 `核心流程（run 命令）` 章节，编号列表描述
-- resume 命令流程在独立的 `### resume 命令流程` 章节，编号列表 + 缩进列表描述匹配策略
-- merge 和 run 中断清理在 `validate + merge 工作流` 章节，一行式描述用箭头连接流程
-- utils 目录描述用括号内逗号分隔列举功能模块
-- 更新模式：编号列表追加步骤，箭头链追加阶段，括号内追加关键词
-
 ### README.md
 - 面向用户的使用文档
 - 每个命令一个 `###` 小节，含命令格式、参数表格、简要说明、示例
@@ -46,12 +38,11 @@
 
 ## 配置项同步检查点
 
-配置项变更时需在以下 5 处保持一致：
+配置项变更时需在以下 4 处保持一致：
 1. `src/constants/config.ts` — CONFIG_DEFINITIONS 对象（单一数据源，包含 defaultValue + description）
 2. `src/types/config.ts` — ClawtConfig 接口
 3. `docs/spec.md` — 5.7 默认配置文件章节（JSON 示例 + 配置项表格）
-4. `CLAUDE.md` — 关键约定段落中的配置描述
-5. `README.md` — 配置文件章节（JSON 示例 + 配置项表格）
+4. `README.md` — 配置文件章节（JSON 示例 + 配置项表格）
 
 ## 配置架构
 
@@ -65,7 +56,6 @@
 run 命令有两种模式（自 claudeCodeCommand 特性后）：
 - 不传 `--tasks`：交互式界面模式（单 worktree + `launchInteractiveClaude` + spawnSync）
 - 传 `--tasks`：并行任务模式（多 worktree + `executeClaudeTask` + spawnProcess）
-- CLAUDE.md 中的核心流程按模式分段描述
 
 ## 命令清单（10 个）
 
@@ -91,4 +81,3 @@ Notes:
 - git 层有 `gitWriteTree()`（返回 tree hash）和 `gitReadTree()`（载入暂存区）
 - merge 成功后自动清理对应快照；merge 时主 worktree 脏 + 存在快照会输出警告提示
 - docs/spec.md 中 validate 章节（5.4）按 `--clean 模式`、`首次 validate`、`增量 validate` 三段描述
-- CLAUDE.md 中在 validate + merge 工作流章节用缩进列表描述两种模式
