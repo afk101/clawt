@@ -1,6 +1,4 @@
 import type { Command } from 'commander';
-import { join } from 'node:path';
-import { existsSync } from 'node:fs';
 import Enquirer from 'enquirer';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
@@ -10,7 +8,7 @@ import {
   validateMainWorktree,
   getProjectName,
   getGitTopLevel,
-  getProjectWorktreeDir,
+  getProjectWorktrees,
   getConfigValue,
   isWorkingDirClean,
   gitAddAll,
@@ -33,7 +31,17 @@ import {
   printSuccess,
   printWarning,
   printInfo,
+  resolveTargetWorktree,
 } from '../utils/index.js';
+import type { WorktreeResolveMessages } from '../utils/index.js';
+
+/** validate 命令的分支解析消息配置 */
+const VALIDATE_RESOLVE_MESSAGES: WorktreeResolveMessages = {
+  noWorktrees: MESSAGES.VALIDATE_NO_WORKTREES,
+  selectBranch: MESSAGES.VALIDATE_SELECT_BRANCH,
+  multipleMatches: MESSAGES.VALIDATE_MULTIPLE_MATCHES,
+  noMatch: MESSAGES.VALIDATE_NO_MATCH,
+};
 
 /**
  * 注册 validate 命令：在主 worktree 验证其他分支的变更
@@ -43,7 +51,7 @@ export function registerValidateCommand(program: Command): void {
   program
     .command('validate')
     .description('在主 worktree 验证某个 worktree 分支的变更')
-    .requiredOption('-b, --branch <branchName>', '要验证的分支名')
+    .option('-b, --branch <branchName>', '要验证的分支名（支持模糊匹配，不传则列出所有分支）')
     .option('--clean', '清理 validate 状态（重置主 worktree 并删除快照）')
     .action(async (options: ValidateOptions) => {
       await handleValidate(options);
@@ -171,13 +179,18 @@ async function handleValidateClean(options: ValidateOptions): Promise<void> {
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();
 
-  logger.info(`validate --clean 执行，分支: ${options.branch}`);
+  // 通过模糊匹配解析目标 worktree
+  const worktrees = getProjectWorktrees();
+  const worktree = await resolveTargetWorktree(worktrees, VALIDATE_RESOLVE_MESSAGES, options.branch);
+  const branchName = worktree.branch;
+
+  logger.info(`validate --clean 执行，分支: ${branchName}`);
 
   // 根据配置决定是否需要确认
   if (getConfigValue('confirmDestructiveOps')) {
     const confirmed = await confirmDestructiveAction(
       'git reset --hard + git clean -fd',
-      `重置主 worktree 并删除分支 ${options.branch} 的 validate 快照`,
+      `重置主 worktree 并删除分支 ${branchName} 的 validate 快照`,
     );
     if (!confirmed) {
       printInfo(MESSAGES.DESTRUCTIVE_OP_CANCELLED);
@@ -192,9 +205,9 @@ async function handleValidateClean(options: ValidateOptions): Promise<void> {
   }
 
   // 删除对应的快照文件
-  removeSnapshot(projectName, options.branch);
+  removeSnapshot(projectName, branchName);
 
-  printSuccess(MESSAGES.VALIDATE_CLEANED(options.branch));
+  printSuccess(MESSAGES.VALIDATE_CLEANED(branchName));
 }
 
 /**
@@ -272,19 +285,18 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
 
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();
-  const projectDir = getProjectWorktreeDir();
-  const targetWorktreePath = join(projectDir, options.branch);
 
-  logger.info(`validate 命令执行，分支: ${options.branch}`);
+  // 通过模糊匹配解析目标 worktree
+  const worktrees = getProjectWorktrees();
+  const worktree = await resolveTargetWorktree(worktrees, VALIDATE_RESOLVE_MESSAGES, options.branch);
+  const branchName = worktree.branch;
+  const targetWorktreePath = worktree.path;
 
-  // 检查目标 worktree 是否存在
-  if (!existsSync(targetWorktreePath)) {
-    throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(options.branch));
-  }
+  logger.info(`validate 命令执行，分支: ${branchName}`);
 
   // 统一检测未提交修改 + 已提交 commit
   const hasUncommitted = !isWorkingDirClean(targetWorktreePath);
-  const hasCommitted = hasLocalCommits(options.branch, mainWorktreePath);
+  const hasCommitted = hasLocalCommits(branchName, mainWorktreePath);
 
   if (!hasUncommitted && !hasCommitted) {
     printInfo(MESSAGES.TARGET_WORKTREE_CLEAN);
@@ -292,20 +304,20 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
   }
 
   // 判断是否为增量 validate（tree 对象不依赖主分支 HEAD，无需一致性校验）
-  const isIncremental = hasSnapshot(projectName, options.branch);
+  const isIncremental = hasSnapshot(projectName, branchName);
 
   if (isIncremental) {
     // 增量模式：主 worktree 有残留状态时让用户选择处理方式
     if (!isWorkingDirClean(mainWorktreePath)) {
       await handleDirtyMainWorktree(mainWorktreePath);
     }
-    handleIncrementalValidate(targetWorktreePath, mainWorktreePath, projectName, options.branch, hasUncommitted);
+    handleIncrementalValidate(targetWorktreePath, mainWorktreePath, projectName, branchName, hasUncommitted);
   } else {
     // 首次模式：先确保主 worktree 干净
     if (!isWorkingDirClean(mainWorktreePath)) {
       await handleDirtyMainWorktree(mainWorktreePath);
     }
 
-    handleFirstValidate(targetWorktreePath, mainWorktreePath, projectName, options.branch, hasUncommitted);
+    handleFirstValidate(targetWorktreePath, mainWorktreePath, projectName, branchName, hasUncommitted);
   }
 }

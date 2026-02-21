@@ -50,3 +50,5 @@ export { ensureDir, removeEmptyDir } from './fs.js';
 export { multilineInput } from './prompt.js';
 export { launchInteractiveClaude } from './claude.js';
 export { getSnapshotPath, hasSnapshot, readSnapshotTreeHash, writeSnapshot, removeSnapshot, removeProjectSnapshots } from './validate-snapshot.js';
+export { findExactMatch, findFuzzyMatches, promptSelectBranch, resolveTargetWorktree } from './worktree-matcher.js';
+export type { WorktreeResolveMessages } from './worktree-matcher.js';
