@@ -48,8 +48,8 @@ export {
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled } from './validation.js';
 export { createWorktrees, getProjectWorktrees, getProjectWorktreeDir, cleanupWorktrees, getWorktreeStatus } from './worktree.js';
-export { loadConfig, getConfigValue, ensureClawtDirs } from './config.js';
-export { printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus } from './formatter.js';
+export { loadConfig, writeDefaultConfig, getConfigValue, ensureClawtDirs } from './config.js';
+export { printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus, isWorktreeIdle } from './formatter.js';
 export { ensureDir, removeEmptyDir } from './fs.js';
 export { multilineInput } from './prompt.js';
 export { launchInteractiveClaude } from './claude.js';

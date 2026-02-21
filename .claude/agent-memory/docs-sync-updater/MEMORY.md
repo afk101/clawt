@@ -7,7 +7,7 @@
 - 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.13）
 - run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，-b 可选，支持模糊匹配（与 resume/validate 共享匹配逻辑），流程按步骤编号描述
-- config 命令对应 `5.10 查看全局配置`，只读展示配置
+- config 命令对应 `5.10 查看和管理全局配置`，包含查看配置和 config reset 子命令两部分（使用 `####` 子标题区分）
 - resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，支持模糊匹配和交互式分支选择（-b 可选）
 - validate 命令对应 `5.4 在主 Worktree 验证其他分支`，-b 可选，支持模糊匹配（与 resume 共享匹配逻辑）
 - sync 命令对应 `5.12 将主分支代码同步到目标 Worktree`，-b 可选，支持模糊匹配（与 resume/validate/merge 共享匹配逻辑）
@@ -16,13 +16,15 @@
 
 ### README.md
 - 面向用户的使用文档
+- 全局选项在 `## 全局选项` 章节（位于 `## 使用前提` 和 `## 命令` 之间）
 - 每个命令一个 `###` 小节，含命令格式、参数表格、简要说明、示例
 - 配置文件说明在 `## 配置文件` 章节
+- 日志说明在 `## 日志` 章节（文档末尾）
 - 更新模式：更新命令说明段落，配置项表格
 
 ## 关键约定
 - `autoDeleteBranch` 配置项影响三处：remove 命令、merge 命令、run 中断清理
-- `confirmDestructiveOps` 配置项影响两处：reset 命令、validate --clean
+- `confirmDestructiveOps` 配置项影响三处：reset 命令、validate --clean、config reset
 - merge 的清理确认和清理操作均在 merge 成功后执行（避免 merge 冲突时提前询问用户造成困惑）
 - merge 成功后自动清理对应的 validate 快照（hasSnapshot + removeSnapshot）
 - merge 成功消息根据 `autoPullPush` 配置动态显示推送状态
@@ -35,7 +37,7 @@
 - `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts）
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
 - validate 快照管理函数在 `src/utils/validate-snapshot.ts`，被 validate、merge 和 remove 三个命令使用
-- `confirmDestructiveAction` 在 `src/utils/formatter.ts`，被 reset 和 validate --clean 使用
+- `confirmDestructiveAction` 在 `src/utils/formatter.ts`，被 reset、validate --clean 和 config reset 使用
 - sanitizeBranchName 清理后为空串时抛出 BRANCH_NAME_EMPTY 错误
 
 ## 配置项同步检查点
@@ -90,3 +92,12 @@ Notes:
 - `removeSnapshot()` 同时清理 `.tree` 和 `.head` 文件
 - merge 成功后自动清理对应快照；merge 时主 worktree 脏 + 存在快照会输出警告提示
 - docs/spec.md 中 validate 章节（5.4）按 `--clean 模式`、`首次 validate`、`增量 validate` 三段描述
+
+## 全局选项
+
+- `--debug` 全局选项在 `src/index.ts` 通过 Commander.js `.option()` + `preAction` 钩子实现
+- `enableConsoleTransport()` 在 `src/logger/index.ts`，幂等地向 winston 添加 Console transport
+- 调试相关常量在 `src/constants/logger.ts`：`DEBUG_LOG_PREFIX`、`DEBUG_TIMESTAMP_FORMAT`
+- docs/spec.md 中 `--debug` 说明位于 `5.9 日志系统` 章节下的 `#### --debug 控制台调试输出` 子章节
+- docs/spec.md 中 `4. 命令总览` 的命令表格后有 `**全局选项：**` 表格
+- README.md 中 `## 全局选项` 章节（在 `## 使用前提` 和 `## 命令` 之间）

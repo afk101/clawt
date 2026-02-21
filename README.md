@@ -5,6 +5,10 @@
 ## 安装
 
 ```bash
+# 推荐
+pnpm add -g clawt
+
+# 或使用 npm
 npm i -g clawt
 ```
 
@@ -17,6 +21,19 @@ npm i -g clawt
 ## 使用前提
 
 所有命令**必须在主 worktree 的仓库根目录**下执行（即包含 `.git` 目录的原始仓库）。在子 worktree 或子目录中执行会被拒绝。
+
+## 全局选项
+
+| 选项 | 说明 |
+| ---- | ---- |
+| `--debug` | 输出详细调试信息到终端，实时显示带颜色和时间戳的日志 |
+
+`--debug` 可与任意子命令组合使用：
+
+```bash
+clawt run -b feature-login --debug
+clawt validate -b scheme --debug
+```
 
 ## 命令
 
@@ -246,7 +263,7 @@ clawt list [--json]
 | ---- | ---- | ---- |
 | `--json` | 否 | 以 JSON 格式输出（仅包含 path 和 branch） |
 
-列出当前项目在 `~/.clawt/worktrees/` 下的所有 worktree 及对应分支。指定 `--json` 时以 JSON 格式输出，便于脚本解析。
+列出当前项目在 `~/.clawt/worktrees/` 下的所有 worktree 及对应分支。文本模式下，如果某个 worktree 处于空闲状态（0 个提交、无变更、无未提交修改），其路径会以橙色高亮显示，方便快速识别可能需要清理或还未开始工作的 worktree。指定 `--json` 时以 JSON 格式输出，便于脚本解析。
 
 ```bash
 # 文本格式输出（默认）
@@ -269,13 +286,19 @@ clawt reset
 clawt reset
 ```
 
-### `clawt config` — 查看全局配置
+### `clawt config` — 查看和管理全局配置
 
 ```bash
+# 查看全局配置
 clawt config
+
+# 将配置恢复为默认值
+clawt config reset
 ```
 
 读取并展示全局配置文件 `~/.clawt/config.json` 中的所有配置项，包括每项的当前值和描述说明。编辑配置需直接修改配置文件。
+
+`config reset` 子命令可将配置文件恢复为默认值，执行前会弹出确认提示（受 `confirmDestructiveOps` 配置项控制）。
 
 ## 配置文件
 
@@ -295,7 +318,7 @@ clawt config
 | `autoDeleteBranch` | `boolean` | `false` | 移除 worktree 时自动删除对应本地分支；merge 成功后自动清理 worktree 和分支；run 中断后自动清理本次创建的 worktree 和分支 |
 | `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
-| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean）前是否提示确认 |
+| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean、config reset）前是否提示确认 |
 
 ## 分支名规则
 
@@ -307,4 +330,22 @@ feature/a.b  →  feature-a-b
 
 ## 日志
 
-日志保存在 `~/.clawt/logs/` 目录，按日期滚动，保留 30 天。
+日志保存在 `~/.clawt/logs/` 目录，按日期滚动，保留 30 天。使用 `--debug` 全局选项可在终端实时查看调试日志。
+
+## 开发
+
+### 测试
+
+项目使用 [Vitest](https://vitest.dev/) 作为测试框架，搭配 `@vitest/coverage-v8` 生成覆盖率报告。
+
+```bash
+# 执行全部测试
+npm test
+
+# 监听模式（文件变更后自动重新运行）
+npm run test:watch
+
+# 执行测试并生成覆盖率报告
+npm run test:coverage
+```
+

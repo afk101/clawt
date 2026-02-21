@@ -1,6 +1,6 @@
 {
   "name": "clawt",
-  "version": "2.7.1",
+  "version": "2.8.2",
   "description": "本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具",
   "type": "module",
   "main": "dist/index.js",
@@ -10,6 +10,9 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "postinstall": "node dist/postinstall.js",
     "release": "bash scripts/release.sh"
   },
@@ -30,9 +33,12 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "tsup": "^8.3.6",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18"
   },
+  "packageManager": "pnpm@10.14.0",
   "engines": {
     "node": ">=18"
   }

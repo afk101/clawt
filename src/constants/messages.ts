@@ -39,7 +39,7 @@ export const MESSAGES = {
   MERGE_SUCCESS_NO_MESSAGE: (branch: string, pushed: boolean) =>
     `✓ 分支 ${branch} 已成功合并到当前分支${pushed ? '\n  已推送到远程仓库' : ''}`,
   /** merge 冲突 */
-  MERGE_CONFLICT: '合并存在冲突，请手动处理',
+  MERGE_CONFLICT: '合并存在冲突，请手动处理：\n  解决冲突后执行 git add . && git merge --continue',
   /** merge 后清理 worktree 和分支成功 */
   WORKTREE_CLEANED: (branch: string) => `✓ 已清理 worktree 和分支: ${branch}`,
   /** 请提供提交信息 */
@@ -60,6 +60,8 @@ export const MESSAGES = {
   INTERRUPT_KEPT: '已保留 worktree，可稍后使用 clawt remove 手动清理',
   /** 配置文件损坏，已重新生成默认配置 */
   CONFIG_CORRUPTED: '配置文件损坏或无法解析，已重新生成默认配置',
+  /** 配置已恢复为默认值 */
+  CONFIG_RESET_SUCCESS: '✓ 配置已恢复为默认值',
   /** 分隔线 */
   SEPARATOR: '────────────────────────────────────────',
   /** 粗分隔线 */
@@ -168,4 +170,9 @@ export const MESSAGES = {
   STATUS_CHANGE_CLEAN: '无变更',
   /** status 快照对应 worktree 已不存在 */
   STATUS_SNAPSHOT_ORPHANED: '(对应 worktree 已不存在)',
+  /** merge 后 pull 冲突 */
+  PULL_CONFLICT:
+    '自动 pull 时发生冲突，merge 已完成但远程同步失败\n  请手动解决冲突：\n  解决冲突后执行 git add . && git commit\n  然后执行 git push 推送到远程',
+  /** push 失败 */
+  PUSH_FAILED: '自动 push 失败，merge 和 pull 已完成\n  请手动执行 git push',
 } as const;

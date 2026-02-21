@@ -27,7 +27,7 @@ export function loadConfig(): ClawtConfig {
 /**
  * 将默认配置写入配置文件
  */
-function writeDefaultConfig(): void {
+export function writeDefaultConfig(): void {
   writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2), 'utf-8');
 }
 
