@@ -196,8 +196,23 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   // 步骤 7：根据配置决定是否自动 pull 和 push
   const autoPullPush = getConfigValue('autoPullPush');
   if (autoPullPush) {
-    gitPull(mainWorktreePath);
-    gitPush(mainWorktreePath);
+    // pull 阶段：检测冲突并给出针对性引导
+    try {
+      gitPull(mainWorktreePath);
+    } catch {
+      if (hasMergeConflict(mainWorktreePath)) {
+        printWarning(MESSAGES.PULL_CONFLICT);
+        return;
+      }
+      throw new ClawtError(MESSAGES.PULL_CONFLICT);
+    }
+    // push 阶段
+    try {
+      gitPush(mainWorktreePath);
+    } catch {
+      printWarning(MESSAGES.PUSH_FAILED);
+      return;
+    }
   } else {
     printInfo('已跳过自动 pull/push，请手动执行 git pull && git push');
   }

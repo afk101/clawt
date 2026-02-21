@@ -39,7 +39,7 @@ export const MESSAGES = {
   MERGE_SUCCESS_NO_MESSAGE: (branch: string, pushed: boolean) =>
     `✓ 分支 ${branch} 已成功合并到当前分支${pushed ? '\n  已推送到远程仓库' : ''}`,
   /** merge 冲突 */
-  MERGE_CONFLICT: '合并存在冲突，请手动处理',
+  MERGE_CONFLICT: '合并存在冲突，请手动处理：\n  解决冲突后执行 git add . && git merge --continue',
   /** merge 后清理 worktree 和分支成功 */
   WORKTREE_CLEANED: (branch: string) => `✓ 已清理 worktree 和分支: ${branch}`,
   /** 请提供提交信息 */
@@ -148,4 +148,9 @@ export const MESSAGES = {
   SYNC_SELECT_BRANCH: '请选择要同步的分支',
   /** sync 模糊匹配到多个结果提示 */
   SYNC_MULTIPLE_MATCHES: (name: string) => `"${name}" 匹配到多个分支，请选择：`,
+  /** merge 后 pull 冲突 */
+  PULL_CONFLICT:
+    '自动 pull 时发生冲突，merge 已完成但远程同步失败\n  请手动解决冲突：\n  解决冲突后执行 git add . && git commit\n  然后执行 git push 推送到远程',
+  /** push 失败 */
+  PUSH_FAILED: '自动 push 失败，merge 和 pull 已完成\n  请手动执行 git push',
 } as const;
