@@ -273,6 +273,28 @@ clawt list
 clawt list --json
 ```
 
+### `clawt status` — 显示项目全局状态总览
+
+```bash
+clawt status [--json]
+```
+
+| 参数 | 必填 | 说明 |
+| ---- | ---- | ---- |
+| `--json` | 否 | 以 JSON 格式输出完整状态数据 |
+
+显示项目全局状态总览，包括：主 worktree 当前分支及干净状态、所有 worktree 的变更状态（已提交/未提交/合并冲突/无变更）、与主分支的差异（领先/落后提交数、行数变更）、未清理的 validate 快照检测（标识孤立快照）。
+
+文本模式下输出分为三个区块：主 Worktree 状态、Worktree 列表（含变更状态标签和差异统计）、未清理的 Validate 快照。指定 `--json` 时以 JSON 格式输出完整状态数据，便于脚本解析。
+
+```bash
+# 文本格式输出（默认）
+clawt status
+
+# JSON 格式输出
+clawt status --json
+```
+
 ### `clawt reset` — 重置主 worktree 工作区和暂存区
 
 ```bash

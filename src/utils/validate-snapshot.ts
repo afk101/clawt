@@ -99,6 +99,23 @@ export function removeSnapshot(projectName: string, branchName: string): void {
 }
 
 /**
+ * 获取指定项目所有存在 validate 快照的分支名列表
+ * 通过扫描快照目录下的 .tree 文件名提取
+ * @param {string} projectName - 项目名
+ * @returns {string[]} 存在快照的分支名列表
+ */
+export function getProjectSnapshotBranches(projectName: string): string[] {
+  const projectDir = join(VALIDATE_SNAPSHOTS_DIR, projectName);
+  if (!existsSync(projectDir)) {
+    return [];
+  }
+  const files = readdirSync(projectDir);
+  return files
+    .filter((f: string) => f.endsWith('.tree'))
+    .map((f: string) => f.replace(/\.tree$/, ''));
+}
+
+/**
  * 删除指定项目的所有 validate 快照
  * @param {string} projectName - 项目名
  */

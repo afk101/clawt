@@ -8,6 +8,7 @@ import { RESUME_MESSAGES } from './resume.js';
 import { REMOVE_MESSAGES } from './remove.js';
 import { RESET_MESSAGES } from './reset.js';
 import { CONFIG_CMD_MESSAGES } from './config.js';
+import { STATUS_MESSAGES } from './status.js';
 
 /**
  * 提示消息模板
@@ -24,4 +25,5 @@ export const MESSAGES = {
   ...REMOVE_MESSAGES,
   ...RESET_MESSAGES,
   ...CONFIG_CMD_MESSAGES,
+  ...STATUS_MESSAGES,
 } as const;
