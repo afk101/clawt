@@ -1,5 +1,3 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import type { Command } from 'commander';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
@@ -9,7 +7,7 @@ import {
   validateMainWorktree,
   getGitTopLevel,
   getProjectName,
-  getProjectWorktreeDir,
+  getProjectWorktrees,
   isWorkingDirClean,
   gitAddAll,
   gitCommit,
@@ -21,7 +19,9 @@ import {
   printSuccess,
   printInfo,
   printWarning,
+  resolveTargetWorktree,
 } from '../utils/index.js';
+import type { WorktreeResolveMessages } from '../utils/index.js';
 
 /**
  * 注册 sync 命令：将主分支最新代码同步到目标 worktree
@@ -31,11 +31,19 @@ export function registerSyncCommand(program: Command): void {
   program
     .command('sync')
     .description('将主分支最新代码同步到目标 worktree')
-    .requiredOption('-b, --branch <branchName>', '要同步的分支名')
+    .option('-b, --branch <branchName>', '要同步的分支名（支持模糊匹配，不传则列出所有分支）')
     .action(async (options: SyncOptions) => {
       await handleSync(options);
     });
 }
+
+/** sync 命令的分支解析消息配置 */
+const SYNC_RESOLVE_MESSAGES: WorktreeResolveMessages = {
+  noWorktrees: MESSAGES.SYNC_NO_WORKTREES,
+  selectBranch: MESSAGES.SYNC_SELECT_BRANCH,
+  multipleMatches: MESSAGES.SYNC_MULTIPLE_MATCHES,
+  noMatch: MESSAGES.SYNC_NO_MATCH,
+};
 
 /**
  * 自动保存目标 worktree 中的未提交变更
@@ -77,16 +85,12 @@ function mergeMainBranch(worktreePath: string, mainBranch: string): boolean {
 async function handleSync(options: SyncOptions): Promise<void> {
   validateMainWorktree();
 
-  const { branch } = options;
-  logger.info(`sync 命令执行，分支: ${branch}`);
+  logger.info(`sync 命令执行，分支: ${options.branch ?? '(未指定)'}`);
 
-  // 检查目标 worktree 是否存在
-  const projectWorktreeDir = getProjectWorktreeDir();
-  const targetWorktreePath = join(projectWorktreeDir, branch);
-
-  if (!existsSync(targetWorktreePath)) {
-    throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(branch));
-  }
+  // 解析目标 worktree（精确匹配 / 模糊匹配 / 交互选择）
+  const worktrees = getProjectWorktrees();
+  const worktree = await resolveTargetWorktree(worktrees, SYNC_RESOLVE_MESSAGES, options.branch);
+  const { path: targetWorktreePath, branch } = worktree;
 
   // 获取主分支名（不硬编码 main/master）
   const mainWorktreePath = getGitTopLevel();

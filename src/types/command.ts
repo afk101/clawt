@@ -24,8 +24,8 @@ export interface ValidateOptions {
 
 /** merge 命令选项 */
 export interface MergeOptions {
-  /** 要合并的分支名 */
-  branch: string;
+  /** 要合并的分支名（可选，支持模糊匹配，不传则列出所有分支供选择） */
+  branch?: string;
   /** 提交信息（工作区有修改时必填） */
   message?: string;
 }
@@ -46,8 +46,8 @@ export interface ResumeOptions {
 
 /** sync 命令选项 */
 export interface SyncOptions {
-  /** 要同步的分支名 */
-  branch: string;
+  /** 要同步的分支名（可选，支持模糊匹配，不传则列出所有分支供选择） */
+  branch?: string;
 }
 
 /** list 命令选项 */

@@ -1,6 +1,4 @@
 import type { Command } from 'commander';
-import { join } from 'node:path';
-import { existsSync } from 'node:fs';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
@@ -9,7 +7,7 @@ import {
   validateMainWorktree,
   getProjectName,
   getGitTopLevel,
-  getProjectWorktreeDir,
+  getProjectWorktrees,
   isWorkingDirClean,
   gitAddAll,
   gitCommit,
@@ -30,7 +28,9 @@ import {
   gitMergeBase,
   gitResetSoftTo,
   getCurrentBranch,
+  resolveTargetWorktree,
 } from '../utils/index.js';
+import type { WorktreeResolveMessages } from '../utils/index.js';
 
 /**
  * 注册 merge 命令：合并验证过的分支到主 worktree
@@ -40,12 +40,20 @@ export function registerMergeCommand(program: Command): void {
   program
     .command('merge')
     .description('合并某个已验证的 worktree 分支到主 worktree')
-    .requiredOption('-b, --branch <branchName>', '要合并的分支名')
+    .option('-b, --branch <branchName>', '要合并的分支名（支持模糊匹配，不传则列出所有分支）')
     .option('-m, --message <message>', '提交信息（工作区有修改时必填）')
     .action(async (options: MergeOptions) => {
       await handleMerge(options);
     });
 }
+
+/** merge 命令的分支解析消息配置 */
+const MERGE_RESOLVE_MESSAGES: WorktreeResolveMessages = {
+  noWorktrees: MESSAGES.MERGE_NO_WORKTREES,
+  selectBranch: MESSAGES.MERGE_SELECT_BRANCH,
+  multipleMatches: MESSAGES.MERGE_MULTIPLE_MATCHES,
+  noMatch: MESSAGES.MERGE_NO_MATCH,
+};
 
 /**
  * 检测并处理目标分支的 auto-save 提交压缩
@@ -126,29 +134,27 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   validateMainWorktree();
 
   const mainWorktreePath = getGitTopLevel();
-  const projectDir = getProjectWorktreeDir();
-  const targetWorktreePath = join(projectDir, options.branch);
 
-  logger.info(`merge 命令执行，分支: ${options.branch}，提交信息: ${options.message ?? '(未提供)'}`);
+  logger.info(`merge 命令执行，分支: ${options.branch ?? '(未指定)'}，提交信息: ${options.message ?? '(未提供)'}`);
 
-  // 检查目标 worktree 是否存在
-  if (!existsSync(targetWorktreePath)) {
-    throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(options.branch));
-  }
+  // 解析目标 worktree（精确匹配 / 模糊匹配 / 交互选择）
+  const worktrees = getProjectWorktrees();
+  const worktree = await resolveTargetWorktree(worktrees, MERGE_RESOLVE_MESSAGES, options.branch);
+  const { path: targetWorktreePath, branch } = worktree;
 
   const projectName = getProjectName();
 
   // 步骤 3：主 worktree 状态检测
   if (!isWorkingDirClean(mainWorktreePath)) {
     // 如果存在 validate 快照状态，提示用户先清理
-    if (hasSnapshot(projectName, options.branch)) {
-      printWarning(MESSAGES.MERGE_VALIDATE_STATE_HINT(options.branch));
+    if (hasSnapshot(projectName, branch)) {
+      printWarning(MESSAGES.MERGE_VALIDATE_STATE_HINT(branch));
     }
     throw new ClawtError(MESSAGES.MAIN_WORKTREE_DIRTY);
   }
 
   // 步骤 3.5：检测是否需要 squash（sync 临时提交压缩）
-  const shouldExit = await handleSquashIfNeeded(targetWorktreePath, mainWorktreePath, options.branch, options.message);
+  const shouldExit = await handleSquashIfNeeded(targetWorktreePath, mainWorktreePath, branch, options.message);
   if (shouldExit) {
     return;
   }
@@ -165,7 +171,7 @@ async function handleMerge(options: MergeOptions): Promise<void> {
     gitCommit(options.message, targetWorktreePath);
   } else {
     // 目标 worktree 干净，检查是否有本地提交
-    if (!hasLocalCommits(options.branch, mainWorktreePath)) {
+    if (!hasLocalCommits(branch, mainWorktreePath)) {
       throw new ClawtError(MESSAGES.TARGET_WORKTREE_NO_CHANGES);
     }
     // 有本地提交，跳过提交步骤，直接合并
@@ -173,7 +179,7 @@ async function handleMerge(options: MergeOptions): Promise<void> {
 
   // 步骤 5：回到主 worktree 进行合并
   try {
-    gitMerge(options.branch, mainWorktreePath);
+    gitMerge(branch, mainWorktreePath);
   } catch (error) {
     // 检查是否有冲突
     if (hasMergeConflict(mainWorktreePath)) {
@@ -198,19 +204,19 @@ async function handleMerge(options: MergeOptions): Promise<void> {
 
   // 步骤 8：输出成功提示（根据是否有 message 选择对应模板）
   if (options.message) {
-    printSuccess(MESSAGES.MERGE_SUCCESS(options.branch, options.message, autoPullPush));
+    printSuccess(MESSAGES.MERGE_SUCCESS(branch, options.message, autoPullPush));
   } else {
-    printSuccess(MESSAGES.MERGE_SUCCESS_NO_MESSAGE(options.branch, autoPullPush));
+    printSuccess(MESSAGES.MERGE_SUCCESS_NO_MESSAGE(branch, autoPullPush));
   }
 
   // 步骤 9：merge 成功后确认并清理 worktree 和分支
-  const shouldCleanup = await shouldCleanupAfterMerge(options.branch);
+  const shouldCleanup = await shouldCleanupAfterMerge(branch);
   if (shouldCleanup) {
-    cleanupWorktreeAndBranch(targetWorktreePath, options.branch);
+    cleanupWorktreeAndBranch(targetWorktreePath, branch);
   }
 
   // 步骤 10：清理 validate 快照（merge 成功后快照已无意义）
-  if (hasSnapshot(projectName, options.branch)) {
-    removeSnapshot(projectName, options.branch);
+  if (hasSnapshot(projectName, branch)) {
+    removeSnapshot(projectName, branch);
   }
 }

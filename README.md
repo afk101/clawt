@@ -150,38 +150,66 @@ clawt validate --clean
 ### `clawt sync` — 将主分支代码同步到目标 worktree
 
 ```bash
+# 指定分支名（支持模糊匹配）
 clawt sync -b <branchName>
+
+# 不指定分支名（列出所有分支供选择）
+clawt sync
 ```
 
 | 参数 | 必填 | 说明 |
 | ---- | ---- | ---- |
-| `-b` | 是 | 要同步的分支名 |
+| `-b` | 否 | 要同步的分支名（支持模糊匹配，不传则列出所有分支供选择） |
 
 将主分支最新代码合并到目标 worktree 的分支中。如果目标 worktree 有未提交的修改，会自动保存后再合并。存在冲突时会提示用户手动解决。合并成功后会自动清除该分支的 validate 快照（代码基础已变化，旧快照无效）。
 
+**分支匹配策略：**
+- 传 `-b` 时，优先精确匹配分支名；未精确匹配则进行模糊匹配（子串匹配，大小写不敏感）；模糊匹配到多个时通过交互列表选择；无匹配时报错并列出所有可用分支
+- 不传 `-b` 时，列出当前项目所有可用分支供交互式选择（仅 1 个时自动使用）
+
 ```bash
-# 将主分支最新代码同步到目标 worktree
+# 精确匹配分支名
 clawt sync -b feature-scheme-1
+
+# 模糊匹配（匹配包含 "scheme" 的分支）
+clawt sync -b scheme
+
+# 交互式选择所有分支
+clawt sync
 ```
 
 ### `clawt merge` — 合并分支到主 worktree
 
 ```bash
+# 指定分支名（支持模糊匹配）
 clawt merge -b <branchName> [-m <commitMessage>]
+
+# 不指定分支名（列出所有分支供选择）
+clawt merge [-m <commitMessage>]
 ```
 
 | 参数 | 必填 | 说明 |
 | ---- | ---- | ---- |
-| `-b` | 是 | 要合并的分支名 |
+| `-b` | 否 | 要合并的分支名（支持模糊匹配，不传则列出所有分支供选择） |
 | `-m` | 否 | 提交信息（目标 worktree 工作区有修改时必填） |
 
 将目标 worktree 的变更合并到主 worktree 的当前分支。如果配置了 `autoPullPush: true`，合并后会自动推送到远程仓库。如果目标 worktree 工作区有未提交的修改，需要通过 `-m` 提供提交信息；如果目标 worktree 已经提交过（工作区干净但有本地提交），可以省略 `-m` 直接合并。merge 成功后会询问是否清理对应的 worktree 和分支（如果配置了 `autoDeleteBranch: true` 则自动清理）。
 
+**分支匹配策略：**
+- 传 `-b` 时，优先精确匹配分支名；未精确匹配则进行模糊匹配（子串匹配，大小写不敏感）；模糊匹配到多个时通过交互列表选择；无匹配时报错并列出所有可用分支
+- 不传 `-b` 时，列出当前项目所有可用分支供交互式选择（仅 1 个时自动使用）
+
 如果检测到目标分支存在 `clawt sync` 产生的临时提交（auto-save commit），会自动提示是否将所有提交压缩（squash）为一个。用户选择压缩后，所有 commit 会被 reset 到暂存区：如果提供了 `-m` 则直接提交并继续合并流程；如果未提供 `-m` 则提示用户前往目标 worktree 自行提交后重新执行 merge。
 
 ```bash
-# 目标 worktree 有未提交修改，需提供 -m
+# 精确匹配，目标 worktree 有未提交修改，需提供 -m
 clawt merge -b feature-scheme-1 -m "feat: 实现用户登录功能"
+
+# 模糊匹配（匹配包含 "scheme" 的分支）
+clawt merge -b scheme
+
+# 交互式选择所有分支
+clawt merge
 
 # 目标 worktree 已提交过，可省略 -m
 clawt merge -b feature-scheme-1
