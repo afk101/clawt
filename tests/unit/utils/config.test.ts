@@ -18,12 +18,14 @@ vi.mock('../../../src/utils/fs.js', () => ({
 }));
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadConfig, getConfigValue } from '../../../src/utils/config.js';
+import { loadConfig, getConfigValue, writeDefaultConfig, ensureClawtDirs } from '../../../src/utils/config.js';
 import { DEFAULT_CONFIG } from '../../../src/constants/index.js';
+import { ensureDir } from '../../../src/utils/fs.js';
 
 const mockedExistsSync = vi.mocked(existsSync);
 const mockedReadFileSync = vi.mocked(readFileSync);
 const mockedWriteFileSync = vi.mocked(writeFileSync);
+const mockedEnsureDir = vi.mocked(ensureDir);
 
 describe('loadConfig', () => {
   it('配置文件不存在时返回默认配置', () => {
@@ -61,5 +63,23 @@ describe('getConfigValue', () => {
   it('未设置时返回默认值', () => {
     mockedExistsSync.mockReturnValue(false);
     expect(getConfigValue('confirmDestructiveOps')).toBe(true);
+  });
+});
+
+describe('writeDefaultConfig', () => {
+  it('将默认配置写入配置文件', () => {
+    writeDefaultConfig();
+    expect(mockedWriteFileSync).toHaveBeenCalledWith(
+      expect.any(String),
+      JSON.stringify(DEFAULT_CONFIG, null, 2),
+      'utf-8',
+    );
+  });
+});
+
+describe('ensureClawtDirs', () => {
+  it('确保三个全局目录存在', () => {
+    ensureClawtDirs();
+    expect(mockedEnsureDir).toHaveBeenCalledTimes(3);
   });
 });

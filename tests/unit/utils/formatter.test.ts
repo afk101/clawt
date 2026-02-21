@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo } from '../../../src/utils/formatter.js';
+import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle } from '../../../src/utils/formatter.js';
 import { createWorktreeStatus } from '../../helpers/fixtures.js';
 
 describe('formatWorktreeStatus', () => {
@@ -35,6 +35,49 @@ describe('formatWorktreeStatus', () => {
     expect(result).not.toContain('无变更');
     expect(result).toContain('+10');
     expect(result).toContain('-0');
+  });
+});
+
+describe('isWorktreeIdle', () => {
+  it('全部为零且无未提交修改时返回 true', () => {
+    const status = createWorktreeStatus({ commitCount: 0, insertions: 0, deletions: 0, hasDirtyFiles: false });
+    expect(isWorktreeIdle(status)).toBe(true);
+  });
+
+  it('有提交时返回 false', () => {
+    const status = createWorktreeStatus({ commitCount: 1, insertions: 0, deletions: 0, hasDirtyFiles: false });
+    expect(isWorktreeIdle(status)).toBe(false);
+  });
+
+  it('有 insertions 时返回 false', () => {
+    const status = createWorktreeStatus({ commitCount: 0, insertions: 1, deletions: 0, hasDirtyFiles: false });
+    expect(isWorktreeIdle(status)).toBe(false);
+  });
+
+  it('有 deletions 时返回 false', () => {
+    const status = createWorktreeStatus({ commitCount: 0, insertions: 0, deletions: 1, hasDirtyFiles: false });
+    expect(isWorktreeIdle(status)).toBe(false);
+  });
+
+  it('有未提交修改时返回 false', () => {
+    const status = createWorktreeStatus({ commitCount: 0, insertions: 0, deletions: 0, hasDirtyFiles: true });
+    expect(isWorktreeIdle(status)).toBe(false);
+  });
+});
+
+describe('printSeparator', () => {
+  it('调用 console.log 输出分隔线', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    printSeparator();
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('printDoubleSeparator', () => {
+  it('调用 console.log 输出粗分隔线', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    printDoubleSeparator();
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -32,6 +32,8 @@ import {
   gitCommit,
   gitMerge,
   hasMergeConflict,
+  gitPull,
+  gitPush,
   gitResetHard,
   gitCleanForce,
   gitStashPush,
@@ -44,6 +46,7 @@ import {
   gitWorktreePrune,
   hasLocalCommits,
   getCommitCountAhead,
+  getCommitCountBehind,
   getDiffStat,
   gitDiffCachedBinary,
   gitApplyCachedFromStdin,
@@ -528,5 +531,46 @@ describe('gitApplyCachedCheck', () => {
     const patch = Buffer.from('bad patch');
     mockedExecCommandWithInput.mockImplementation(() => { throw new Error('conflict'); });
     expect(gitApplyCachedCheck(patch, '/repo')).toBe(false);
+  });
+});
+
+describe('gitPull', () => {
+  it('执行 git pull', () => {
+    gitPull('/repo');
+    expect(mockedExecCommand).toHaveBeenCalledWith('git pull', { cwd: '/repo' });
+  });
+
+  it('不传 cwd 时 cwd 为 undefined', () => {
+    gitPull();
+    expect(mockedExecCommand).toHaveBeenCalledWith('git pull', { cwd: undefined });
+  });
+});
+
+describe('gitPush', () => {
+  it('执行 git push', () => {
+    gitPush('/repo');
+    expect(mockedExecCommand).toHaveBeenCalledWith('git push', { cwd: '/repo' });
+  });
+
+  it('不传 cwd 时 cwd 为 undefined', () => {
+    gitPush();
+    expect(mockedExecCommand).toHaveBeenCalledWith('git push', { cwd: undefined });
+  });
+});
+
+describe('getCommitCountBehind', () => {
+  it('返回正确的落后提交数', () => {
+    mockedExecCommand.mockReturnValue('3');
+    expect(getCommitCountBehind('feature')).toBe(3);
+  });
+
+  it('返回 0 当输出无法解析', () => {
+    mockedExecCommand.mockReturnValue('');
+    expect(getCommitCountBehind('feature')).toBe(0);
+  });
+
+  it('命令失败时返回 0', () => {
+    mockedExecCommand.mockImplementation(() => { throw new Error('fail'); });
+    expect(getCommitCountBehind('feature')).toBe(0);
   });
 });

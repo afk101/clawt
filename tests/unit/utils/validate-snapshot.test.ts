@@ -39,6 +39,7 @@ import {
   writeSnapshot,
   removeSnapshot,
   removeProjectSnapshots,
+  getProjectSnapshotBranches,
 } from '../../../src/utils/validate-snapshot.js';
 
 const mockedExistsSync = vi.mocked(existsSync);
@@ -147,5 +148,29 @@ describe('removeProjectSnapshots', () => {
     mockedExistsSync.mockReturnValue(false);
     removeProjectSnapshots('proj');
     expect(mockedUnlinkSync).not.toHaveBeenCalled();
+  });
+});
+
+describe('getProjectSnapshotBranches', () => {
+  it('返回所有存在快照的分支名', () => {
+    mockedExistsSync.mockReturnValue(true);
+    // @ts-expect-error readdirSync 返回类型简化
+    mockedReaddirSync.mockReturnValue(['feat-a.tree', 'feat-a.head', 'feat-b.tree', 'feat-b.head']);
+    const result = getProjectSnapshotBranches('proj');
+    expect(result).toEqual(['feat-a', 'feat-b']);
+  });
+
+  it('没有 .tree 文件时返回空数组', () => {
+    mockedExistsSync.mockReturnValue(true);
+    // @ts-expect-error readdirSync 返回类型简化
+    mockedReaddirSync.mockReturnValue(['feat-a.head']);
+    const result = getProjectSnapshotBranches('proj');
+    expect(result).toEqual([]);
+  });
+
+  it('项目目录不存在时返回空数组', () => {
+    mockedExistsSync.mockReturnValue(false);
+    const result = getProjectSnapshotBranches('proj');
+    expect(result).toEqual([]);
   });
 });
