@@ -79,6 +79,18 @@ export function confirmDestructiveAction(dangerousCommand: string, description: 
 }
 
 /**
+ * 判断 worktree 是否处于空闲状态（0 个提交、无变更、无未提交修改）
+ * @param {WorktreeStatus} status - worktree 变更统计信息
+ * @returns {boolean} 是否空闲
+ */
+export function isWorktreeIdle(status: WorktreeStatus): boolean {
+  return status.commitCount === 0
+    && status.insertions === 0
+    && status.deletions === 0
+    && !status.hasDirtyFiles;
+}
+
+/**
  * 将 WorktreeStatus 格式化为带颜色的字符串
  * @param {WorktreeStatus} status - worktree 变更统计信息
  * @returns {string} 格式化后的状态字符串

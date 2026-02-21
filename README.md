@@ -246,7 +246,7 @@ clawt list [--json]
 | ---- | ---- | ---- |
 | `--json` | 否 | 以 JSON 格式输出（仅包含 path 和 branch） |
 
-列出当前项目在 `~/.clawt/worktrees/` 下的所有 worktree 及对应分支。指定 `--json` 时以 JSON 格式输出，便于脚本解析。
+列出当前项目在 `~/.clawt/worktrees/` 下的所有 worktree 及对应分支。文本模式下，如果某个 worktree 处于空闲状态（0 个提交、无变更、无未提交修改），其路径会以橙色高亮显示，方便快速识别可能需要清理或还未开始工作的 worktree。指定 `--json` 时以 JSON 格式输出，便于脚本解析。
 
 ```bash
 # 文本格式输出（默认）
