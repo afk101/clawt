@@ -25,6 +25,7 @@
   - [5.11 在已有 Worktree 中恢复会话](#511-在已有-worktree-中恢复会话)
   - [5.12 将主分支代码同步到目标 Worktree](#512-将主分支代码同步到目标-worktree)
   - [5.13 重置主 Worktree 工作区和暂存区](#513-重置主-worktree-工作区和暂存区)
+  - [5.14 项目全局状态总览](#514-项目全局状态总览)
 - [6. 错误处理规范](#6-错误处理规范)
 - [7. 非功能性需求](#7-非功能性需求)
   - [7.1 性能](#71-性能)
@@ -177,6 +178,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 交互式会话      | 5.11     |
 | `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
 | `clawt reset`         | 重置主 worktree 工作区和暂存区                       | 5.13     |
+| `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出）          | 5.14     |
 
 **全局选项：**
 
@@ -1119,6 +1121,139 @@ clawt reset
    ```
    ✓ 主 worktree 工作区和暂存区已重置
    ```
+
+---
+
+### 5.14 项目全局状态总览
+
+**命令：**
+
+```bash
+clawt status [--json]
+```
+
+**参数：**
+
+| 参数     | 必填 | 说明                                     |
+| -------- | ---- | ---------------------------------------- |
+| `--json` | 否   | 以 JSON 格式输出完整状态数据              |
+
+**使用场景：**
+
+在管理多个 worktree 时，快速了解项目全局状态：主 worktree 当前分支及干净状态、所有 worktree 的变更情况和与主分支的同步状态、未清理的 validate 快照。
+
+**运行流程：**
+
+1. **主 worktree 校验** (2.1)
+2. **收集主 worktree 状态**：
+   - 获取当前分支名（`getCurrentBranch()`）
+   - 检测工作区是否干净（`isWorkingDirClean()`）
+   - 获取项目名（`getProjectName()`）
+3. **收集各 worktree 详细状态**：
+   - 获取项目所有 worktree（`getProjectWorktrees()`）
+   - 对每个 worktree 收集以下信息：
+     - **变更状态**（优先级：合并冲突 > 未提交修改 > 已提交 > 无变更）
+     - **行数差异**（新增/删除行数，通过 `getDiffStat()` 获取）
+     - **提交差异**（相对于主分支的领先提交数 `getCommitCountAhead()` 和落后提交数 `getCommitCountBehind()`）
+     - **快照状态**（是否存在 validate 快照）
+4. **收集未清理的 validate 快照**：
+   - 通过 `getProjectSnapshotBranches()` 扫描快照目录下的 `.tree` 文件获取所有存在快照的分支名
+   - 对比现有 worktree 分支列表，标识孤立快照（对应 worktree 已不存在的快照）
+5. **输出状态信息**：
+   - 指定 `--json` → 以 JSON 格式输出完整状态数据（`JSON.stringify`）
+   - 未指定 → 以文本格式输出
+
+**文本输出格式（默认）：**
+
+输出分为三个区块：主 Worktree、Worktree 列表、未清理的 Validate 快照。
+
+```
+════════════════════════════════════════
+  项目状态总览: main-project
+════════════════════════════════════════
+
+  ◆ 主 Worktree
+    分支: main
+    状态: ✓ 干净
+
+────────────────────────────────────────
+
+  ◆ Worktree 列表 (2 个)
+
+  ● feature-login   [已提交]
+    +120 -30   3 个本地提交   与主分支同步
+    有 validate 快照
+
+  ● feature-signup   [未提交修改]
+    +45 -10   1 个本地提交   落后主分支 2 个提交
+
+────────────────────────────────────────
+
+  ◆ 未清理的 Validate 快照 (1 个)
+
+  ⚠ old-feature   (对应 worktree 已不存在)
+
+════════════════════════════════════════
+```
+
+**变更状态标签：**
+
+| 状态        | 标签           | 颜色   | 说明                          |
+| ----------- | -------------- | ------ | ----------------------------- |
+| `committed` | 已提交         | 绿色   | 有已提交内容，工作区干净       |
+| `uncommitted` | 未提交修改   | 黄色   | 有未提交的修改                 |
+| `conflict`  | 合并冲突       | 红色   | 存在合并冲突                   |
+| `clean`     | 无变更         | 灰色   | 工作区干净且无本地提交          |
+
+**差异统计行展示规则：**
+
+- 行数变更（`+N -N`）仅在有变更时展示
+- 本地提交数（`N 个本地提交`）仅在有提交时展示
+- 与主分支同步状态始终展示（落后时显示黄色，同步时显示绿色）
+
+**快照区块：**
+
+- 每个快照显示对应的分支名
+- 如果对应的 worktree 仍存在，显示蓝色圆点图标
+- 如果对应的 worktree 已不存在（孤立快照），显示黄色警告图标并标注 `(对应 worktree 已不存在)`
+
+**JSON 输出格式（`--json`）：**
+
+```json
+{
+  "main": {
+    "branch": "main",
+    "isClean": true,
+    "projectName": "main-project"
+  },
+  "worktrees": [
+    {
+      "path": "~/.clawt/worktrees/main-project/feature-login",
+      "branch": "feature-login",
+      "changeStatus": "committed",
+      "commitsAhead": 3,
+      "commitsBehind": 0,
+      "hasSnapshot": true,
+      "insertions": 120,
+      "deletions": 30
+    }
+  ],
+  "snapshots": [
+    {
+      "branch": "old-feature",
+      "worktreeExists": false
+    }
+  ],
+  "totalWorktrees": 1
+}
+```
+
+**实现要点：**
+
+- 类型定义在 `src/types/status.ts`：`WorktreeDetailedStatus`、`MainWorktreeStatus`、`SnapshotInfo`、`StatusResult`
+- 消息常量在 `MESSAGES.STATUS_*` 系列
+- `getCommitCountBehind()` 是新增的工具函数（在 `src/utils/git.ts`），通过 `git rev-list --count <branch>..HEAD` 计算落后提交数
+- `getProjectSnapshotBranches()` 是新增的工具函数（在 `src/utils/validate-snapshot.ts`），通过扫描快照目录下的 `.tree` 文件提取分支名列表
 
 ---
 
