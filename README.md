@@ -107,29 +107,44 @@ clawt resume
 ### `clawt validate` — 在主 worktree 验证分支变更
 
 ```bash
+# 指定分支名（支持模糊匹配）
 clawt validate -b <branchName> [--clean]
+
+# 不指定分支名（列出所有分支供选择）
+clawt validate [--clean]
 ```
 
 | 参数 | 必填 | 说明 |
 | ---- | ---- | ---- |
-| `-b` | 是 | 要验证的分支名 |
+| `-b` | 否 | 要验证的分支名（支持模糊匹配，不传则列出所有分支供选择） |
 | `--clean` | 否 | 清理 validate 状态（重置主 worktree 并删除快照） |
 
 将目标 worktree 的变更通过 `git diff`（三点 diff）迁移到主 worktree，方便在主 worktree 中直接测试，无需重新安装依赖。同时检测未提交修改和已提交 commit，确保所有变更都能被捕获。
+
+**分支匹配策略：**
+- 传 `-b` 时，优先精确匹配分支名；未精确匹配则进行模糊匹配（子串匹配，大小写不敏感）；模糊匹配到多个时通过交互列表选择；无匹配时报错并列出所有可用分支
+- 不传 `-b` 时，列出当前项目所有可用分支供交互式选择（仅 1 个时自动使用）
 
 支持增量模式：首次 validate 后会自动保存快照（通过 `git write-tree` 将变更存储为 git tree 对象，并记录当前 HEAD commit hash），再次 validate 同一分支时会将上次快照载入暂存区、最新变更保留在工作目录，用户可通过 `git diff` 查看两次 validate 之间的增量差异。当主分支 HEAD 发生变化（如合并了其他分支）时，会自动将旧变更 patch 重放到当前 HEAD 暂存区上，避免 diff 混入 HEAD 变化的内容；若 patch 存在冲突则自动降级为全量模式。使用 `--clean` 可清理 validate 状态（重置主 worktree 并删除快照文件）。
 
 > **提示：** 如果 validate 时 patch apply 失败（目标分支与主分支差异过大），可先执行 `clawt sync -b <branchName>` 同步主分支后重试。
 
 ```bash
-# 首次验证
+# 精确匹配分支名
 clawt validate -b feature-scheme-1
+
+# 模糊匹配（匹配包含 "scheme" 的分支）
+clawt validate -b scheme
+
+# 交互式选择所有分支
+clawt validate
 
 # 再次验证（增量模式，可通过 git diff 查看增量差异）
 clawt validate -b feature-scheme-1
 
-# 清理 validate 状态
+# 清理 validate 状态（同样支持模糊匹配）
 clawt validate -b feature-scheme-1 --clean
+clawt validate --clean
 ```
 
 ### `clawt sync` — 将主分支代码同步到目标 worktree

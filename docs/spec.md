@@ -346,14 +346,18 @@ Claude Code CLI 以 `--output-format json` 运行时，退出后会在 stdout �
 **命令：**
 
 ```bash
+# 指定分支名（支持模糊匹配）
 clawt validate -b <branchName> [--clean]
+
+# 不指定分支名（列出所有分支供选择）
+clawt validate [--clean]
 ```
 
 **参数：**
 
 | 参数      | 必填 | 说明                                                                     |
 | --------- | ---- | ------------------------------------------------------------------------ |
-| `-b`      | 是   | 要验证的 worktree 分支名（例如 `feature-scheme-1`）                        |
+| `-b`      | 否   | 要验证的 worktree 分支名（支持模糊匹配，不传则列出所有分支供选择）           |
 | `--clean` | 否   | 清理 validate 状态（重置主 worktree 并删除快照）                            |
 
 > **限制：** 单次只能验证一个分支，不支持批量验证。
@@ -373,12 +377,29 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
 当指定 `--clean` 选项时，执行清理逻辑后直接返回，不进入常规 validate 流程：
 
 1. **主 worktree 校验** (2.1)
-2. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
-3. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
-4. 删除对应分支的快照文件
-5. 输出清理成功提示
+2. **解析目标 worktree**：通过模糊匹配解析目标分支（匹配策略同下文常规 validate 流程中的描述）
+3. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
+4. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
+5. 删除对应分支的快照文件
+6. 输出清理成功提示
 
 #### 首次 validate（无历史快照）
+
+##### 步骤 0：解析目标 worktree
+
+根据 `-b` 参数解析目标 worktree，匹配策略如下：
+
+- **未传 `-b` 参数**：
+  - 获取当前项目所有 worktree
+  - 无可用 worktree → 报错退出
+  - 仅 1 个 worktree → 直接使用，无需选择
+  - 多个 worktree → 通过交互式列表（Enquirer.Select）让用户选择
+- **传了 `-b` 参数**：
+  1. **精确匹配优先**：在 worktree 列表中查找分支名完全相同的 worktree，找到则直接使用
+  2. **模糊匹配**（子串匹配，大小写不敏感）：
+     - 唯一匹配 → 直接使用
+     - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
+  3. **无匹配** → 报错退出，并列出所有可用分支名
 
 ##### 步骤 1：检测主 worktree 工作区状态
 
