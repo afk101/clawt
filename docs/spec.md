@@ -27,6 +27,10 @@
   - [5.13 重置主 Worktree 工作区和暂存区](#513-重置主-worktree-工作区和暂存区)
 - [6. 错误处理规范](#6-错误处理规范)
 - [7. 非功能性需求](#7-非功能性需求)
+  - [7.1 性能](#71-性能)
+  - [7.2 兼容性](#72-兼容性)
+  - [7.3 测试](#73-测试)
+  - [7.4 安全性](#74-安全性)
 
 ---
 
@@ -40,6 +44,7 @@
 | CLI 框架 | Commander.js                  |
 | 日志库   | winston (按日期滚动文件)       |
 | 交互式   | enquirer (选项选择/确认对话)   |
+| 测试     | Vitest + @vitest/coverage-v8               |
 | 构建     | tsup / tsc                    |
 | 分发     | pnpm 全局安装 (`pnpm add -g clawt`) |
 
@@ -1155,7 +1160,27 @@ clawt reset
 - Node.js >= 18
 - Git >= 2.15（worktree 功能稳定版本）
 
-### 7.3 安全性
+### 7.3 测试
+
+- 测试框架：Vitest，配置文件为 `vitest.config.ts`
+- 覆盖率工具：@vitest/coverage-v8，覆盖率报告格式为 text、lcov、html
+- 测试目录结构：`tests/unit/` 下按模块分组（`constants/`、`errors/`、`utils/`）
+- 测试辅助文件：
+  - `tests/helpers/setup.ts`：全局 setup，禁用 chalk 颜色输出避免 ANSI 转义码干扰断言
+  - `tests/helpers/fixtures.ts`：测试数据工厂，提供 `createWorktreeInfo()`、`createWorktreeStatus()`、`createWorktreeList()` 等工厂函数
+- 覆盖范围：`src/` 下的 `utils/`、`errors/`、`constants/` 全部关键模块，共 12 个测试文件、163 个测试用例
+- 覆盖率统计排除项：`src/index.ts`（入口文件）、`src/types/**`（类型定义）、`src/logger/**`（日志模块）
+- npm 脚本：
+  - `npm test`：执行全部测试（`vitest run`）
+  - `npm run test:watch`：监听模式（`vitest`）
+  - `npm run test:coverage`：执行测试并生成覆盖率报告（`vitest run --coverage`）
+- 测试配置特性：
+  - `restoreMocks: true`：每个测试后自动恢复 mock
+  - `clearMocks: true`：每个测试后自动清除 mock 调用记录
+  - `testTimeout: 10000`：单个测试超时 10 秒
+  - `environment: 'node'`：使用 Node.js 测试环境
+
+### 7.4 安全性
 
 - 不在日志中记录 Claude Code API 密钥等敏感信息
 - `--permission-mode bypassPermissions` 仅在 worktree 隔离环境中使用

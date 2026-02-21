@@ -4,4 +4,7 @@ dist/
 .DS_Store
 package-lock.json
 
+# 测试覆盖率报告
+coverage/
+
 
