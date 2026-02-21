@@ -425,3 +425,43 @@ export function gitWriteTree(cwd?: string): string {
 export function gitReadTree(treeHash: string, cwd?: string): void {
   execCommand(`git read-tree ${treeHash}`, { cwd });
 }
+
+/**
+ * 获取指定 commit 对应的 tree 对象 hash
+ * @param {string} commitHash - commit hash
+ * @param {string} [cwd] - 工作目录
+ * @returns {string} tree 对象的 hash
+ */
+export function getCommitTreeHash(commitHash: string, cwd?: string): string {
+  return execCommand(`git rev-parse ${commitHash}^{tree}`, { cwd });
+}
+
+/**
+ * 获取两个 tree 对象之间的 diff（patch 格式，含二进制）
+ * @param {string} baseTreeHash - 基准 tree hash
+ * @param {string} targetTreeHash - 目标 tree hash
+ * @param {string} [cwd] - 工作目录
+ * @returns {Buffer} diff patch 内容
+ */
+export function gitDiffTree(baseTreeHash: string, targetTreeHash: string, cwd?: string): Buffer {
+  logger.debug(`执行命令: git diff-tree -p --binary ${baseTreeHash} ${targetTreeHash}${cwd ? ` (cwd: ${cwd})` : ''}`);
+  return execSync(`git diff-tree -p --binary ${baseTreeHash} ${targetTreeHash}`, {
+    cwd,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+}
+
+/**
+ * 检测 patch 能否无冲突地应用到暂存区（干运行，不实际修改）
+ * @param {Buffer} patchContent - patch 内容（Buffer 格式）
+ * @param {string} [cwd] - 工作目录
+ * @returns {boolean} patch 能否成功应用
+ */
+export function gitApplyCachedCheck(patchContent: Buffer, cwd?: string): boolean {
+  try {
+    execCommandWithInput('git', ['apply', '--cached', '--check'], { input: patchContent, cwd });
+    return true;
+  } catch {
+    return false;
+  }
+}
