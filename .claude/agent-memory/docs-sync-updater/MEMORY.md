@@ -16,8 +16,10 @@
 
 ### README.md
 - 面向用户的使用文档
+- 全局选项在 `## 全局选项` 章节（位于 `## 使用前提` 和 `## 命令` 之间）
 - 每个命令一个 `###` 小节，含命令格式、参数表格、简要说明、示例
 - 配置文件说明在 `## 配置文件` 章节
+- 日志说明在 `## 日志` 章节（文档末尾）
 - 更新模式：更新命令说明段落，配置项表格
 
 ## 关键约定
@@ -90,3 +92,12 @@ Notes:
 - `removeSnapshot()` 同时清理 `.tree` 和 `.head` 文件
 - merge 成功后自动清理对应快照；merge 时主 worktree 脏 + 存在快照会输出警告提示
 - docs/spec.md 中 validate 章节（5.4）按 `--clean 模式`、`首次 validate`、`增量 validate` 三段描述
+
+## 全局选项
+
+- `--debug` 全局选项在 `src/index.ts` 通过 Commander.js `.option()` + `preAction` 钩子实现
+- `enableConsoleTransport()` 在 `src/logger/index.ts`，幂等地向 winston 添加 Console transport
+- 调试相关常量在 `src/constants/logger.ts`：`DEBUG_LOG_PREFIX`、`DEBUG_TIMESTAMP_FORMAT`
+- docs/spec.md 中 `--debug` 说明位于 `5.9 日志系统` 章节下的 `#### --debug 控制台调试输出` 子章节
+- docs/spec.md 中 `4. 命令总览` 的命令表格后有 `**全局选项：**` 表格
+- README.md 中 `## 全局选项` 章节（在 `## 使用前提` 和 `## 命令` 之间）
