@@ -5,13 +5,23 @@ import { ensureDir } from './fs.js';
 import { logger } from '../logger/index.js';
 
 /**
- * 获取指定项目和分支的 validate 快照文件路径
+ * 获取指定项目和分支的 validate 快照 tree 文件路径
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
  * @returns {string} tree hash 文件的绝对路径
  */
 export function getSnapshotPath(projectName: string, branchName: string): string {
   return join(VALIDATE_SNAPSHOTS_DIR, projectName, `${branchName}.tree`);
+}
+
+/**
+ * 获取指定项目和分支的 validate 快照 head 文件路径
+ * @param {string} projectName - 项目名
+ * @param {string} branchName - 分支名
+ * @returns {string} head commit hash 文件的绝对路径
+ */
+function getSnapshotHeadPath(projectName: string, branchName: string): string {
+  return join(VALIDATE_SNAPSHOTS_DIR, projectName, `${branchName}.head`);
 }
 
 /**
@@ -31,35 +41,60 @@ export function hasSnapshot(projectName: string, branchName: string): boolean {
  * @returns {string} tree 对象的 hash
  */
 export function readSnapshotTreeHash(projectName: string, branchName: string): string {
+  return readSnapshot(projectName, branchName).treeHash;
+}
+
+/**
+ * 读取指定项目和分支的 validate 快照（tree hash + HEAD commit hash）
+ * tree hash 从 .tree 文件读取，HEAD commit hash 从 .head 文件读取
+ * @param {string} projectName - 项目名
+ * @param {string} branchName - 分支名
+ * @returns {{ treeHash: string; headCommitHash: string }} 快照数据
+ */
+export function readSnapshot(projectName: string, branchName: string): { treeHash: string; headCommitHash: string } {
   const snapshotPath = getSnapshotPath(projectName, branchName);
+  const headPath = getSnapshotHeadPath(projectName, branchName);
   logger.debug(`读取 validate 快照: ${snapshotPath}`);
-  return readFileSync(snapshotPath, 'utf-8').trim();
+
+  const treeHash = existsSync(snapshotPath) ? readFileSync(snapshotPath, 'utf-8').trim() : '';
+  const headCommitHash = existsSync(headPath) ? readFileSync(headPath, 'utf-8').trim() : '';
+
+  return { treeHash, headCommitHash };
 }
 
 /**
  * 写入 validate 快照内容（自动创建目录）
+ * tree hash 写入 .tree 文件，HEAD commit hash 写入 .head 文件
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
  * @param {string} treeHash - git tree 对象的 hash
+ * @param {string} headCommitHash - 快照时主 worktree 的 HEAD commit hash
  */
-export function writeSnapshot(projectName: string, branchName: string, treeHash: string): void {
+export function writeSnapshot(projectName: string, branchName: string, treeHash: string, headCommitHash: string): void {
   const snapshotPath = getSnapshotPath(projectName, branchName);
+  const headPath = getSnapshotHeadPath(projectName, branchName);
   const snapshotDir = join(VALIDATE_SNAPSHOTS_DIR, projectName);
   ensureDir(snapshotDir);
   writeFileSync(snapshotPath, treeHash, 'utf-8');
-  logger.info(`已保存 validate 快照: ${snapshotPath}`);
+  writeFileSync(headPath, headCommitHash, 'utf-8');
+  logger.info(`已保存 validate 快照: ${snapshotPath}, ${headPath}`);
 }
 
 /**
- * 删除指定项目和分支的 validate 快照
+ * 删除指定项目和分支的 validate 快照（.tree + .head）
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
  */
 export function removeSnapshot(projectName: string, branchName: string): void {
   const snapshotPath = getSnapshotPath(projectName, branchName);
+  const headPath = getSnapshotHeadPath(projectName, branchName);
   if (existsSync(snapshotPath)) {
     unlinkSync(snapshotPath);
     logger.info(`已删除 validate 快照: ${snapshotPath}`);
+  }
+  if (existsSync(headPath)) {
+    unlinkSync(headPath);
+    logger.info(`已删除 validate 快照: ${headPath}`);
   }
 }
 

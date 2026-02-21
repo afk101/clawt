@@ -81,14 +81,19 @@ Notes:
 ## validate 快照机制
 
 - validate 命令支持首次/增量两种模式，通过 `hasSnapshot()` 判断
-- 快照路径：`~/.clawt/validate-snapshots/<projectName>/<branchName>.tree`（存储 git tree 对象 hash）
+- 快照由两个文件组成：`.tree`（git tree 对象 hash）和 `.head`（快照时主 worktree 的 HEAD commit hash）
+- 快照路径：`~/.clawt/validate-snapshots/<projectName>/<branchName>.tree` 和 `<branchName>.head`
 - 常量 `VALIDATE_SNAPSHOTS_DIR` 定义在 `src/constants/paths.ts`
 - validate 新增 `--clean` 选项（`ValidateOptions.clean?: boolean`）
-- 快照保存：`git add . → git write-tree → git restore --staged .`，将 tree hash 写入 `.tree` 文件
-- 增量模式核心：`git read-tree <旧 tree hash>` 将旧快照载入暂存区 + 新全量变更在工作目录 → `git diff` 可查看增量差异
-- tree 对象不依赖主分支 HEAD，无需一致性校验（旧方案需要 `.head` 文件校验 HEAD 一致性）
-- 增量 read-tree 失败时自动降级为全量模式（tree 对象可能被 git gc 回收）
-- git 层有 `gitWriteTree()`（返回 tree hash）和 `gitReadTree()`（载入暂存区）
+- 快照保存：`git add . → git write-tree → git rev-parse HEAD → git restore --staged .`，tree hash 写入 `.tree`，HEAD commit hash 写入 `.head`
+- 增量模式核心：检测 HEAD 是否变化决定策略
+  - HEAD 未变化：`git read-tree <旧 tree hash>` 直接载入暂存区
+  - HEAD 已变化：提取旧变更 patch（`git diff-tree` 旧 HEAD tree → 旧快照 tree），`git apply --cached` 重放到当前 HEAD 暂存区；有冲突则降级全量
+- 增量 read-tree / apply 失败时自动降级为全量模式
+- git 层工具函数：`gitWriteTree()`、`gitReadTree()`、`getCommitTreeHash()`、`gitDiffTree()`、`gitApplyCachedCheck()`
+- `readSnapshot()` 返回 `{ treeHash, headCommitHash }`，`writeSnapshot()` 接收 4 个参数（含 headCommitHash）
+- `removeSnapshot()` 同时清理 `.tree` 和 `.head` 文件
 - merge 成功后自动清理对应快照；merge 时主 worktree 脏 + 存在快照会输出警告提示
 - docs/spec.md 中 validate 章节（5.4）按 `--clean 模式`、`首次 validate`、`增量 validate` 三段描述
+- 增量 validate 步骤 5 按「HEAD 未变化」和「HEAD 已变化」两种情况分别描述
 - CLAUDE.md 中在 validate + merge 工作流章节用缩进列表描述两种模式
