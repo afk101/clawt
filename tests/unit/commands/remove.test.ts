@@ -18,9 +18,12 @@ vi.mock('../../../src/errors/index.js', () => ({
 vi.mock('../../../src/constants/index.js', () => ({
   MESSAGES: {
     NO_WORKTREES: '(无 worktree)',
-    WORKTREE_NOT_FOUND: (name: string) => `worktree ${name} 不存在`,
     WORKTREE_REMOVED: (path: string) => `✓ 已移除 worktree: ${path}`,
     REMOVE_PARTIAL_FAILURE: (failures: Array<{ path: string; error: string }>) => `${failures.length} 个移除失败`,
+    REMOVE_NO_WORKTREES: '当前项目没有可用的 worktree，无需移除',
+    REMOVE_SELECT_BRANCH: '请选择要移除的分支（空格选择，回车确认）',
+    REMOVE_MULTIPLE_MATCHES: (name: string) => `"${name}" 匹配到多个分支`,
+    REMOVE_NO_MATCH: (name: string, branches: string[]) => `未找到与 "${name}" 匹配的分支，可用：${branches.join(', ')}`,
   },
 }));
 
@@ -40,6 +43,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   confirmAction: vi.fn(),
   removeSnapshot: vi.fn(),
   removeProjectSnapshots: vi.fn(),
+  resolveTargetWorktrees: vi.fn(),
 }));
 
 import { registerRemoveCommand } from '../../../src/commands/remove.js';
@@ -55,6 +59,7 @@ import {
   removeProjectSnapshots,
   printSuccess,
   printError,
+  resolveTargetWorktrees,
 } from '../../../src/utils/index.js';
 
 const mockedGetProjectName = vi.mocked(getProjectName);
@@ -67,6 +72,7 @@ const mockedRemoveSnapshot = vi.mocked(removeSnapshot);
 const mockedRemoveProjectSnapshots = vi.mocked(removeProjectSnapshots);
 const mockedPrintSuccess = vi.mocked(printSuccess);
 const mockedPrintError = vi.mocked(printError);
+const mockedResolveTargetWorktrees = vi.mocked(resolveTargetWorktrees);
 
 beforeEach(() => {
   vi.mocked(validateMainWorktree).mockReset();
@@ -80,6 +86,7 @@ beforeEach(() => {
   mockedRemoveProjectSnapshots.mockReset();
   mockedPrintSuccess.mockReset();
   mockedPrintError.mockReset();
+  mockedResolveTargetWorktrees.mockReset();
 });
 
 describe('registerRemoveCommand', () => {
@@ -109,10 +116,13 @@ describe('handleRemove', () => {
     expect(mockedRemoveProjectSnapshots).toHaveBeenCalledWith('test-project');
   });
 
-  it('-b 指定分支名精确移除', async () => {
+  it('-b 精确匹配时通过 resolveTargetWorktrees 解析并移除', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
       { path: '/path/other', branch: 'other' },
+    ]);
+    mockedResolveTargetWorktrees.mockResolvedValue([
+      { path: '/path/feature', branch: 'feature' },
     ]);
     mockedGetConfigValue.mockReturnValue(true);
 
@@ -121,15 +131,21 @@ describe('handleRemove', () => {
     registerRemoveCommand(program);
     await program.parseAsync(['remove', '-b', 'feature'], { from: 'user' });
 
+    expect(mockedResolveTargetWorktrees).toHaveBeenCalled();
     expect(mockedRemoveWorktreeByPath).toHaveBeenCalledTimes(1);
     expect(mockedRemoveWorktreeByPath).toHaveBeenCalledWith('/path/feature');
   });
 
-  it('-b 匹配分支前缀（feature 匹配 feature-1、feature-2）', async () => {
+  it('-b 模糊匹配多个时通过 resolveTargetWorktrees 解析并批量移除', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature-1', branch: 'feature-1' },
       { path: '/path/feature-2', branch: 'feature-2' },
       { path: '/path/other', branch: 'other' },
+    ]);
+    // 模拟用户多选了两个
+    mockedResolveTargetWorktrees.mockResolvedValue([
+      { path: '/path/feature-1', branch: 'feature-1' },
+      { path: '/path/feature-2', branch: 'feature-2' },
     ]);
     mockedGetConfigValue.mockReturnValue(true);
 
@@ -141,8 +157,35 @@ describe('handleRemove', () => {
     expect(mockedRemoveWorktreeByPath).toHaveBeenCalledTimes(2);
   });
 
+  it('未指定 --all 或 -b 时通过 resolveTargetWorktrees 展示多选列表', async () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature-1', branch: 'feature-1' },
+      { path: '/path/feature-2', branch: 'feature-2' },
+    ]);
+    mockedResolveTargetWorktrees.mockResolvedValue([
+      { path: '/path/feature-1', branch: 'feature-1' },
+    ]);
+    mockedGetConfigValue.mockReturnValue(true);
+
+    const program = new Command();
+    program.exitOverride();
+    registerRemoveCommand(program);
+    await program.parseAsync(['remove'], { from: 'user' });
+
+    // 未传 branch 参数，resolveTargetWorktrees 的第三个参数应为 undefined
+    expect(mockedResolveTargetWorktrees).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.any(Object),
+      undefined,
+    );
+    expect(mockedRemoveWorktreeByPath).toHaveBeenCalledTimes(1);
+  });
+
   it('autoDeleteBranch=false 时询问用户是否删除分支', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature' },
+    ]);
+    mockedResolveTargetWorktrees.mockResolvedValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
     mockedGetConfigValue.mockReturnValue(false);
@@ -158,24 +201,11 @@ describe('handleRemove', () => {
     expect(mockedDeleteBranch).not.toHaveBeenCalled();
   });
 
-  it('未指定 --all 或 -b 时抛出错误', async () => {
-    mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
-    ]);
-
-    const program = new Command();
-    program.exitOverride();
-    registerRemoveCommand(program);
-
-    await expect(
-      program.parseAsync(['remove'], { from: 'user' }),
-    ).rejects.toThrow();
-  });
-
-  it('-b 指定不存在的分支时抛出错误', async () => {
+  it('-b 指定不存在的分支时 resolveTargetWorktrees 抛出错误', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/other', branch: 'other' },
     ]);
+    mockedResolveTargetWorktrees.mockRejectedValue(new Error('未找到与 "nonexistent" 匹配的分支'));
 
     const program = new Command();
     program.exitOverride();

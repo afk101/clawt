@@ -171,7 +171,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt run`           | 批量创建 worktree + 启动 Claude Code 执行任务    | 5.2      |
 | `clawt validate`      | 在主 worktree 验证某个 worktree 分支的变更        | 5.4      |
 | `clawt merge`         | 合并某个已验证的 worktree 分支到主 worktree       | 5.6      |
-| `clawt remove`        | 移除 worktree（支持单个/批量/全部）               | 5.5      |
+| `clawt remove`        | 移除 worktree（支持模糊匹配/多选/全部）             | 5.5      |
 | `clawt list`          | 列出当前项目所有 worktree（支持 `--json` 格式输出） | 5.8      |
 | `clawt config`        | 查看全局配置                                     | 5.10     |
 | `clawt config reset`  | 将配置恢复为默认值                                | 5.10     |
@@ -574,29 +574,42 @@ git apply --cached < patch
 **命令：**
 
 ```bash
-clawt remove [options]
+# 移除当前项目所有 worktree
+clawt remove --all
+
+# 指定分支名（支持模糊匹配）
+clawt remove -b <branchName>
+
+# 不指定参数（列出所有分支供多选）
+clawt remove
 ```
 
 **参数：**
 
-| 参数      | 说明                                                       |
-| --------- | ---------------------------------------------------------- |
-| `--all`   | 移除当前项目 (`~/.clawt/worktrees/<project>/`) 下所有 worktree |
-| `-b <branchName>` | 移除匹配 branchName 或 branchName-* 的 worktree      |
+| 参数      | 必填 | 说明                                                                   |
+| --------- | ---- | ---------------------------------------------------------------------- |
+| `--all`   | 否   | 移除当前项目 (`~/.clawt/worktrees/<project>/`) 下所有 worktree           |
+| `-b`      | 否   | 指定分支名（支持模糊匹配，不传则列出所有分支供多选）                       |
 
-**三种移除粒度：**
-
-| 粒度 | 命令示例                                 | 移除范围                                                      |
-| ---- | ---------------------------------------- | ------------------------------------------------------------- |
-| 全部 | `clawt remove --all`                     | `~/.clawt/worktrees/<project>/` 下所有 worktree                |
-| 分支 | `clawt remove -b feature-scheme`         | `~/.clawt/worktrees/<project>/feature-scheme-*` 的所有 worktree |
-| 单个 | `clawt remove -b feature-scheme-2`       | 仅移除 `feature-scheme-2` 对应的 worktree（完整分支名精确匹配）    |
+> **提示：** 不传 `--all` 也不传 `-b` 时，会列出当前项目所有 worktree 供交互式多选。
 
 **运行流程：**
 
 1. **主 worktree 校验** (2.1)
 2. **获取项目名** (2.2)
-3. 根据参数确定要移除的 worktree 列表
+3. **确定待移除的 worktree 列表**：
+   - **指定 `--all`** → 选中当前项目所有 worktree
+   - **未指定 `--all`** → 通过 `resolveTargetWorktrees` 解析目标 worktree（多选版本），匹配策略如下：
+     - **未传 `-b` 参数**：
+       - 无可用 worktree → 报错退出
+       - 仅 1 个 worktree → 直接使用，无需选择
+       - 多个 worktree → 通过交互式多选列表（Enquirer.MultiSelect）让用户选择（空格选择，回车确认）
+     - **传了 `-b` 参数**：
+       1. **精确匹配优先**：在 worktree 列表中查找分支名完全相同的 worktree，找到则直接使用
+       2. **模糊匹配**（子串匹配，大小写不敏感）：
+          - 唯一匹配 → 直接使用
+          - 多个匹配 → 通过交互式多选列表让用户从匹配结果中选择
+       3. **无匹配** → 报错退出，并列出所有可用分支名
 4. 列出即将移除的 worktree 及对应分支：
 
 ```

@@ -31,7 +31,7 @@
 - merge 成功消息根据 `autoPullPush` 配置动态显示推送状态
 - run 的中断清理在所有子进程退出后执行
 - run 交互式模式在创建 worktree 前检测分支是否已存在，已存在则提示使用 resume
-- remove 命令删除 worktree 时自动清理对应快照，`--all` 模式额外清理项目快照目录
+- remove 命令通过 `resolveTargetWorktrees` 支持模糊匹配+多选（-b 可选），删除 worktree 时自动清理对应快照，`--all` 模式额外清理项目快照目录
 - remove 批量操作时收集错误继续处理，最后汇总报告
 - 文档中文风格，技术术语保留英文（worktree, merge, branch, SIGINT 等）
 - cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
@@ -70,11 +70,14 @@ Notes:
 - resume 和 run（交互式模式）共用 `launchInteractiveClaude()`，该函数从 run.ts 提取到 src/utils/claude.ts
 - `claudeCodeCommand` 配置项同时影响 run 交互式模式和 resume 命令
 - reset 命令与 validate --clean 的区别：reset 不删除快照文件，validate --clean 会删除快照
-- `resolveTargetWorktree()` 是 resume、validate、merge 和 sync 共用的分支匹配函数（在 src/utils/worktree-matcher.ts）
-- `WorktreeResolveMessages` 接口实现命令间消息解耦，每个命令传入各自的提示文案
-- resume 的消息常量在 `MESSAGES.RESUME_*`，validate 的消息常量在 `MESSAGES.VALIDATE_*`，merge 的消息常量在 `MESSAGES.MERGE_*`，sync 的消息常量在 `MESSAGES.SYNC_*`，status 的消息常量在 `MESSAGES.STATUS_*`
-- resume、validate、merge 和 sync 的 `-b` 参数均为可选，匹配策略一致：精确→模糊（子串，大小写不敏感）→交互选择
-- validate 的交互式选择和 resume 使用同一个 `promptSelectBranch()`（Enquirer.Select）
+- `resolveTargetWorktree()` 是 resume、validate、merge 和 sync 共用的单选分支匹配函数（在 src/utils/worktree-matcher.ts）
+- `resolveTargetWorktrees()` 是多选分支匹配函数（在 src/utils/worktree-matcher.ts），目前被 remove 命令使用
+- `WorktreeResolveMessages` 接口用于单选命令的消息解耦，`WorktreeMultiResolveMessages` 接口用于多选命令的消息解耦
+- `promptSelectBranch()`（Enquirer.Select）用于单选交互，`promptMultiSelectBranches()`（Enquirer.MultiSelect）用于多选交互
+- resume 的消息常量在 `MESSAGES.RESUME_*`，validate 的消息常量在 `MESSAGES.VALIDATE_*`，merge 的消息常量在 `MESSAGES.MERGE_*`，sync 的消息常量在 `MESSAGES.SYNC_*`，status 的消息常量在 `MESSAGES.STATUS_*`，remove 的 fuzzy search 消息在 `MESSAGES.REMOVE_*`
+- resume、validate、merge 和 sync 的 `-b` 参数均为可选，匹配策略一致：精确→模糊（子串，大小写不敏感）→交互单选
+- remove 的 `-b` 参数可选，匹配策略：精确→模糊→交互多选；不传 `-b` 时列出所有分支供多选
+- validate 的交互式选择和 resume 使用同一个 `promptSelectBranch()`（Enquirer.Select）；remove 使用 `promptMultiSelectBranches()`（Enquirer.MultiSelect）
 
 ## validate 快照机制
 

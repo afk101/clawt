@@ -1,15 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
-import { findExactMatch, findFuzzyMatches, resolveTargetWorktree } from '../../../src/utils/worktree-matcher.js';
+import { findExactMatch, findFuzzyMatches, resolveTargetWorktree, resolveTargetWorktrees } from '../../../src/utils/worktree-matcher.js';
 import { createWorktreeInfo, createWorktreeList } from '../../helpers/fixtures.js';
 import { ClawtError } from '../../../src/errors/index.js';
-import type { WorktreeResolveMessages } from '../../../src/utils/worktree-matcher.js';
+import type { WorktreeResolveMessages, WorktreeMultiResolveMessages } from '../../../src/utils/worktree-matcher.js';
 
 // mock enquirer
 vi.mock('enquirer', () => ({
   default: {
-    Select: vi.fn().mockImplementation(({ choices }: { choices: Array<{ name: string }> }) => ({
-      run: vi.fn().mockResolvedValue(choices[0].name),
-    })),
+    Select: vi.fn().mockImplementation(function({ choices }: { choices: Array<{ name: string }> }) {
+      this.run = vi.fn().mockResolvedValue(choices[0].name);
+    }),
+    MultiSelect: vi.fn().mockImplementation(function({ choices }: { choices: Array<{ name: string }> }) {
+      this.run = vi.fn().mockResolvedValue(choices.map((c: { name: string }) => c.name));
+    }),
   },
 }));
 
@@ -112,5 +115,78 @@ describe('resolveTargetWorktree', () => {
       createWorktreeInfo({ branch: 'feature-b' }),
     ];
     await expect(resolveTargetWorktree(worktrees, testMessages, 'xyz')).rejects.toThrow(ClawtError);
+  });
+});
+
+/** 多选场景测试用消息配置 */
+const testMultiMessages: WorktreeMultiResolveMessages = {
+  noWorktrees: '无可用 worktree',
+  selectBranch: '请选择要移除的分支',
+  multipleMatches: (keyword: string) => `"${keyword}" 匹配到多个分支`,
+  noMatch: (keyword: string, branches: string[]) =>
+    `未找到匹配 "${keyword}"，可用：${branches.join(', ')}`,
+};
+
+describe('resolveTargetWorktrees', () => {
+  it('空列表抛出 ClawtError', async () => {
+    await expect(resolveTargetWorktrees([], testMultiMessages, 'any')).rejects.toThrow(ClawtError);
+    await expect(resolveTargetWorktrees([], testMultiMessages, 'any')).rejects.toThrow('无可用 worktree');
+  });
+
+  it('单个 worktree 且不传分支名时直接返回数组', async () => {
+    const worktrees = [createWorktreeInfo({ branch: 'only-one' })];
+    const result = await resolveTargetWorktrees(worktrees, testMultiMessages);
+    expect(result).toHaveLength(1);
+    expect(result[0].branch).toBe('only-one');
+  });
+
+  it('精确匹配优先，返回单元素数组', async () => {
+    const worktrees = [
+      createWorktreeInfo({ branch: 'feat' }),
+      createWorktreeInfo({ branch: 'feature' }),
+    ];
+    const result = await resolveTargetWorktrees(worktrees, testMultiMessages, 'feat');
+    expect(result).toHaveLength(1);
+    expect(result[0].branch).toBe('feat');
+  });
+
+  it('模糊匹配唯一结果直接返回单元素数组', async () => {
+    const worktrees = [
+      createWorktreeInfo({ branch: 'feature-login' }),
+      createWorktreeInfo({ branch: 'bugfix-auth' }),
+    ];
+    const result = await resolveTargetWorktrees(worktrees, testMultiMessages, 'login');
+    expect(result).toHaveLength(1);
+    expect(result[0].branch).toBe('feature-login');
+  });
+
+  it('模糊匹配多个结果时调用多选交互', async () => {
+    const worktrees = [
+      createWorktreeInfo({ branch: 'feature-login' }),
+      createWorktreeInfo({ branch: 'feature-logout' }),
+      createWorktreeInfo({ branch: 'bugfix-auth' }),
+    ];
+    const result = await resolveTargetWorktrees(worktrees, testMultiMessages, 'log');
+    // mock 的 MultiSelect 返回所有 choices，因此应返回匹配到的 2 个
+    expect(result).toHaveLength(2);
+    expect(result.map((w) => w.branch)).toEqual(['feature-login', 'feature-logout']);
+  });
+
+  it('不传分支名时多个 worktree 调用多选交互', async () => {
+    const worktrees = [
+      createWorktreeInfo({ branch: 'feature-a' }),
+      createWorktreeInfo({ branch: 'feature-b' }),
+    ];
+    const result = await resolveTargetWorktrees(worktrees, testMultiMessages);
+    // mock 的 MultiSelect 返回所有 choices
+    expect(result).toHaveLength(2);
+  });
+
+  it('无匹配抛出 ClawtError 并包含可用分支', async () => {
+    const worktrees = [
+      createWorktreeInfo({ branch: 'feature-a' }),
+      createWorktreeInfo({ branch: 'feature-b' }),
+    ];
+    await expect(resolveTargetWorktrees(worktrees, testMultiMessages, 'xyz')).rejects.toThrow(ClawtError);
   });
 });

@@ -92,7 +92,8 @@ clawt merge -b <branch>                        # 已提交过可省略 -m
 ### `clawt remove` — 移除 worktree
 
 ```bash
-clawt remove -b <branch>    # 移除指定分支的 worktree
+clawt remove -b <branch>    # 移除指定分支的 worktree（支持模糊匹配）
+clawt remove                 # 交互式多选要移除的 worktree
 clawt remove --all           # 移除当前项目下所有 worktree
 ```
 
