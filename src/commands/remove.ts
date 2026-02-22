@@ -19,7 +19,17 @@ import {
   confirmAction,
   removeSnapshot,
   removeProjectSnapshots,
+  resolveTargetWorktrees,
 } from '../utils/index.js';
+import type { WorktreeMultiResolveMessages } from '../utils/index.js';
+
+/** remove 命令的分支解析消息配置 */
+const REMOVE_RESOLVE_MESSAGES: WorktreeMultiResolveMessages = {
+  noWorktrees: MESSAGES.REMOVE_NO_WORKTREES,
+  selectBranch: MESSAGES.REMOVE_SELECT_BRANCH,
+  multipleMatches: MESSAGES.REMOVE_MULTIPLE_MATCHES,
+  noMatch: MESSAGES.REMOVE_NO_MATCH,
+};
 
 /**
  * 注册 remove 命令：移除 worktree
@@ -30,36 +40,10 @@ export function registerRemoveCommand(program: Command): void {
     .command('remove')
     .description('移除 worktree（支持单个/批量/全部）')
     .option('--all', '移除当前项目下所有 worktree')
-    .option('-b, --branch <branchName>', '指定分支名（完整分支名精确匹配）')
+    .option('-b, --branch <branchName>', '指定分支名（支持模糊匹配，不传则列出所有分支）')
     .action(async (options: RemoveOptions) => {
       await handleRemove(options);
     });
-}
-
-/**
- * 根据参数确定要移除的 worktree 列表
- * @param {RemoveOptions} options - 命令选项
- * @returns {Array<{path: string, branch: string}>} 待移除的 worktree 列表
- */
-function resolveWorktreesToRemove(options: RemoveOptions): Array<{ path: string; branch: string }> {
-  const allWorktrees = getProjectWorktrees();
-
-  if (options.all) {
-    return allWorktrees;
-  }
-
-  if (!options.branch) {
-    throw new ClawtError('请指定 --all 或 -b <branchName> 参数');
-  }
-
-  // 分支级移除：匹配 branchName 或 branchName-*
-  const matched = allWorktrees.filter(
-    (wt) => wt.branch === options.branch || wt.branch.startsWith(`${options.branch}-`),
-  );
-  if (matched.length === 0) {
-    throw new ClawtError(MESSAGES.WORKTREE_NOT_FOUND(options.branch));
-  }
-  return matched;
 }
 
 /**
@@ -72,7 +56,16 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   const projectName = getProjectName();
   logger.info(`remove 命令执行，项目: ${projectName}`);
 
-  const worktreesToRemove = resolveWorktreesToRemove(options);
+  const allWorktrees = getProjectWorktrees();
+
+  // 确定待移除的 worktree 列表
+  let worktreesToRemove;
+  if (options.all) {
+    worktreesToRemove = allWorktrees;
+  } else {
+    // 通过 fuzzy search 解析目标 worktree（精确匹配 / 模糊匹配 / 交互多选）
+    worktreesToRemove = await resolveTargetWorktrees(allWorktrees, REMOVE_RESOLVE_MESSAGES, options.branch);
+  }
 
   if (worktreesToRemove.length === 0) {
     printInfo(MESSAGES.NO_WORKTREES);
