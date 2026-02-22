@@ -1,4 +1,3 @@
-import chalk from 'chalk';
 import {
   SPINNER_FRAMES,
   SPINNER_INTERVAL_MS,
@@ -6,110 +5,11 @@ import {
   CLEAR_LINE,
   CURSOR_HIDE,
   CURSOR_SHOW,
-  TASK_STATUS_ICONS,
-  TASK_STATUS_LABELS,
   MESSAGES,
 } from '../constants/index.js';
-
-/** 单个任务的进度状态 */
-interface TaskProgress {
-  /** 任务序号（从 1 开始） */
-  index: number;
-  /** 分支名（用于显示） */
-  branch: string;
-  /** 任务状态 */
-  status: 'pending' | 'running' | 'done' | 'failed';
-  /** 任务启动时间戳 */
-  startedAt: number;
-  /** 任务完成时间戳 */
-  finishedAt: number | null;
-  /** 最后活动时间戳（stderr 有输出时更新） */
-  lastActiveAt: number;
-  /** 耗时（毫秒），完成后由 ClaudeCodeResult 填入 */
-  durationMs: number | null;
-  /** 费用（美元），完成后由 ClaudeCodeResult 填入 */
-  costUsd: number | null;
-}
-
-/**
- * 将毫秒时长格式化为人类可读字符串
- * 小于 60s 显示秒数，大于等于 60s 显示 分m秒s
- * @param {number} ms - 毫秒数
- * @returns {string} 格式化后的时长字符串
- */
-export function formatDuration(ms: number): string {
-  const totalSeconds = ms / 1000;
-  if (totalSeconds < 60) {
-    return `${totalSeconds.toFixed(1)}s`;
-  }
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-  return `${minutes}m${String(seconds).padStart(2, '0')}s`;
-}
-
-/**
- * 计算分支名的最大显示宽度，用于对齐
- * @param {TaskProgress[]} tasks - 任务列表
- * @returns {number} 最大分支名长度
- */
-function getMaxBranchWidth(tasks: TaskProgress[]): number {
-  return Math.max(...tasks.map((t) => t.branch.length));
-}
-
-/**
- * 渲染单个任务行（TTY 模式）
- * 格式: [1/3] feat-1  ⠹ 运行中 1m23s
- * @param {TaskProgress} task - 任务进度
- * @param {number} total - 总任务数
- * @param {number} maxBranchWidth - 分支名最大宽度（用于对齐）
- * @param {string} spinnerChar - 当前 spinner 帧字符
- * @returns {string} 渲染后的单行字符串（含 chalk 颜色）
- */
-function renderTaskLine(task: TaskProgress, total: number, maxBranchWidth: number, spinnerChar: string): string {
-  const indexStr = `[${task.index}/${total}]`;
-  const branchStr = task.branch.padEnd(maxBranchWidth);
-
-  switch (task.status) {
-    case 'pending': {
-      return `${indexStr} ${branchStr}  ${chalk.gray(TASK_STATUS_ICONS.PENDING)} ${chalk.gray(TASK_STATUS_LABELS.PENDING)}`;
-    }
-    case 'running': {
-      const elapsed = formatDuration(Date.now() - task.startedAt);
-      return `${indexStr} ${branchStr}  ${chalk.cyan(spinnerChar)} ${chalk.cyan(TASK_STATUS_LABELS.RUNNING)} ${chalk.gray(elapsed)}`;
-    }
-    case 'done': {
-      const duration = task.durationMs != null ? formatDuration(task.durationMs) : 'N/A';
-      const cost = task.costUsd != null ? `$${task.costUsd.toFixed(2)}` : '';
-      return `${indexStr} ${branchStr}  ${chalk.green(TASK_STATUS_ICONS.DONE)} ${chalk.green(TASK_STATUS_LABELS.DONE)}   ${chalk.gray(duration)}  ${chalk.yellow(cost)}`;
-    }
-    case 'failed': {
-      const duration = task.durationMs != null ? formatDuration(task.durationMs) : 'N/A';
-      return `${indexStr} ${branchStr}  ${chalk.red(TASK_STATUS_ICONS.FAILED)} ${chalk.red(TASK_STATUS_LABELS.FAILED)}   ${chalk.gray(duration)}`;
-    }
-  }
-}
-
-/**
- * 渲染汇总行，统计各状态的任务数
- * 格式: [2/8 运行中, 3/8 已完成, 3/8 排队中]
- * @param {TaskProgress[]} tasks - 任务列表
- * @param {number} total - 总任务数
- * @returns {string} 汇总行字符串
- */
-function renderSummaryLine(tasks: TaskProgress[], total: number): string {
-  const running = tasks.filter((t) => t.status === 'running').length;
-  const done = tasks.filter((t) => t.status === 'done').length;
-  const failed = tasks.filter((t) => t.status === 'failed').length;
-  const pending = tasks.filter((t) => t.status === 'pending').length;
-
-  const parts: string[] = [];
-  if (running > 0) parts.push(chalk.cyan(`${running}/${total} ${TASK_STATUS_LABELS.RUNNING}`));
-  if (done > 0) parts.push(chalk.green(`${done}/${total} ${TASK_STATUS_LABELS.DONE}`));
-  if (failed > 0) parts.push(chalk.red(`${failed}/${total} ${TASK_STATUS_LABELS.FAILED}`));
-  if (pending > 0) parts.push(chalk.gray(`${pending}/${total} ${TASK_STATUS_LABELS.PENDING}`));
-
-  return `[${parts.join(', ')}]`;
-}
+import { formatDuration } from './formatter.js';
+import type { TaskProgress } from './progress-render.js';
+import { getMaxBranchWidth, renderTaskLine, renderSummaryLine } from './progress-render.js';
 
 /**
  * 任务进度面板渲染器
@@ -139,9 +39,10 @@ export class ProgressRenderer {
   /**
    * 创建进度面板渲染器
    * @param {string[]} branches - 分支名列表，顺序对应任务列表
+   * @param {string[]} paths - worktree 路径列表，完成/失败后显示
    * @param {boolean} [allRunning=true] - 是否将所有任务初始化为 running 状态，false 时初始化为 pending
    */
-  constructor(branches: string[], allRunning: boolean = true) {
+  constructor(branches: string[], paths: string[], allRunning: boolean = true) {
     const now = Date.now();
     this.total = branches.length;
     this.frameIndex = 0;
@@ -154,6 +55,7 @@ export class ProgressRenderer {
     this.tasks = branches.map((branch, i) => ({
       index: i + 1,
       branch,
+      path: paths[i],
       status: allRunning ? 'running' : 'pending',
       startedAt: allRunning ? now : 0,
       finishedAt: null,
@@ -175,7 +77,7 @@ export class ProgressRenderer {
       // 非 TTY 降级：仅输出已为 running 的任务的启动信息
       for (const task of this.tasks) {
         if (task.status === 'running') {
-          console.log(MESSAGES.PROGRESS_TASK_STARTED(task.index, this.total, task.branch));
+          console.log(MESSAGES.PROGRESS_TASK_STARTED(task.index, this.total, task.branch, task.path));
         }
       }
       return;
@@ -218,7 +120,7 @@ export class ProgressRenderer {
 
     if (!this.isTTY) {
       // 非 TTY 降级：输出启动信息
-      console.log(MESSAGES.PROGRESS_TASK_STARTED(task.index, this.total, task.branch));
+      console.log(MESSAGES.PROGRESS_TASK_STARTED(task.index, this.total, task.branch, task.path));
     }
   }
 
@@ -239,7 +141,7 @@ export class ProgressRenderer {
       // 非 TTY 降级：直接输出完成信息
       const duration = formatDuration(durationMs);
       const cost = `$${costUsd.toFixed(2)}`;
-      console.log(MESSAGES.PROGRESS_TASK_DONE(task.index, this.total, task.branch, duration, cost));
+      console.log(MESSAGES.PROGRESS_TASK_DONE(task.index, this.total, task.branch, duration, cost, task.path));
     }
   }
 
@@ -257,7 +159,7 @@ export class ProgressRenderer {
     if (!this.isTTY) {
       // 非 TTY 降级：直接输出失败信息
       const duration = formatDuration(durationMs);
-      console.log(MESSAGES.PROGRESS_TASK_FAILED(task.index, this.total, task.branch, duration));
+      console.log(MESSAGES.PROGRESS_TASK_FAILED(task.index, this.total, task.branch, duration, task.path));
     }
   }
 

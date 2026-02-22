@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
-import type { TaskFileEntry } from '../types/index.js';
+import type { TaskFileEntry, ParseTaskFileOptions } from '../types/index.js';
 
 /** 匹配任务块的正则：<!-- CLAWT-TASKS:START --> ... <!-- CLAWT-TASKS:END --> */
 const TASK_BLOCK_REGEX = /<!-- CLAWT-TASKS:START -->([\s\S]*?)<!-- CLAWT-TASKS:END -->/g;
@@ -14,9 +14,11 @@ const BRANCH_LINE_REGEX = /^#\s*branch:\s*(.+)$/;
  * 解析任务文件内容，提取所有任务块
  * 每个块内 `# branch: <name>` 为分支名，其余行为任务描述
  * @param {string} content - 文件内容
+ * @param {ParseTaskFileOptions} [options] - 解析选项
  * @returns {TaskFileEntry[]} 解析出的任务列表
  */
-export function parseTaskFile(content: string): TaskFileEntry[] {
+export function parseTaskFile(content: string, options?: ParseTaskFileOptions): TaskFileEntry[] {
+  const branchRequired = options?.branchRequired ?? true;
   const entries: TaskFileEntry[] = [];
   let match: RegExpExecArray | null;
   let blockIndex = 0;
@@ -29,7 +31,7 @@ export function parseTaskFile(content: string): TaskFileEntry[] {
     const blockContent = match[1].trim();
     const lines = blockContent.split('\n');
 
-    let branch = '';
+    let branch: string | undefined;
     const taskLines: string[] = [];
 
     for (const line of lines) {
@@ -41,13 +43,17 @@ export function parseTaskFile(content: string): TaskFileEntry[] {
       }
     }
 
-    if (!branch) {
+    if (branchRequired && !branch) {
       throw new ClawtError(MESSAGES.TASK_FILE_MISSING_BRANCH(blockIndex));
     }
 
     const task = taskLines.join('\n').trim();
     if (!task) {
-      throw new ClawtError(MESSAGES.TASK_FILE_MISSING_TASK(branch));
+      throw new ClawtError(
+        branch
+          ? MESSAGES.TASK_FILE_MISSING_TASK(branch)
+          : MESSAGES.TASK_FILE_MISSING_TASK_BY_INDEX(blockIndex),
+      );
     }
 
     entries.push({ branch, task });
@@ -60,9 +66,10 @@ export function parseTaskFile(content: string): TaskFileEntry[] {
  * 读取并解析任务文件
  * 支持相对路径（基于 cwd）和绝对路径
  * @param {string} filePath - 文件路径
+ * @param {ParseTaskFileOptions} [options] - 解析选项
  * @returns {TaskFileEntry[]} 解析出的任务列表
  */
-export function loadTaskFile(filePath: string): TaskFileEntry[] {
+export function loadTaskFile(filePath: string, options?: ParseTaskFileOptions): TaskFileEntry[] {
   const absolutePath = resolve(filePath);
 
   if (!existsSync(absolutePath)) {
@@ -70,7 +77,7 @@ export function loadTaskFile(filePath: string): TaskFileEntry[] {
   }
 
   const content = readFileSync(absolutePath, 'utf-8');
-  const entries = parseTaskFile(content);
+  const entries = parseTaskFile(content, options);
 
   if (entries.length === 0) {
     throw new ClawtError(MESSAGES.TASK_FILE_EMPTY);

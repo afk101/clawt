@@ -44,12 +44,35 @@ clawt remove -b feature-auth
 ### `clawt run` — 创建 worktree 并执行任务
 
 ```bash
+# 单 worktree，打开 Claude Code 交互式界面（最常用）
+clawt run -b <branch>
+
 # 多任务并行（每个 --tasks 对应一个独立 worktree）
 clawt run -b <branch> --tasks "任务1" --tasks "任务2"
 
-# 单 worktree，打开 Claude Code 交互式界面
-clawt run -b <branch>
+# 从任务文件读取任务列表（使用文件中定义的分支名）
+clawt run -f tasks.md
+
+# 从任务文件读取任务，但用 -b 自动编号分支（文件中分支名可省略）
+clawt run -f tasks.md -b feat
 ```
+
+**任务文件格式：**
+
+```markdown
+<!-- CLAWT-TASKS:START -->
+# branch: feat-login
+实现用户登录功能
+<!-- CLAWT-TASKS:END -->
+
+<!-- CLAWT-TASKS:START -->
+# branch: fix-bug
+修复内存泄漏问题
+支持多行任务描述
+<!-- CLAWT-TASKS:END -->
+```
+
+> 使用 `-b` 时，文件中的 `# branch: ...` 行可省略，分支名由 `-b` 值自动编号（如 `feat-1`、`feat-2`）。
 
 按 `Ctrl+C` 可中断所有任务。
 

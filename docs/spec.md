@@ -168,7 +168,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | 命令                  | 说明                                           | 对应场景 |
 | --------------------- | ---------------------------------------------- | -------- |
 | `clawt create`        | 批量创建 worktree 及对应分支                     | 5.1      |
-| `clawt run`           | 批量创建 worktree + 启动 Claude Code 执行任务    | 5.2      |
+| `clawt run`           | 批量创建 worktree + 启动 Claude Code 执行任务（支持任务文件）    | 5.2      |
 | `clawt validate`      | 在主 worktree 验证某个 worktree 分支的变更        | 5.4      |
 | `clawt merge`         | 合并某个已验证的 worktree 分支到主 worktree       | 5.6      |
 | `clawt remove`        | 移除 worktree（支持模糊匹配/多选/全部）             | 5.5      |
@@ -259,7 +259,10 @@ clawt create -b <branchName> [-n <count>]
 # 方式一：通过 --tasks 参数直接指定任务（多任务并行）
 clawt run -b <branchName> --tasks <task1> --tasks <task2> --tasks <task3>
 
-# 方式二：不传 --tasks，在 worktree 中打开 Claude Code 交互式界面
+# 方式二：通过 -f 从任务文件读取任务列表
+clawt run -f <path>
+
+# 方式三：不传 --tasks 也不传 -f，在 worktree 中打开 Claude Code 交互式界面
 clawt run -b <branchName>
 ```
 
@@ -267,21 +270,67 @@ clawt run -b <branchName>
 
 | 参数      | 必填 | 说明                                                        |
 | --------- | ---- | ----------------------------------------------------------- |
-| `-b`      | 是   | 分支名                                                      |
+| `-b`      | 否   | 分支名（使用 `-f` 时可选，否则必填）                          |
 | `--tasks` | 否   | 任务描述（可多次指定，每个 --tasks 对应一个任务，任务数量即 worktree 数量）。不传则在 worktree 中打开 Claude Code 交互式界面 |
+| `-f`      | 否   | 从任务文件读取任务列表（与 `--tasks` 互斥）                    |
+| `-c`      | 否   | 最大并发数，`0` 表示不限制                                    |
+
+**互斥约束：**
+
+- `--file` 和 `--tasks` **不能同时使用**
+- 非 `-f` 模式必须指定 `-b`
 
 **交互式 Claude Code 界面模式：**
 
-当不传 `--tasks` 时，会创建单个 worktree，然后通过 `spawnSync` + `inherit stdio` 在该 worktree 中直接启动 Claude Code CLI 交互式界面，让用户与 Claude Code 直接交互。
+当不传 `--tasks` 也不传 `-f` 时，会创建单个 worktree，然后通过 `spawnSync` + `inherit stdio` 在该 worktree 中直接启动 Claude Code CLI 交互式界面，让用户与 Claude Code 直接交互。
 
 启动命令通过配置项 `claudeCodeCommand`（默认值 `claude`）指定，支持自定义命令及参数。
 
-**运行流程：**
+#### 任务文件格式
+
+任务文件使用 Markdown 文件中嵌入 HTML 注释标签的自定义格式，标签外的任何文本都不会被解析。
+
+```markdown
+这里可以写任何说明文字，会被忽略
+
+<!-- CLAWT-TASKS:START -->
+# branch: feat-login
+实现用户登录功能
+<!-- CLAWT-TASKS:END -->
+
+<!-- CLAWT-TASKS:START -->
+# branch: fix-bug
+修复内存泄漏问题
+这是多行任务描述
+可以写很多行
+<!-- CLAWT-TASKS:END -->
+```
+
+**格式规则：**
+
+1. **任务块界定**：每个任务用 `<!-- CLAWT-TASKS:START -->` 和 `<!-- CLAWT-TASKS:END -->` 包裹
+2. **分支名声明**：块内必须有一行 `# branch: <分支名>`（冒号前后的空格可灵活）
+3. **任务描述**：块内除分支名行以外的所有行，合并为任务描述（支持多行）
+4. **块外内容忽略**：标签外的任何文本都不会被解析
+5. **必填校验**：每个块必须包含任务描述；分支名默认必填，但使用 `-b` 参数时分支名为可选（会被忽略，用 `-b` 值自动编号）
+
+**解析实现：** `src/utils/task-file.ts` 中的 `parseTaskFile()` 和 `loadTaskFile()` 函数，类型定义为 `TaskFileEntry`（`src/types/taskFile.ts`）。
+
+#### 任务文件模式运行流程
+
+使用 `-f` 时的执行路径（`handleRun` → `handleRunFromFile`）：
+
+1. 调用 `loadTaskFile(options.file)` 读取解析文件
+2. **有 `-b` 参数**：忽略文件中的分支名，用 `-b` 值自动编号创建 worktree（`createWorktrees(branch, count)`）
+3. **无 `-b` 参数**：使用文件中每个任务的独立分支名，先 `sanitizeBranchName` 清理后调用 `createWorktreesByBranches(branches)`
+4. 调用 `executeBatchTasks(worktrees, tasks, concurrency)` 执行
+
+#### --tasks 模式运行流程
 
 1. 若传了 `--tasks`，解析得到任务数组 `tasks[]`；若未传，先检测分支是否已存在（已存在则提示使用 `clawt resume -b <branchName>` 恢复会话），然后创建单个 worktree 并启动 Claude Code 交互式界面（流程结束，不进入后续并行执行阶段）
 2. `n = tasks.length`
 3. 按照 **5.1** 的流程创建 `n` 个 worktree
-4. 对每个 worktree 并行启动 Claude Code CLI：
+4. 通过公共函数 `executeBatchTasks`（`src/utils/task-executor.ts`）启动批量任务执行，该函数负责进度面板渲染、SIGINT 中断处理、并发控制和汇总输出。对每个 worktree 并行启动 Claude Code CLI：
    ```bash
    cd ~/.clawt/worktrees/<project>/<branchName>-<i>
    claude -p "<tasks[i]>" --output-format json --permission-mode bypassPermissions
@@ -329,7 +378,7 @@ Claude Code CLI 以 `--output-format json` 运行时，退出后会在 stdout �
 1. 为每个 Claude Code 子进程维护状态（运行中 / 已完成 / 已失败）
 2. 监听每个子进程的 `close` 事件（基于 Node.js `ChildProcess` 的事件驱动机制）
 3. 当某个子进程触发 `close` 事件时，解析其 stdout 输出的 JSON
-4. 在主 worktree 的 clawt 终端实时输出通知：
+4. 在主 worktree 的 clawt 终端实时输出通知（进度面板每个任务行末尾显示 worktree 路径，终端可点击跳转）：
 
 ```
 ✓ [完成] worktree: ~/.clawt/worktrees/main-project/feature-scheme-1
@@ -1316,7 +1365,7 @@ clawt status [--json]
 - 测试辅助文件：
   - `tests/helpers/setup.ts`：全局 setup，禁用 chalk 颜色输出避免 ANSI 转义码干扰断言
   - `tests/helpers/fixtures.ts`：测试数据工厂，提供 `createWorktreeInfo()`、`createWorktreeStatus()`、`createWorktreeList()` 等工厂函数
-- 覆盖范围：`src/` 下的 `utils/`、`errors/`、`constants/` 全部关键模块，共 12 个测试文件、163 个测试用例
+- 覆盖范围：`src/` 下的 `commands/`、`utils/`、`errors/`、`constants/` 全部关键模块
 - 覆盖率统计排除项：`src/index.ts`（入口文件）、`src/types/**`（类型定义）、`src/logger/**`（日志模块）
 - npm 脚本：
   - `npm test`：执行全部测试（`vitest run`）

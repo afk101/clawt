@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle } from '../../../src/utils/formatter.js';
+import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle, formatDuration } from '../../../src/utils/formatter.js';
 import { createWorktreeStatus } from '../../helpers/fixtures.js';
 
 describe('formatWorktreeStatus', () => {
@@ -108,5 +108,31 @@ describe('print 函数', () => {
     printInfo('普通消息');
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy.mock.calls[0][0]).toBe('普通消息');
+  });
+});
+
+describe('formatDuration', () => {
+  it('小于 60 秒时显示秒数（保留一位小数）', () => {
+    expect(formatDuration(5200)).toBe('5.2s');
+  });
+
+  it('0 毫秒时显示 0.0s', () => {
+    expect(formatDuration(0)).toBe('0.0s');
+  });
+
+  it('59.9 秒时仍显示秒数', () => {
+    expect(formatDuration(59900)).toBe('59.9s');
+  });
+
+  it('大于等于 60 秒时显示分秒格式', () => {
+    expect(formatDuration(83000)).toBe('1m23s');
+  });
+
+  it('整分钟时秒数补零', () => {
+    expect(formatDuration(120000)).toBe('2m00s');
+  });
+
+  it('大数值时正确格式化', () => {
+    expect(formatDuration(3661000)).toBe('61m01s');
   });
 });

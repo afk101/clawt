@@ -118,3 +118,19 @@ export function formatWorktreeStatus(status: WorktreeStatus): string {
 
   return parts.join('   ');
 }
+
+/**
+ * 将毫秒时长格式化为人类可读字符串
+ * 小于 60s 显示秒数，大于等于 60s 显示 分m秒s
+ * @param {number} ms - 毫秒数
+ * @returns {string} 格式化后的时长字符串
+ */
+export function formatDuration(ms: number): string {
+  const totalSeconds = ms / 1000;
+  if (totalSeconds < 60) {
+    return `${totalSeconds.toFixed(1)}s`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  return `${minutes}m${String(seconds).padStart(2, '0')}s`;
+}

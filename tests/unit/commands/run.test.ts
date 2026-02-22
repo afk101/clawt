@@ -30,19 +30,62 @@ vi.mock('../../../src/constants/index.js', () => ({
     FILE_AND_TASKS_CONFLICT: '--file 和 --tasks 不能同时使用',
     BRANCH_OR_FILE_REQUIRED: '请指定 -b 或 -f',
     TASK_FILE_LOADED: (count: number, path: string) => `✓ 从 ${path} 加载了 ${count} 个任务`,
+    TASK_FILE_MISSING_TASK_BY_INDEX: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少任务描述`,
   },
 }));
 
-vi.mock('../../../src/utils/index.js', () => ({
-  validateMainWorktree: vi.fn(),
-  validateClaudeCodeInstalled: vi.fn(),
-  createWorktrees: vi.fn(),
-  sanitizeBranchName: vi.fn(),
-  checkBranchExists: vi.fn(),
+/**
+ * mock utils/index.js —— run.ts 的直接依赖
+ * 注意：executeBatchTasks 不在此 mock，由 utils/index.js 的 re-export 指向 task-executor.js 的真实实现
+ */
+vi.mock('../../../src/utils/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/index.js')>();
+  return {
+    ...actual,
+    validateMainWorktree: vi.fn(),
+    validateClaudeCodeInstalled: vi.fn(),
+    createWorktrees: vi.fn(),
+    sanitizeBranchName: vi.fn(),
+    checkBranchExists: vi.fn(),
+    getConfigValue: vi.fn().mockReturnValue(0),
+    printSuccess: vi.fn(),
+    printError: vi.fn(),
+    printWarning: vi.fn(),
+    printInfo: vi.fn(),
+    printSeparator: vi.fn(),
+    printDoubleSeparator: vi.fn(),
+    confirmAction: vi.fn(),
+    launchInteractiveClaude: vi.fn(),
+    loadTaskFile: vi.fn(),
+    createWorktreesByBranches: vi.fn(),
+  };
+});
+
+/** task-executor.ts 内部依赖的具体模块 mock */
+vi.mock('../../../src/utils/shell.js', () => ({
   spawnProcess: vi.fn(),
   killAllChildProcesses: vi.fn(),
+  execCommand: vi.fn(),
+  execCommandWithInput: vi.fn(),
+}));
+
+vi.mock('../../../src/utils/worktree.js', () => ({
   cleanupWorktrees: vi.fn(),
+  createWorktrees: vi.fn(),
+  getProjectWorktrees: vi.fn(),
+  getProjectWorktreeDir: vi.fn(),
+  getWorktreeStatus: vi.fn(),
+  createWorktreesByBranches: vi.fn(),
+}));
+
+vi.mock('../../../src/utils/config.js', () => ({
   getConfigValue: vi.fn().mockReturnValue(0),
+  loadConfig: vi.fn(),
+  writeDefaultConfig: vi.fn(),
+  ensureClawtDirs: vi.fn(),
+}));
+
+vi.mock('../../../src/utils/formatter.js', () => ({
   printSuccess: vi.fn(),
   printError: vi.fn(),
   printWarning: vi.fn(),
@@ -50,7 +93,13 @@ vi.mock('../../../src/utils/index.js', () => ({
   printSeparator: vi.fn(),
   printDoubleSeparator: vi.fn(),
   confirmAction: vi.fn(),
-  launchInteractiveClaude: vi.fn(),
+  confirmDestructiveAction: vi.fn(),
+  formatWorktreeStatus: vi.fn(),
+  isWorktreeIdle: vi.fn(),
+  formatDuration: vi.fn(),
+}));
+
+vi.mock('../../../src/utils/progress.js', () => ({
   ProgressRenderer: class {
     start = vi.fn();
     stop = vi.fn();
@@ -59,8 +108,6 @@ vi.mock('../../../src/utils/index.js', () => ({
     markDone = vi.fn();
     markFailed = vi.fn();
   },
-  loadTaskFile: vi.fn(),
-  createWorktreesByBranches: vi.fn(),
 }));
 
 import { registerRunCommand } from '../../../src/commands/run.js';
@@ -69,13 +116,13 @@ import {
   createWorktreesByBranches,
   sanitizeBranchName,
   checkBranchExists,
-  spawnProcess,
   printSuccess,
-  printInfo,
   launchInteractiveClaude,
   getConfigValue,
   loadTaskFile,
 } from '../../../src/utils/index.js';
+import { spawnProcess } from '../../../src/utils/shell.js';
+import { printInfo } from '../../../src/utils/formatter.js';
 
 const mockedCreateWorktrees = vi.mocked(createWorktrees);
 const mockedCreateWorktreesByBranches = vi.mocked(createWorktreesByBranches);
@@ -192,7 +239,6 @@ describe('handleRun', () => {
 
     expect(mockedCreateWorktrees).toHaveBeenCalledWith('feat', 2);
     expect(mockedSpawnProcess).toHaveBeenCalledTimes(2);
-    expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
   it('任务执行失败时在通知中报告', async () => {
@@ -349,15 +395,15 @@ describe('handleRun', () => {
     registerRunCommand(program);
     await program.parseAsync(['run', '-f', 'tasks.md'], { from: 'user' });
 
-    expect(mockedLoadTaskFile).toHaveBeenCalledWith('tasks.md');
+    expect(mockedLoadTaskFile).toHaveBeenCalledWith('tasks.md', { branchRequired: true });
     expect(mockedCreateWorktreesByBranches).toHaveBeenCalledWith(['feat-login', 'fix-bug']);
     expect(mockedSpawnProcess).toHaveBeenCalledTimes(2);
   });
 
   it('-f + -b 模式使用 -b 自动编号', async () => {
     mockedLoadTaskFile.mockReturnValue([
-      { branch: 'ignored-1', task: '任务1' },
-      { branch: 'ignored-2', task: '任务2' },
+      { task: '任务1' },
+      { task: '任务2' },
     ]);
     const worktrees = [
       { path: '/path/feat-1', branch: 'feat-1' },
@@ -380,6 +426,7 @@ describe('handleRun', () => {
     await program.parseAsync(['run', '-b', 'feat', '-f', 'tasks.md'], { from: 'user' });
 
     // 应使用 createWorktrees（带 -b 自动编号），而非 createWorktreesByBranches
+    expect(mockedLoadTaskFile).toHaveBeenCalledWith('tasks.md', { branchRequired: false });
     expect(mockedCreateWorktrees).toHaveBeenCalledWith('feat', 2);
     expect(mockedCreateWorktreesByBranches).not.toHaveBeenCalled();
     expect(mockedSpawnProcess).toHaveBeenCalledTimes(2);

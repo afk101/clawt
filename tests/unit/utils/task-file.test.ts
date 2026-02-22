@@ -23,6 +23,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     TASK_FILE_EMPTY: '任务文件中没有解析到有效任务',
     TASK_FILE_MISSING_BRANCH: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少分支名`,
     TASK_FILE_MISSING_TASK: (branch: string) => `分支 ${branch} 缺少任务描述`,
+    TASK_FILE_MISSING_TASK_BY_INDEX: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少任务描述`,
   },
 }));
 
@@ -131,6 +132,67 @@ describe('parseTaskFile', () => {
     expect(entries[0].branch).toBe('feat-login');
     expect(entries[1].branch).toBe('fix-bug');
   });
+
+  it('branchRequired: false 时缺少分支名不报错，branch 为 undefined', () => {
+    const content = `
+<!-- CLAWT-TASKS:START -->
+实现登录功能
+<!-- CLAWT-TASKS:END -->
+`;
+    const entries = parseTaskFile(content, { branchRequired: false });
+    expect(entries).toHaveLength(1);
+    expect(entries[0].branch).toBeUndefined();
+    expect(entries[0].task).toBe('实现登录功能');
+  });
+
+  it('branchRequired: false 时有分支名仍能正确解析', () => {
+    const content = `
+<!-- CLAWT-TASKS:START -->
+# branch: feat-login
+实现登录功能
+<!-- CLAWT-TASKS:END -->
+`;
+    const entries = parseTaskFile(content, { branchRequired: false });
+    expect(entries).toHaveLength(1);
+    expect(entries[0].branch).toBe('feat-login');
+    expect(entries[0].task).toBe('实现登录功能');
+  });
+
+  it('branchRequired: false 时混合有无分支名的块', () => {
+    const content = `
+<!-- CLAWT-TASKS:START -->
+# branch: feat-login
+实现登录功能
+<!-- CLAWT-TASKS:END -->
+
+<!-- CLAWT-TASKS:START -->
+修复内存泄漏问题
+<!-- CLAWT-TASKS:END -->
+`;
+    const entries = parseTaskFile(content, { branchRequired: false });
+    expect(entries).toHaveLength(2);
+    expect(entries[0].branch).toBe('feat-login');
+    expect(entries[0].task).toBe('实现登录功能');
+    expect(entries[1].branch).toBeUndefined();
+    expect(entries[1].task).toBe('修复内存泄漏问题');
+  });
+
+  it('branchRequired: false 时仍校验任务描述', () => {
+    const content = `
+<!-- CLAWT-TASKS:START -->
+<!-- CLAWT-TASKS:END -->
+`;
+    expect(() => parseTaskFile(content, { branchRequired: false })).toThrow('缺少任务描述');
+  });
+
+  it('不传 options 时默认要求分支名（向后兼容）', () => {
+    const content = `
+<!-- CLAWT-TASKS:START -->
+实现登录功能
+<!-- CLAWT-TASKS:END -->
+`;
+    expect(() => parseTaskFile(content)).toThrow('缺少分支名');
+  });
 });
 
 describe('loadTaskFile', () => {
@@ -156,6 +218,19 @@ describe('loadTaskFile', () => {
     const entries = loadTaskFile('tasks.md');
     expect(entries).toHaveLength(1);
     expect(entries[0].branch).toBe('feat-login');
+    expect(entries[0].task).toBe('实现登录功能');
+  });
+
+  it('透传 branchRequired: false 选项', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(`
+<!-- CLAWT-TASKS:START -->
+实现登录功能
+<!-- CLAWT-TASKS:END -->
+`);
+    const entries = loadTaskFile('tasks.md', { branchRequired: false });
+    expect(entries).toHaveLength(1);
+    expect(entries[0].branch).toBeUndefined();
     expect(entries[0].task).toBe('实现登录功能');
   });
 });

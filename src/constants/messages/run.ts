@@ -14,14 +14,14 @@ export const RUN_MESSAGES = {
   /** 中断后保留 worktree */
   INTERRUPT_KEPT: '已保留 worktree，可稍后使用 clawt remove 手动清理',
   /** 非 TTY 环境降级输出：任务启动 */
-  PROGRESS_TASK_STARTED: (index: number, total: number, branch: string) =>
-    `[${index}/${total}] ${branch} 启动`,
+  PROGRESS_TASK_STARTED: (index: number, total: number, branch: string, path: string) =>
+    `[${index}/${total}] ${branch} 启动  ${path}`,
   /** 非 TTY 环境降级输出：任务完成 */
-  PROGRESS_TASK_DONE: (index: number, total: number, branch: string, duration: string, cost: string) =>
-    `[${index}/${total}] ${branch} ✓ 完成 ${duration} ${cost}`,
+  PROGRESS_TASK_DONE: (index: number, total: number, branch: string, duration: string, cost: string, path: string) =>
+    `[${index}/${total}] ${branch} ✓ 完成 ${duration} ${cost}  ${path}`,
   /** 非 TTY 环境降级输出：任务失败 */
-  PROGRESS_TASK_FAILED: (index: number, total: number, branch: string, duration: string) =>
-    `[${index}/${total}] ${branch} ✗ 失败 ${duration}`,
+  PROGRESS_TASK_FAILED: (index: number, total: number, branch: string, duration: string, path: string) =>
+    `[${index}/${total}] ${branch} ✗ 失败 ${duration}  ${path}`,
   /** 并发限制提示 */
   CONCURRENCY_INFO: (concurrency: number, total: number) =>
     `并发限制: ${concurrency}，共 ${total} 个任务`,
@@ -35,6 +35,8 @@ export const RUN_MESSAGES = {
   TASK_FILE_MISSING_BRANCH: (blockIndex: number) => `任务文件第 ${blockIndex} 个任务块缺少分支名（# branch: ...）`,
   /** 任务文件中某个任务块缺少任务描述 */
   TASK_FILE_MISSING_TASK: (branch: string) => `任务文件中分支 ${branch} 缺少任务描述`,
+  /** 任务文件中某个任务块缺少任务描述（无分支名时按索引定位） */
+  TASK_FILE_MISSING_TASK_BY_INDEX: (blockIndex: number) => `任务文件第 ${blockIndex} 个任务块缺少任务描述`,
   /** --file 和 --tasks 不能同时使用 */
   FILE_AND_TASKS_CONFLICT: '--file 和 --tasks 不能同时使用',
   /** 任务文件加载成功 */

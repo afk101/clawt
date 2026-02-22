@@ -60,7 +60,11 @@
 
 run 命令有两种模式（自 claudeCodeCommand 特性后）：
 - 不传 `--tasks`：交互式界面模式（单 worktree + `launchInteractiveClaude` + spawnSync）
-- 传 `--tasks`：并行任务模式（多 worktree + `executeClaudeTask` + spawnProcess）
+- 传 `--tasks`：并行任务模式（多 worktree + `executeBatchTasks` + spawnProcess）
+  - 批量任务执行逻辑从 `src/commands/run.ts` 提取到 `src/utils/task-executor.ts`（公共函数 `executeBatchTasks`）
+  - 进度面板渲染逻辑从 `src/utils/progress.ts` 拆分出 `src/utils/progress-render.ts`（纯渲染函数 + TaskProgress 类型）
+  - `formatDuration` 从 `src/utils/progress.ts` 移至 `src/utils/formatter.ts`
+  - 进度面板每个任务行末尾显示 worktree 路径（终端可点击跳转）
 
 ## 命令清单（11 个）
 
