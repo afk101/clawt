@@ -19,22 +19,19 @@ npm i -g clawt
 ```bash
 # 1. 在项目根目录（包含 .git 的目录）下执行
 # 2. 并行执行 3 个任务，每个任务在独立的 worktree 中运行
-clawt run -b feature-auth \
-  --tasks "实现用户登录功能" \
-  --tasks "实现用户注册功能" \
-  --tasks "实现密码重置功能"
+clawt run -b <branch-1>
+clawt run -b <branch-2>
+clawt run -b <branch-3>
 
 # 3. 查看所有 worktree 状态
 clawt status
 
 # 4. 验证某个分支的变更（在主 worktree 中测试）
-clawt validate -b feature-auth-1
+clawt validate -b branch-1
 
 # 5. 确认无误后合并到主分支
-clawt merge -b feature-auth-1 -m "feat: 实现用户登录功能"
+clawt merge -b branch-1 -m "feat: 实现xxx功能"
 
-# 6. 清理不需要的 worktree
-clawt remove -b feature-auth
 ```
 
 ## 命令一览
