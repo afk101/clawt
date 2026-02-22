@@ -8,7 +8,7 @@
 - run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，-b 可选，支持模糊匹配（与 resume/validate 共享匹配逻辑），流程按步骤编号描述
 - config 命令对应 `5.10 查看和管理全局配置`，包含查看配置和 config reset 子命令两部分（使用 `####` 子标题区分）
-- resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，支持模糊匹配和交互式分支选择（-b 可选）
+- resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，统一使用多选交互（resolveTargetWorktrees），选 1 个当前终端恢复，选多个在独立终端 Tab 批量恢复（-b 可选）
 - validate 命令对应 `5.4 在主 Worktree 验证其他分支`，-b 可选，支持模糊匹配（与 resume 共享匹配逻辑）
 - sync 命令对应 `5.12 将主分支代码同步到目标 Worktree`，-b 可选，支持模糊匹配（与 resume/validate/merge 共享匹配逻辑）
 - status 命令对应 `5.14 项目全局状态总览`，支持 `--json` 格式输出，展示主 worktree 状态、各 worktree 详细状态、未清理快照
@@ -35,7 +35,11 @@
 - remove 批量操作时收集错误继续处理，最后汇总报告
 - 文档中文风格，技术术语保留英文（worktree, merge, branch, SIGINT 等）
 - cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
-- `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts），启动前自动检测会话历史并追加 `--continue`
+- `launchInteractiveClaude` 是 run（交互式模式）和 resume（单选模式）共用的公共函数（在 src/utils/claude.ts），启动前自动检测会话历史并追加 `--continue`
+- `launchInteractiveClaudeInNewTerminal` 是 resume 批量模式使用的函数（在 src/utils/claude.ts），通过 AppleScript 在新终端 Tab 中启动
+- `buildClaudeCommand` 构建完整 shell 命令字符串（在 src/utils/claude.ts），被 `launchInteractiveClaudeInNewTerminal` 调用
+- `openCommandInNewTerminalTab` 终端 Tab 管理函数（在 src/utils/terminal.ts），支持 iTerm2 和 Terminal.app
+- `detectTerminalApp` 终端类型检测函数（在 src/utils/terminal.ts），读取 `terminalApp` 配置项
 - `hasClaudeSessionHistory` 检测 `~/.claude/projects/<encoded-path>/` 下是否有 `.jsonl` 文件（在 src/utils/claude.ts）
 - `CLAUDE_PROJECTS_DIR` 常量（`~/.claude/projects/`）定义在 `src/constants/paths.ts`
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
@@ -76,14 +80,17 @@ Notes:
 - resume 和 run（交互式模式）共用 `launchInteractiveClaude()`，该函数从 run.ts 提取到 src/utils/claude.ts
 - `claudeCodeCommand` 配置项同时影响 run 交互式模式和 resume 命令
 - reset 命令与 validate --clean 的区别：reset 不删除快照文件，validate --clean 会删除快照
-- `resolveTargetWorktree()` 是 resume、validate、merge 和 sync 共用的单选分支匹配函数（在 src/utils/worktree-matcher.ts）
-- `resolveTargetWorktrees()` 是多选分支匹配函数（在 src/utils/worktree-matcher.ts），目前被 remove 命令使用
+- `resolveTargetWorktree()` 是 validate、merge 和 sync 共用的单选分支匹配函数（在 src/utils/worktree-matcher.ts）
+- `resolveTargetWorktrees()` 是多选分支匹配函数（在 src/utils/worktree-matcher.ts），被 remove 和 resume 命令使用
 - `WorktreeResolveMessages` 接口用于单选命令的消息解耦，`WorktreeMultiResolveMessages` 接口用于多选命令的消息解耦
 - `promptSelectBranch()`（Enquirer.Select）用于单选交互，`promptMultiSelectBranches()`（Enquirer.MultiSelect）用于多选交互
-- resume 的消息常量在 `MESSAGES.RESUME_*`，validate 的消息常量在 `MESSAGES.VALIDATE_*`，merge 的消息常量在 `MESSAGES.MERGE_*`，sync 的消息常量在 `MESSAGES.SYNC_*`，status 的消息常量在 `MESSAGES.STATUS_*`，remove 的 fuzzy search 消息在 `MESSAGES.REMOVE_*`
-- resume、validate、merge 和 sync 的 `-b` 参数均为可选，匹配策略一致：精确→模糊（子串，大小写不敏感）→交互单选
+- resume 的消息常量在 `MESSAGES.RESUME_*`（含 RESUME_ALL_CONFIRM / RESUME_ALL_SUCCESS 等批量恢复消息），validate 的消息常量在 `MESSAGES.VALIDATE_*`，merge 的消息常量在 `MESSAGES.MERGE_*`，sync 的消息常量在 `MESSAGES.SYNC_*`，status 的消息常量在 `MESSAGES.STATUS_*`，remove 的 fuzzy search 消息在 `MESSAGES.REMOVE_*`
+- resume 使用多选匹配策略：精确→模糊→交互多选（与 remove 一致），validate、merge 和 sync 使用单选匹配策略：精确→模糊→交互单选
 - remove 的 `-b` 参数可选，匹配策略：精确→模糊→交互多选；不传 `-b` 时列出所有分支供多选
-- validate 的交互式选择和 resume 使用同一个 `promptSelectBranch()`（Enquirer.Select）；remove 使用 `promptMultiSelectBranches()`（Enquirer.MultiSelect）
+- validate 的交互式选择使用 `promptSelectBranch()`（Enquirer.Select）；resume 和 remove 使用 `promptMultiSelectBranches()`（Enquirer.MultiSelect）
+- `promptMultiSelectBranches` 支持「全选」选项（顶部 [select-all]），通过扩展 MultiSelect 覆写 space() 实现全选 toggle
+- `SELECT_ALL_NAME` 和 `SELECT_ALL_LABEL` 常量定义在 `src/constants/prompt.ts`
+- `VALID_TERMINAL_APPS` 和 `ITERM2_APP_PATH` 常量定义在 `src/constants/terminal.ts`
 
 ## validate 快照机制
 
