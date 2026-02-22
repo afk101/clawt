@@ -26,7 +26,8 @@ vi.mock('../../../src/constants/index.js', () => ({
     MERGE_SQUASH_PENDING: (path: string, branch: string) => `请手动提交: ${path}`,
     MERGE_VALIDATE_STATE_HINT: (branch: string) => `分支 ${branch} 存在 validate 状态`,
     MAIN_WORKTREE_DIRTY: '主 worktree 有未提交的更改',
-    TARGET_WORKTREE_DIRTY_NO_MESSAGE: '目标 worktree 有未提交修改，请提供 -m 参数',
+    TARGET_WORKTREE_DIRTY_NO_MESSAGE: (worktreePath: string) =>
+      `${worktreePath} 有未提交修改，请提供 -m 参数`,
     TARGET_WORKTREE_NO_CHANGES: '没有可合并的变更',
     MERGE_CONFLICT: '合并冲突',
     PULL_CONFLICT: 'pull 冲突',

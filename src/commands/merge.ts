@@ -165,7 +165,7 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   if (!targetClean) {
     // 目标 worktree 有未提交修改，必须提供 -m
     if (!options.message) {
-      throw new ClawtError(MESSAGES.TARGET_WORKTREE_DIRTY_NO_MESSAGE);
+      throw new ClawtError(MESSAGES.TARGET_WORKTREE_DIRTY_NO_MESSAGE(targetWorktreePath));
     }
     gitAddAll(targetWorktreePath);
     gitCommit(options.message, targetWorktreePath);

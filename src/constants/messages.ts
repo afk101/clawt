@@ -45,7 +45,8 @@ export const MESSAGES = {
   /** 请提供提交信息 */
   COMMIT_MESSAGE_REQUIRED: '请提供提交信息（-m 参数）',
   /** 目标 worktree 有未提交修改但未指定 -m */
-  TARGET_WORKTREE_DIRTY_NO_MESSAGE: '目标 worktree 有未提交的修改，请通过 -m 参数提供提交信息',
+  TARGET_WORKTREE_DIRTY_NO_MESSAGE: (worktreePath: string) =>
+    `${worktreePath} 有未提交的修改，请通过 -m 参数提供提交信息`,
   /** 目标 worktree 既干净又无本地提交 */
   TARGET_WORKTREE_NO_CHANGES: '目标 worktree 没有任何可合并的变更（工作区干净且无本地提交）',
   /** 检测到用户中断 */

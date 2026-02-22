@@ -751,7 +751,7 @@ clawt merge [-m <commitMessage>]
 5. **根据目标 worktree 状态决定是否需要提交**
    - 检测目标 worktree 工作区是否干净（`git status --porcelain`）
    - **工作区有未提交修改**：
-     - 如果用户未提供 `-m`，提示 `目标 worktree 有未提交的修改，请通过 -m 参数提供提交信息`，退出
+     - 如果用户未提供 `-m`，提示 `<worktreePath> 有未提交的修改，请通过 -m 参数提供提交信息`（其中 `<worktreePath>` 为目标 worktree 的完整路径），退出
      - 提供了 `-m` → 执行提交：
        ```bash
        cd ~/.clawt/worktrees/<project>/<branchName>

@@ -11,7 +11,8 @@ export const MERGE_MESSAGES = {
   /** merge 后清理 worktree 和分支成功 */
   WORKTREE_CLEANED: (branch: string) => `✓ 已清理 worktree 和分支: ${branch}`,
   /** 目标 worktree 有未提交修改但未指定 -m */
-  TARGET_WORKTREE_DIRTY_NO_MESSAGE: '目标 worktree 有未提交的修改，请通过 -m 参数提供提交信息',
+  TARGET_WORKTREE_DIRTY_NO_MESSAGE: (worktreePath: string) =>
+    `${worktreePath} 有未提交的修改，请通过 -m 参数提供提交信息`,
   /** 目标 worktree 既干净又无本地提交 */
   TARGET_WORKTREE_NO_CHANGES: '目标 worktree 没有任何可合并的变更（工作区干净且无本地提交）',
   /** merge 命令检测到 validate 状态的提示 */
