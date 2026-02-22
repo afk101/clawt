@@ -29,6 +29,10 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     defaultValue: 0,
     description: 'run 命令默认最大并发数，0 表示不限制',
   },
+  terminalApp: {
+    defaultValue: 'auto',
+    description: '批量 resume 使用的终端应用：auto（自动检测）、iterm2、terminal（macOS）',
+  },
 };
 
 /**

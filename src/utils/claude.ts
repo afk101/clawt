@@ -5,6 +5,7 @@ import { ClawtError } from '../errors/index.js';
 import { APPEND_SYSTEM_PROMPT, CLAUDE_PROJECTS_DIR } from '../constants/index.js';
 import { getConfigValue } from './config.js';
 import { printInfo, printWarning } from './formatter.js';
+import { openCommandInNewTerminalTab } from './terminal.js';
 import type { WorktreeInfo } from '../types/index.js';
 
 /**
@@ -86,4 +87,45 @@ export function launchInteractiveClaude(worktree: WorktreeInfo, options: LaunchC
   if (result.status !== null && result.status !== 0) {
     printWarning(`Claude Code 退出码: ${result.status}`);
   }
+}
+
+/**
+ * 转义 shell 单引号
+ * 将字符串中的单引号替换为 '\'' 以安全嵌入单引号包裹的 shell 字符串
+ * @param {string} str - 原始字符串
+ * @returns {string} 转义后的字符串
+ */
+function escapeShellSingleQuote(str: string): string {
+  return str.replace(/'/g, "'\\''");
+}
+
+/**
+ * 构建在指定 worktree 中启动 Claude Code 的完整 shell 命令
+ * 生成格式：cd <path> && <claudeCommand> --append-system-prompt '...' [--continue]
+ * @param {WorktreeInfo} worktree - worktree 信息
+ * @param {boolean} hasPreviousSession - 是否存在历史会话（由调用方预计算，避免重复 I/O）
+ * @returns {string} 完整的 shell 命令字符串
+ */
+export function buildClaudeCommand(worktree: WorktreeInfo, hasPreviousSession: boolean): string {
+  const commandStr = getConfigValue('claudeCodeCommand');
+
+  const escapedPath = escapeShellSingleQuote(worktree.path);
+  const escapedPrompt = escapeShellSingleQuote(APPEND_SYSTEM_PROMPT);
+  const continueFlag = hasPreviousSession ? ' --continue' : '';
+
+  return `cd '${escapedPath}' && ${commandStr} --append-system-prompt '${escapedPrompt}'${continueFlag}`;
+}
+
+/**
+ * 在新终端 Tab 中启动 Claude Code 交互式会话
+ * 通过 AppleScript 打开独立终端 Tab，支持 Terminal.app 和 iTerm2
+ * @param {WorktreeInfo} worktree - worktree 信息
+ * @param {boolean} hasPreviousSession - 是否存在历史会话（由调用方预计算，避免重复 I/O）
+ */
+export function launchInteractiveClaudeInNewTerminal(worktree: WorktreeInfo, hasPreviousSession: boolean): void {
+  const command = buildClaudeCommand(worktree, hasPreviousSession);
+  const modeLabel = hasPreviousSession ? '继续' : '新对话';
+  const tabTitle = `clawt: ${worktree.branch}`;
+
+  openCommandInNewTerminalTab(command, tabTitle);
 }

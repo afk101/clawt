@@ -10,6 +10,8 @@ export interface ClawtConfig {
   confirmDestructiveOps: boolean;
   /** run 命令默认最大并发数，0 表示不限制 */
   maxConcurrency: number;
+  /** 批量 resume 使用的终端应用：'auto'（自动检测）、'iterm2'、'terminal'（macOS） */
+  terminalApp: string;
 }
 
 /** 单个配置项的完整定义（默认值 + 描述） */

@@ -1,6 +1,26 @@
 import Enquirer from 'enquirer';
 import { ClawtError } from '../errors/index.js';
+import { SELECT_ALL_NAME, SELECT_ALL_LABEL } from '../constants/index.js';
 import type { WorktreeInfo } from '../types/index.js';
+
+/** enquirer MultiSelect 选项条目的运行时结构 */
+interface MultiSelectChoice {
+  name: string;
+  message: string;
+  enabled: boolean;
+}
+
+/**
+ * enquirer MultiSelect 实例的运行时接口
+ * enquirer 类型声明未导出 MultiSelect，手动声明以消除 TypeScript 类型错误
+ */
+interface MultiSelectInstance {
+  focused: MultiSelectChoice | undefined;
+  choices: MultiSelectChoice[];
+  render(): void;
+  toggle(choice: MultiSelectChoice): void;
+  run(): Promise<string[]>;
+}
 
 /**
  * 分支解析时使用的消息文案配置
@@ -74,25 +94,68 @@ export async function promptSelectBranch(worktrees: WorktreeInfo[], message: str
 
 /**
  * 通过交互式多选列表让用户从 worktree 列表中选择多个分支
+ * 顶部提供「全选」选项，点击可切换全选/全不选
  * 用户可通过空格键选择/取消，回车键确认
  * @param {WorktreeInfo[]} worktrees - 可供选择的 worktree 列表
  * @param {string} message - 选择提示信息
  * @returns {Promise<WorktreeInfo[]>} 用户选择的 worktree 列表
  */
 export async function promptMultiSelectBranches(worktrees: WorktreeInfo[], message: string): Promise<WorktreeInfo[]> {
+  // 构建 choices 列表，顶部插入全选选项
+  const branchChoices = worktrees.map((wt) => ({
+    name: wt.branch,
+    message: wt.branch,
+  }));
+
+  const choices = [
+    { name: SELECT_ALL_NAME, message: SELECT_ALL_LABEL },
+    ...branchChoices,
+  ];
+
   // @ts-expect-error enquirer 类型声明未导出 MultiSelect 类，但运行时存在
-  const selectedBranches: string[] = await new Enquirer.MultiSelect({
+  const MultiSelect: new (options: Record<string, unknown>) => MultiSelectInstance = Enquirer.MultiSelect;
+
+  /**
+   * 扩展 MultiSelect，覆写 space() 方法实现全选 toggle
+   * 当焦点在「全选」选项上按空格时，切换所有分支选项的选中状态
+   */
+  class MultiSelectWithSelectAll extends MultiSelect {
+    space(this: MultiSelectInstance) {
+      if (!this.focused) return;
+
+      if (this.focused.name === SELECT_ALL_NAME) {
+        // 切换全选：如果全选项当前未选中则全选，否则全不选
+        const willEnable = !this.focused.enabled;
+        for (const ch of this.choices) {
+          ch.enabled = willEnable;
+        }
+        return this.render();
+      }
+
+      // 非全选选项：执行默认的 toggle 行为
+      this.toggle(this.focused);
+
+      // 同步全选选项状态：所有分支选项都选中时自动勾选全选，否则取消
+      const selectAllChoice = this.choices.find((ch) => ch.name === SELECT_ALL_NAME);
+      const branchItems = this.choices.filter((ch) => ch.name !== SELECT_ALL_NAME);
+      if (selectAllChoice) {
+        selectAllChoice.enabled = branchItems.every((ch) => ch.enabled);
+      }
+
+      return this.render();
+    }
+  }
+
+  const selectedBranches: string[] = await new MultiSelectWithSelectAll({
     message,
-    choices: worktrees.map((wt) => ({
-      name: wt.branch,
-      message: wt.branch,
-    })),
+    choices,
     // 使用空心圆/实心圆作为选中指示符
     symbols: {
       indicator: { on: '●', off: '○' },
     },
   }).run();
 
+  // 过滤掉全选选项，只返回实际的 worktree
   return worktrees.filter((wt) => selectedBranches.includes(wt.branch));
 }
 
