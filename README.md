@@ -80,10 +80,14 @@ clawt run -f tasks.md -b feat
 
 ```bash
 clawt resume -b <branch>   # 指定分支
-clawt resume                # 交互式选择
+clawt resume                # 交互式多选
 ```
 
+支持多选：选 1 个在当前终端恢复，选多个自动在独立终端 Tab 中批量恢复（仅 macOS）。
+
 如果目标 worktree 存在历史会话，会自动继续上次对话（`--continue`）。
+
+> **注意：** 使用 Terminal.app 批量恢复时，需要在「系统设置 → 隐私与安全性 → 辅助功能」中授权终端应用。iTerm2 无需额外授权。终端类型可通过配置项 `terminalApp` 指定。
 
 ### `clawt create` — 仅创建 worktree（不执行任务）
 
@@ -159,6 +163,8 @@ clawt config reset    # 恢复默认配置
 | `claudeCodeCommand` | `"claude"` | Claude Code CLI 启动命令 |
 | `autoPullPush` | `false` | merge 后自动 pull/push |
 | `confirmDestructiveOps` | `true` | 破坏性操作前确认 |
+| `maxConcurrency` | `0` | run 命令最大并发数，`0` 为不限制 |
+| `terminalApp` | `"auto"` | 批量 resume 使用的终端：`auto` / `iterm2` / `terminal` |
 
 ## 全局选项
 

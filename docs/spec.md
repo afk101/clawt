@@ -175,7 +175,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt list`          | 列出当前项目所有 worktree（支持 `--json` 格式输出） | 5.8      |
 | `clawt config`        | 查看全局配置                                     | 5.10     |
 | `clawt config reset`  | 将配置恢复为默认值                                | 5.10     |
-| `clawt resume`        | 在已有 worktree 中恢复 Claude Code 交互式会话      | 5.11     |
+| `clawt resume`        | 在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复） | 5.11     |
 | `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
 | `clawt reset`         | 重置主 worktree 工作区和暂存区                       | 5.13     |
 | `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出）          | 5.14     |
@@ -840,7 +840,9 @@ clawt merge [-m <commitMessage>]
   "autoDeleteBranch": false,
   "claudeCodeCommand": "claude",
   "autoPullPush": false,
-  "confirmDestructiveOps": true
+  "confirmDestructiveOps": true,
+  "maxConcurrency": 0,
+  "terminalApp": "auto"
 }
 ```
 
@@ -852,6 +854,8 @@ clawt merge [-m <commitMessage>]
 | `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
 | `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean、config reset）前是否提示确认 |
+| `maxConcurrency` | `number` | `0` | run 命令默认最大并发数，`0` 表示不限制 |
+| `terminalApp` | `string` | `"auto"` | 批量 resume 使用的终端应用：`auto`（自动检测）、`iterm2`、`terminal`（macOS） |
 
 ---
 
@@ -1054,7 +1058,7 @@ clawt config reset
 # 指定分支名（支持模糊匹配）
 clawt resume -b <branchName>
 
-# 不指定分支名（列出所有分支供选择）
+# 不指定分支名（列出所有分支供多选）
 clawt resume
 ```
 
@@ -1062,29 +1066,54 @@ clawt resume
 
 | 参数 | 必填 | 说明                                                  |
 | ---- | ---- | ----------------------------------------------------- |
-| `-b` | 否   | 要恢复的分支名（支持模糊匹配，不传则列出所有分支供选择） |
+| `-b` | 否   | 要恢复的分支名（支持模糊匹配，不传则列出所有分支供多选） |
 
 **使用场景：**
 
-当用户之前通过 `clawt run` 或 `clawt create` 创建了 worktree 但会话已结束，希望在该 worktree 中重新打开 Claude Code 交互式界面继续工作。
+当用户之前通过 `clawt run` 或 `clawt create` 创建了 worktree 但会话已结束，希望在该 worktree 中重新打开 Claude Code 交互式界面继续工作。支持一次选中多个分支，自动在独立终端 Tab 中批量恢复。
 
 **运行流程：**
 
 1. **主 worktree 校验** (2.1)
 2. **Claude Code CLI 校验**：确认 `claude` CLI 可用
-3. **解析目标 worktree**：根据 `-b` 参数解析目标 worktree，匹配策略如下：
+3. **解析目标 worktree（多选模式）**：统一使用 `resolveTargetWorktrees`（多选版本）解析目标 worktree，匹配策略如下：
    - **未传 `-b` 参数**：
      - 获取当前项目所有 worktree
      - 无可用 worktree → 报错退出
      - 仅 1 个 worktree → 直接使用，无需选择
-     - 多个 worktree → 通过交互式列表（Enquirer.Select）让用户选择
+     - 多个 worktree → 通过交互式多选列表（Enquirer.MultiSelect）让用户选择（空格选择，回车确认），顶部提供「全选」选项
    - **传了 `-b` 参数**：
      1. **精确匹配优先**：在 worktree 列表中查找分支名完全相同的 worktree，找到则直接使用
      2. **模糊匹配**（子串匹配，大小写不敏感）：
         - 唯一匹配 → 直接使用
-        - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
+        - 多个匹配 → 通过交互式多选列表让用户从匹配结果中选择
      3. **无匹配** → 报错退出，并列出所有可用分支名
-4. **启动 Claude Code 交互式界面**：通过 `launchInteractiveClaude()` 在目标 worktree 中启动 Claude Code CLI 交互式界面（使用 `spawnSync` + `inherit stdio`）
+4. **根据选中数量自动分发**：
+   - **用户未选择任何分支** → 直接退出
+   - **选中 1 个** → 在当前终端恢复（同原有行为），通过 `launchInteractiveClaude()` 启动（使用 `spawnSync` + `inherit stdio`）
+   - **选中多个** → 进入批量恢复流程（见下文）
+
+**批量恢复流程：**
+
+1. **计算会话状态**：一次性遍历所有选中的 worktree，通过 `hasClaudeSessionHistory()` 检测是否存在历史会话，构建 sessionMap 避免重复 I/O
+2. **输出预览**：列出即将恢复的分支及其会话状态（"继续上次对话"或"新对话"）
+3. **用户确认**：提示即将在 N 个独立终端 Tab 中恢复会话，等待用户确认
+4. **逐个在新终端 Tab 中启动**：通过 `launchInteractiveClaudeInNewTerminal()` 构建 shell 命令并通过 AppleScript 在新终端 Tab 中执行
+5. **输出完成提示**
+
+**终端 Tab 管理：**
+
+批量恢复通过 `openCommandInNewTerminalTab()`（`src/utils/terminal.ts`）在新终端 Tab 中启动 Claude Code。终端类型由配置项 `terminalApp` 控制：
+
+| 配置值     | 行为                                                         |
+| ---------- | ------------------------------------------------------------ |
+| `auto`     | 自动检测：优先检测 iTerm2 是否已安装（`/Applications/iTerm.app`），已安装则使用 iTerm2，否则降级到 Terminal.app |
+| `iterm2`   | 强制使用 iTerm2                                               |
+| `terminal` | 强制使用 Terminal.app                                         |
+
+**平台限制：** 批量恢复目前仅支持 macOS 平台（通过 AppleScript 打开终端 Tab）。非 macOS 平台会抛出错误。
+
+**权限要求：** Terminal.app 通过 System Events 模拟键盘操作（`Cmd+T`）新建 Tab，需要在「系统设置 → 隐私与安全性 → 辅助功能」中授权终端应用。iTerm2 使用原生 AppleScript 接口，无需辅助功能权限。
 
 启动命令通过配置项 `claudeCodeCommand`（默认值 `claude`）指定，与 `clawt run` 不传 `--tasks` 时的交互式界面行为一致。
 
