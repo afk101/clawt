@@ -52,7 +52,7 @@ export { loadConfig, writeDefaultConfig, getConfigValue, ensureClawtDirs } from 
 export { printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus, isWorktreeIdle, formatDuration } from './formatter.js';
 export { ensureDir, removeEmptyDir } from './fs.js';
 export { multilineInput } from './prompt.js';
-export { launchInteractiveClaude } from './claude.js';
+export { launchInteractiveClaude, hasClaudeSessionHistory } from './claude.js';
 export { getSnapshotPath, hasSnapshot, readSnapshotTreeHash, readSnapshot, writeSnapshot, removeSnapshot, removeProjectSnapshots, getProjectSnapshotBranches } from './validate-snapshot.js';
 export { findExactMatch, findFuzzyMatches, promptSelectBranch, promptMultiSelectBranches, resolveTargetWorktree, resolveTargetWorktrees } from './worktree-matcher.js';
 export type { WorktreeResolveMessages, WorktreeMultiResolveMessages } from './worktree-matcher.js';

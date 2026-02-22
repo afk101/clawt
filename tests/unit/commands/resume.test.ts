@@ -68,7 +68,7 @@ describe('handleResume', () => {
     expect(mockedValidateMainWorktree).toHaveBeenCalled();
     expect(mockedValidateClaudeCodeInstalled).toHaveBeenCalled();
     expect(mockedResolveTargetWorktree).toHaveBeenCalled();
-    expect(mockedLaunchInteractiveClaude).toHaveBeenCalledWith(worktree);
+    expect(mockedLaunchInteractiveClaude).toHaveBeenCalledWith(worktree, { autoContinue: true });
   });
 
   it('不传 -b 时也能调用 resolveTargetWorktree', async () => {

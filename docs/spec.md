@@ -1088,6 +1088,8 @@ clawt resume
 
 启动命令通过配置项 `claudeCodeCommand`（默认值 `claude`）指定，与 `clawt run` 不传 `--tasks` 时的交互式界面行为一致。
 
+**会话自动续接：** 启动前会自动检测该 worktree 是否存在 Claude Code 历史会话（通过检查 `~/.claude/projects/<encoded-path>/` 下是否有 `.jsonl` 文件判断），如果存在则自动追加 `--continue` 参数继续上次对话，否则打开新对话。启动信息中会显示当前模式（"继续上次对话"或"新对话"）。路径编码规则：将绝对路径中所有非字母数字字符替换为 `-`（与 Claude Code 源码的编码逻辑一致）。
+
 ---
 
 ### 5.12 将主分支代码同步到目标 Worktree

@@ -15,3 +15,6 @@ export const WORKTREES_DIR = join(CLAWT_HOME, 'worktrees');
 
 /** validate 快照目录 ~/.clawt/validate-snapshots/ */
 export const VALIDATE_SNAPSHOTS_DIR = join(CLAWT_HOME, 'validate-snapshots');
+
+/** Claude Code 项目会话目录 ~/.claude/projects/ */
+export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');

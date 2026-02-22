@@ -48,6 +48,6 @@ async function handleResume(options: ResumeOptions): Promise<void> {
   const worktrees = getProjectWorktrees();
   const worktree = await resolveTargetWorktree(worktrees, RESUME_RESOLVE_MESSAGES, options.branch);
 
-  // 启动 Claude Code 交互式界面
-  launchInteractiveClaude(worktree);
+  // 启动 Claude Code 交互式界面（resume 自动续接历史会话）
+  launchInteractiveClaude(worktree, { autoContinue: true });
 }

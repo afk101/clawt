@@ -83,6 +83,8 @@ clawt resume -b <branch>   # 指定分支
 clawt resume                # 交互式选择
 ```
 
+如果目标 worktree 存在历史会话，会自动继续上次对话（`--continue`）。
+
 ### `clawt create` — 仅创建 worktree（不执行任务）
 
 ```bash

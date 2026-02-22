@@ -35,7 +35,9 @@
 - remove 批量操作时收集错误继续处理，最后汇总报告
 - 文档中文风格，技术术语保留英文（worktree, merge, branch, SIGINT 等）
 - cleanupWorktrees 是 merge 和 run 共用的公共清理函数（在 src/utils/worktree.ts）
-- `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts）
+- `launchInteractiveClaude` 是 run（交互式模式）和 resume 共用的公共函数（在 src/utils/claude.ts），启动前自动检测会话历史并追加 `--continue`
+- `hasClaudeSessionHistory` 检测 `~/.claude/projects/<encoded-path>/` 下是否有 `.jsonl` 文件（在 src/utils/claude.ts）
+- `CLAUDE_PROJECTS_DIR` 常量（`~/.claude/projects/`）定义在 `src/constants/paths.ts`
 - killAllChildProcesses 是 run 专用的子进程终止函数（在 src/utils/shell.ts）
 - validate 快照管理函数在 `src/utils/validate-snapshot.ts`，被 validate、merge、remove 和 status 四个命令使用
 - `confirmDestructiveAction` 在 `src/utils/formatter.ts`，被 reset、validate --clean 和 config reset 使用
