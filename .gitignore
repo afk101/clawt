@@ -7,4 +7,5 @@ package-lock.json
 # 测试覆盖率报告
 coverage/
 
-
+# clawt 任务文件（自动生成，无需版本控制）
+clawt/tasks/
