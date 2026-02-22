@@ -8,6 +8,8 @@ export interface ClawtConfig {
   autoPullPush: boolean;
   /** 执行破坏性操作（reset、validate --clean）前是否提示确认 */
   confirmDestructiveOps: boolean;
+  /** run 命令默认最大并发数，0 表示不限制 */
+  maxConcurrency: number;
 }
 
 /** 单个配置项的完整定义（默认值 + 描述） */

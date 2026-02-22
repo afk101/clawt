@@ -25,6 +25,10 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     defaultValue: true,
     description: '执行破坏性操作（reset、validate --clean）前是否提示确认',
   },
+  maxConcurrency: {
+    defaultValue: 0,
+    description: 'run 命令默认最大并发数，0 表示不限制',
+  },
 };
 
 /**

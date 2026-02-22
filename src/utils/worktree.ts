@@ -50,6 +50,33 @@ export function createWorktrees(branchName: string, count: number): WorktreeInfo
 }
 
 /**
+ * 根据独立分支名列表逐个创建 worktree（不自动编号）
+ * 与 createWorktrees 不同，不使用 generateBranchNames 自动编号
+ * 调用方负责分支名清理（sanitizeBranchName）
+ * @param {string[]} branchNames - 已清理的分支名列表
+ * @returns {WorktreeInfo[]} 创建的 worktree 信息列表
+ */
+export function createWorktreesByBranches(branchNames: string[]): WorktreeInfo[] {
+  // 1. 校验所有分支是否都不存在
+  validateBranchesNotExist(branchNames);
+
+  // 2. 确保项目 worktree 目录存在
+  const projectDir = getProjectWorktreeDir();
+  ensureDir(projectDir);
+
+  // 3. 串行创建 worktree
+  const results: WorktreeInfo[] = [];
+  for (const name of branchNames) {
+    const worktreePath = join(projectDir, name);
+    gitCreateWorktree(name, worktreePath);
+    results.push({ path: worktreePath, branch: name });
+    logger.info(`worktree 创建完成: ${worktreePath} (分支: ${name})`);
+  }
+
+  return results;
+}
+
+/**
  * 获取当前项目在 ~/.clawt/worktrees/<project>/ 下的所有 worktree
  * 通过与 git worktree list 交叉验证确认有效性
  * @returns {WorktreeInfo[]} 有效的 worktree 列表

@@ -12,6 +12,10 @@ export interface RunOptions {
   branch: string;
   /** 任务列表（支持多次 --tasks 传入），不传则在 worktree 中打开 Claude Code 交互式界面 */
   tasks?: string[];
+  /** 最大并发数（Commander 传入为字符串），0 表示不限制 */
+  concurrency?: string;
+  /** 任务文件路径（与 --tasks 互斥） */
+  file?: string;
 }
 
 /** validate 命令选项 */

@@ -25,6 +25,11 @@ vi.mock('../../../src/constants/index.js', () => ({
     INTERRUPT_CONFIRM_CLEANUP: '是否清理已创建的 worktree？',
     INTERRUPT_CLEANED: (count: number) => `已清理 ${count} 个 worktree`,
     INTERRUPT_KEPT: '已保留 worktree',
+    CONCURRENCY_INFO: (concurrency: number, total: number) => `并发限制: ${concurrency}，共 ${total} 个任务`,
+    CONCURRENCY_INVALID: '并发数必须为正整数',
+    FILE_AND_TASKS_CONFLICT: '--file 和 --tasks 不能同时使用',
+    BRANCH_OR_FILE_REQUIRED: '请指定 -b 或 -f',
+    TASK_FILE_LOADED: (count: number, path: string) => `✓ 从 ${path} 加载了 ${count} 个任务`,
   },
 }));
 
@@ -37,7 +42,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   spawnProcess: vi.fn(),
   killAllChildProcesses: vi.fn(),
   cleanupWorktrees: vi.fn(),
-  getConfigValue: vi.fn(),
+  getConfigValue: vi.fn().mockReturnValue(0),
   printSuccess: vi.fn(),
   printError: vi.fn(),
   printWarning: vi.fn(),
@@ -46,24 +51,42 @@ vi.mock('../../../src/utils/index.js', () => ({
   printDoubleSeparator: vi.fn(),
   confirmAction: vi.fn(),
   launchInteractiveClaude: vi.fn(),
+  ProgressRenderer: class {
+    start = vi.fn();
+    stop = vi.fn();
+    updateActivity = vi.fn();
+    markRunning = vi.fn();
+    markDone = vi.fn();
+    markFailed = vi.fn();
+  },
+  loadTaskFile: vi.fn(),
+  createWorktreesByBranches: vi.fn(),
 }));
 
 import { registerRunCommand } from '../../../src/commands/run.js';
 import {
   createWorktrees,
+  createWorktreesByBranches,
   sanitizeBranchName,
   checkBranchExists,
   spawnProcess,
   printSuccess,
+  printInfo,
   launchInteractiveClaude,
+  getConfigValue,
+  loadTaskFile,
 } from '../../../src/utils/index.js';
 
 const mockedCreateWorktrees = vi.mocked(createWorktrees);
+const mockedCreateWorktreesByBranches = vi.mocked(createWorktreesByBranches);
 const mockedSanitizeBranchName = vi.mocked(sanitizeBranchName);
 const mockedCheckBranchExists = vi.mocked(checkBranchExists);
 const mockedSpawnProcess = vi.mocked(spawnProcess);
 const mockedPrintSuccess = vi.mocked(printSuccess);
+const mockedPrintInfo = vi.mocked(printInfo);
 const mockedLaunchInteractiveClaude = vi.mocked(launchInteractiveClaude);
+const mockedGetConfigValue = vi.mocked(getConfigValue);
+const mockedLoadTaskFile = vi.mocked(loadTaskFile);
 
 /**
  * 创建模拟子进程
@@ -78,12 +101,14 @@ function createMockChildProcess(stdout: string, exitCode: number) {
   child.stdout = stdoutStream;
   child.stderr = stderrStream;
   child.pid = 12345;
+  child.exitCode = null;
 
   // 延迟触发 close 事件
   setTimeout(() => {
     stdoutStream.push(stdout);
     stdoutStream.push(null);
     stderrStream.push(null);
+    child.exitCode = exitCode;
     child.emit('close', exitCode);
   }, 10);
 
@@ -92,11 +117,18 @@ function createMockChildProcess(stdout: string, exitCode: number) {
 
 beforeEach(() => {
   mockedCreateWorktrees.mockReset();
+  mockedCreateWorktreesByBranches.mockReset();
   mockedSanitizeBranchName.mockReset();
   mockedCheckBranchExists.mockReset();
   mockedSpawnProcess.mockReset();
   mockedPrintSuccess.mockReset();
+  mockedPrintInfo.mockReset();
   mockedLaunchInteractiveClaude.mockReset();
+  mockedGetConfigValue.mockReset();
+  mockedGetConfigValue.mockReturnValue(0 as any);
+  mockedLoadTaskFile.mockReset();
+  // sanitizeBranchName 默认返回输入值
+  mockedSanitizeBranchName.mockImplementation((name: string) => name);
 });
 
 describe('registerRunCommand', () => {
@@ -192,6 +224,7 @@ describe('handleRun', () => {
     child.stdout = new Readable({ read() {} });
     child.stderr = new Readable({ read() {} });
     child.pid = 12345;
+    child.exitCode = null;
     setTimeout(() => {
       child.emit('error', new Error('spawn error'));
     }, 10);
@@ -203,5 +236,174 @@ describe('handleRun', () => {
     await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1'], { from: 'user' });
 
     expect(mockedSpawnProcess).toHaveBeenCalledTimes(1);
+  });
+
+  it('传 --concurrency 限制并发数', async () => {
+    const worktrees = [
+      { path: '/path/feat-1', branch: 'feat-1' },
+      { path: '/path/feat-2', branch: 'feat-2' },
+      { path: '/path/feat-3', branch: 'feat-3' },
+    ];
+    mockedCreateWorktrees.mockReturnValue(worktrees);
+
+    const jsonOutput = JSON.stringify({
+      is_error: false,
+      duration_ms: 5000,
+      total_cost_usd: 0.05,
+    });
+    mockedSpawnProcess
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0))
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0))
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0));
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1', 'task2', 'task3', '-c', '1'], { from: 'user' });
+
+    expect(mockedCreateWorktrees).toHaveBeenCalledWith('feat', 3);
+    // 所有任务都应执行完毕
+    expect(mockedSpawnProcess).toHaveBeenCalledTimes(3);
+    // 应输出并发限制提示
+    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('并发限制'));
+  });
+
+  it('--concurrency 为 0 时不限制并发', async () => {
+    const worktrees = [
+      { path: '/path/feat-1', branch: 'feat-1' },
+      { path: '/path/feat-2', branch: 'feat-2' },
+    ];
+    mockedCreateWorktrees.mockReturnValue(worktrees);
+
+    const jsonOutput = JSON.stringify({
+      is_error: false,
+      duration_ms: 5000,
+      total_cost_usd: 0.05,
+    });
+    mockedSpawnProcess
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0))
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0));
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1', 'task2', '-c', '0'], { from: 'user' });
+
+    // 不限制并发时不输出并发限制提示
+    expect(mockedPrintInfo).not.toHaveBeenCalledWith(expect.stringContaining('并发限制'));
+    expect(mockedSpawnProcess).toHaveBeenCalledTimes(2);
+  });
+
+  it('未传 -c 时使用全局配置的 maxConcurrency', async () => {
+    mockedGetConfigValue.mockReturnValue(2 as any);
+
+    const worktrees = [
+      { path: '/path/feat-1', branch: 'feat-1' },
+      { path: '/path/feat-2', branch: 'feat-2' },
+      { path: '/path/feat-3', branch: 'feat-3' },
+    ];
+    mockedCreateWorktrees.mockReturnValue(worktrees);
+
+    const jsonOutput = JSON.stringify({
+      is_error: false,
+      duration_ms: 5000,
+      total_cost_usd: 0.05,
+    });
+    mockedSpawnProcess
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0))
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0))
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0));
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1', 'task2', 'task3'], { from: 'user' });
+
+    // 应输出并发限制提示（使用配置值 2）
+    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('并发限制'));
+    expect(mockedSpawnProcess).toHaveBeenCalledTimes(3);
+  });
+
+  it('-f 从文件加载任务并执行（无 -b，使用文件中分支名）', async () => {
+    mockedLoadTaskFile.mockReturnValue([
+      { branch: 'feat-login', task: '实现登录功能' },
+      { branch: 'fix-bug', task: '修复问题' },
+    ]);
+    const worktrees = [
+      { path: '/path/feat-login', branch: 'feat-login' },
+      { path: '/path/fix-bug', branch: 'fix-bug' },
+    ];
+    mockedCreateWorktreesByBranches.mockReturnValue(worktrees);
+
+    const jsonOutput = JSON.stringify({
+      is_error: false,
+      duration_ms: 5000,
+      total_cost_usd: 0.05,
+    });
+    mockedSpawnProcess
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0))
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0));
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-f', 'tasks.md'], { from: 'user' });
+
+    expect(mockedLoadTaskFile).toHaveBeenCalledWith('tasks.md');
+    expect(mockedCreateWorktreesByBranches).toHaveBeenCalledWith(['feat-login', 'fix-bug']);
+    expect(mockedSpawnProcess).toHaveBeenCalledTimes(2);
+  });
+
+  it('-f + -b 模式使用 -b 自动编号', async () => {
+    mockedLoadTaskFile.mockReturnValue([
+      { branch: 'ignored-1', task: '任务1' },
+      { branch: 'ignored-2', task: '任务2' },
+    ]);
+    const worktrees = [
+      { path: '/path/feat-1', branch: 'feat-1' },
+      { path: '/path/feat-2', branch: 'feat-2' },
+    ];
+    mockedCreateWorktrees.mockReturnValue(worktrees);
+
+    const jsonOutput = JSON.stringify({
+      is_error: false,
+      duration_ms: 5000,
+      total_cost_usd: 0.05,
+    });
+    mockedSpawnProcess
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0))
+      .mockReturnValueOnce(createMockChildProcess(jsonOutput, 0));
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '-f', 'tasks.md'], { from: 'user' });
+
+    // 应使用 createWorktrees（带 -b 自动编号），而非 createWorktreesByBranches
+    expect(mockedCreateWorktrees).toHaveBeenCalledWith('feat', 2);
+    expect(mockedCreateWorktreesByBranches).not.toHaveBeenCalled();
+    expect(mockedSpawnProcess).toHaveBeenCalledTimes(2);
+  });
+
+  it('-f 和 --tasks 互斥时报错', async () => {
+    mockedLoadTaskFile.mockReturnValue([{ branch: 'feat', task: '任务' }]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+
+    await expect(
+      program.parseAsync(['run', '-f', 'tasks.md', '--tasks', 'task1'], { from: 'user' }),
+    ).rejects.toThrow();
+  });
+
+  it('未传 -b 和 -f 时报错', async () => {
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+
+    await expect(
+      program.parseAsync(['run', '--tasks', 'task1'], { from: 'user' }),
+    ).rejects.toThrow();
   });
 });

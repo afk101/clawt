@@ -30,6 +30,7 @@ describe('DEFAULT_CONFIG', () => {
     expect(DEFAULT_CONFIG.claudeCodeCommand).toBe('claude');
     expect(DEFAULT_CONFIG.autoPullPush).toBe(false);
     expect(DEFAULT_CONFIG.confirmDestructiveOps).toBe(true);
+    expect(DEFAULT_CONFIG.maxConcurrency).toBe(0);
   });
 });
 

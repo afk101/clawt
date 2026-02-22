@@ -62,7 +62,7 @@ import {
 } from '../../../src/utils/git.js';
 import { sanitizeBranchName, validateBranchesNotExist } from '../../../src/utils/branch.js';
 import { ensureDir, removeEmptyDir } from '../../../src/utils/fs.js';
-import { createWorktrees, getProjectWorktrees, cleanupWorktrees, getWorktreeStatus } from '../../../src/utils/worktree.js';
+import { createWorktrees, createWorktreesByBranches, getProjectWorktrees, cleanupWorktrees, getWorktreeStatus } from '../../../src/utils/worktree.js';
 import { createWorktreeInfo } from '../../helpers/fixtures.js';
 
 const mockedExistsSync = vi.mocked(existsSync);
@@ -98,6 +98,31 @@ describe('createWorktrees', () => {
     expect(sanitizeBranchName).toHaveBeenCalledWith('feature');
     expect(validateBranchesNotExist).toHaveBeenCalled();
     expect(ensureDir).toHaveBeenCalled();
+  });
+});
+
+describe('createWorktreesByBranches', () => {
+  it('根据分支名列表创建 worktree', () => {
+    const result = createWorktreesByBranches(['feat-login', 'fix-bug']);
+    expect(result).toHaveLength(2);
+    expect(result[0].branch).toBe('feat-login');
+    expect(result[1].branch).toBe('fix-bug');
+    expect(mockedGitCreateWorktree).toHaveBeenCalledTimes(2);
+  });
+
+  it('调用存在性校验但不调用分支名清理', () => {
+    createWorktreesByBranches(['feat-a', 'feat-b']);
+    // 不使用 sanitizeBranchName（调用方负责清理）
+    expect(sanitizeBranchName).not.toHaveBeenCalled();
+    expect(validateBranchesNotExist).toHaveBeenCalledWith(['feat-a', 'feat-b']);
+    expect(ensureDir).toHaveBeenCalled();
+  });
+
+  it('单个分支名也能正常创建', () => {
+    const result = createWorktreesByBranches(['single-branch']);
+    expect(result).toHaveLength(1);
+    expect(result[0].branch).toBe('single-branch');
+    expect(mockedGitCreateWorktree).toHaveBeenCalledTimes(1);
   });
 });
 
