@@ -576,7 +576,26 @@ git restore --staged .
 ```
 
 > 此步骤结束后，目标 worktree 的代码保持原样，主 worktree 工作目录包含目标分支的全量变更。
-> 如果 patch apply 失败（目标分支与主分支差异过大），会提示用户先执行 `clawt sync -b <branchName>` 同步主分支后重试。
+> 如果 patch apply 失败（目标分支与主分支差异过大），`migrateChangesViaPatch` 返回 `{ success: false }`，进入自动 sync 交互流程（见下文 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)）。
+
+##### patch apply 失败后的自动 sync 流程
+
+当 patch apply 失败时，validate 不再直接退出，而是通过 `handlePatchApplyFailure()` 函数进入交互流程：
+
+1. **询问用户**：提示 `是否立即执行 sync 同步主分支到 <branchName>？`
+2. **用户拒绝** → 输出提示 `请手动执行 clawt sync -b <branchName> 同步主分支后重试`，退出
+3. **用户确认** → 调用 `executeSyncForBranch(targetWorktreePath, branchName)` 自动执行 sync
+   - **sync 成功** → validate 流程结束（用户需重新执行 validate）
+   - **sync 存在冲突** → 输出提示 `同步存在冲突，请进入目标 worktree 手动解决冲突后重试`，退出
+
+> `executeSyncForBranch` 为 sync 命令抽取的核心操作函数（见 [5.12](#512-将主分支代码同步到目标-worktree)），供 validate 等命令复用。
+
+**实现要点：**
+
+- `migrateChangesViaPatch()` 返回类型从 `void` 改为 `{ success: boolean }`，patch apply 失败时返回 `{ success: false }` 而非抛出异常
+- `handleFirstValidate()` 和 `handleIncrementalValidate()` 从同步函数改为 `async` 函数，以支持交互式确认
+- `handlePatchApplyFailure()` 为新增的异步函数（`src/commands/validate.ts`），负责 patch 失败后的交互逻辑
+- 消息常量：`MESSAGES.VALIDATE_CONFIRM_AUTO_SYNC`、`MESSAGES.VALIDATE_AUTO_SYNC_START`、`MESSAGES.VALIDATE_AUTO_SYNC_CONFLICT`、`MESSAGES.VALIDATE_AUTO_SYNC_DECLINED`（`src/constants/messages/validate.ts`）
 
 ##### 步骤 4：保存快照为 git tree 对象
 
@@ -715,7 +734,7 @@ clawt validate -b feature-scheme-1 -r "pnpm test & pnpm build"
 
 ##### 步骤 3：从目标分支获取最新全量变更
 
-通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 3）。
+通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 3）。如果 patch apply 失败，同样进入自动 sync 交互流程（见首次 validate 的 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)），validate 流程提前结束。
 
 ##### 步骤 4：保存最新快照为 git tree 对象
 
@@ -1356,16 +1375,36 @@ clawt sync
         - 唯一匹配 → 直接使用
         - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
      3. **无匹配** → 报错退出，并列出所有可用分支名
-3. **获取主分支名**：通过 `git rev-parse --abbrev-ref HEAD` 获取主 worktree 当前分支名（不硬编码 main/master）
-4. **自动保存未提交变更**：检查目标 worktree 是否有未提交修改
+3. 调用 `executeSyncForBranch(targetWorktreePath, branch)` 执行核心同步逻辑
+
+#### `executeSyncForBranch` — sync 核心操作函数
+
+`executeSyncForBranch(targetWorktreePath: string, branch: string): SyncResult` 是从 `handleSync` 中抽取的核心同步逻辑，不包含 worktree 解析交互，供 validate 等命令复用。
+
+**接口定义：**
+
+```typescript
+/** sync 核心操作的执行结果 */
+export interface SyncResult {
+  /** 是否同步成功 */
+  success: boolean;
+  /** 是否存在合并冲突 */
+  hasConflict: boolean;
+}
+```
+
+**执行流程：**
+
+1. **获取主分支名**：通过 `git rev-parse --abbrev-ref HEAD` 获取主 worktree 当前分支名（不硬编码 main/master）
+2. **自动保存未提交变更**：检查目标 worktree 是否有未提交修改
    - 有修改 → 自动执行 `git add . && git commit -m "<AUTO_SAVE_COMMIT_MESSAGE>"` 保存变更（commit message 由常量 `AUTO_SAVE_COMMIT_MESSAGE` 定义，值为 `chore: auto-save before sync`，同时用于 merge 命令的 squash 检测）
    - 无修改 → 跳过
-5. **在目标 worktree 中合并主分支**：
+3. **在目标 worktree 中合并主分支**：
    ```bash
    cd ~/.clawt/worktrees/<project>/<branchName>
    git merge <mainBranch>
    ```
-6. **冲突处理**：
+4. **冲突处理**：
    - **有冲突** → 输出警告，提示用户进入目标 worktree 手动解决：
      ```
      合并存在冲突，请进入目标 worktree 手动解决：
@@ -1373,9 +1412,10 @@ clawt sync
        解决冲突后执行 git add . && git merge --continue
        clawt validate -b <branch> 验证变更
      ```
+   - 返回 `{ success: false, hasConflict: true }`
    - **无冲突** → 继续
-7. **清除 validate 快照**：合并成功后，如果该分支存在 validate 快照（`.tree` 和 `.head` 文件），自动删除（代码基础已变化，旧快照无效）
-8. **输出成功提示**：
+5. **清除 validate 快照**：合并成功后，如果该分支存在 validate 快照（`.tree` 和 `.head` 文件），自动删除（代码基础已变化，旧快照无效）
+6. **输出成功提示**并返回 `{ success: true, hasConflict: false }`：
    ```
    ✓ 已将 <mainBranch> 的最新代码同步到 <branchName>
    ```

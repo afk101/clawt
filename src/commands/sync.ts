@@ -77,21 +77,22 @@ function mergeMainBranch(worktreePath: string, mainBranch: string): boolean {
   }
 }
 
+/** sync 核心操作的执行结果 */
+export interface SyncResult {
+  /** 是否同步成功 */
+  success: boolean;
+  /** 是否存在合并冲突 */
+  hasConflict: boolean;
+}
+
 /**
- * 执行 sync 命令的核心逻辑
- * 将主分支最新代码同步到目标 worktree
- * @param {SyncOptions} options - 命令选项
+ * 执行 sync 核心操作（检查未提交→自动保存→merge 主分支→清除快照）
+ * 不包含 worktree 解析交互，供 validate 等命令复用
+ * @param {string} targetWorktreePath - 目标 worktree 路径
+ * @param {string} branch - 分支名
+ * @returns {SyncResult} sync 执行结果
  */
-async function handleSync(options: SyncOptions): Promise<void> {
-  validateMainWorktree();
-
-  logger.info(`sync 命令执行，分支: ${options.branch ?? '(未指定)'}`);
-
-  // 解析目标 worktree（精确匹配 / 模糊匹配 / 交互选择）
-  const worktrees = getProjectWorktrees();
-  const worktree = await resolveTargetWorktree(worktrees, SYNC_RESOLVE_MESSAGES, options.branch);
-  const { path: targetWorktreePath, branch } = worktree;
-
+export function executeSyncForBranch(targetWorktreePath: string, branch: string): SyncResult {
   // 获取主分支名（不硬编码 main/master）
   const mainWorktreePath = getGitTopLevel();
   const mainBranch = getCurrentBranch(mainWorktreePath);
@@ -107,7 +108,7 @@ async function handleSync(options: SyncOptions): Promise<void> {
 
   if (hasConflict) {
     printWarning(MESSAGES.SYNC_CONFLICT(targetWorktreePath));
-    return;
+    return { success: false, hasConflict: true };
   }
 
   // 合并成功后清除该分支的 validate 快照（代码基础已变化，旧快照无效）
@@ -118,4 +119,23 @@ async function handleSync(options: SyncOptions): Promise<void> {
   }
 
   printSuccess(MESSAGES.SYNC_SUCCESS(branch, mainBranch));
+  return { success: true, hasConflict: false };
+}
+
+/**
+ * 执行 sync 命令的核心逻辑
+ * 将主分支最新代码同步到目标 worktree
+ * @param {SyncOptions} options - 命令选项
+ */
+async function handleSync(options: SyncOptions): Promise<void> {
+  validateMainWorktree();
+
+  logger.info(`sync 命令执行，分支: ${options.branch ?? '(未指定)'}`);
+
+  // 解析目标 worktree（精确匹配 / 模糊匹配 / 交互选择）
+  const worktrees = getProjectWorktrees();
+  const worktree = await resolveTargetWorktree(worktrees, SYNC_RESOLVE_MESSAGES, options.branch);
+  const { path: targetWorktreePath, branch } = worktree;
+
+  executeSyncForBranch(targetWorktreePath, branch);
 }

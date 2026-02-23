@@ -128,6 +128,8 @@ clawt validate -b <branch> -r "pnpm test & pnpm build"  # 并行执行多个命�
 
 支持增量模式：再次 validate 同一分支时，可通过 `git diff` 查看两次之间的增量差异。
 
+当 patch apply 失败（目标分支与主分支差异过大）时，会自动询问是否执行 `sync` 同步主分支到目标 worktree，无需手动操作。
+
 `-r, --run` 选项可在 validate 成功后自动在主 worktree 中执行指定命令（如测试、构建等），命令执行失败不影响 validate 结果。支持用 `&` 分隔多个命令并行执行：
 
 | 用法 | 行为 |
@@ -141,6 +143,8 @@ clawt validate -b <branch> -r "pnpm test & pnpm build"  # 并行执行多个命�
 ```bash
 clawt sync -b <branch>
 ```
+
+当 `validate` 的 patch apply 失败时也会自动提示执行 sync，通常无需手动调用。
 
 ### `clawt merge` — 合并分支到主 worktree
 

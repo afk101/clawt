@@ -4,6 +4,7 @@ import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
 import type { ValidateOptions } from '../types/index.js';
+import { executeSyncForBranch } from './sync.js';
 import {
   validateMainWorktree,
   getProjectName,
@@ -33,6 +34,7 @@ import {
   writeSnapshot,
   removeSnapshot,
   confirmDestructiveAction,
+  confirmAction,
   printSuccess,
   printError,
   printWarning,
@@ -121,8 +123,9 @@ async function handleDirtyMainWorktree(mainWorktreePath: string): Promise<void> 
  * @param {string} mainWorktreePath - 主 worktree 路径
  * @param {string} branchName - 分支名
  * @param {boolean} hasUncommitted - 目标 worktree 是否有未提交修改
+ * @returns {{ success: boolean }} patch 迁移结果
  */
-function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreePath: string, branchName: string, hasUncommitted: boolean): void {
+function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreePath: string, branchName: string, hasUncommitted: boolean): { success: boolean } {
   let didTempCommit = false;
 
   try {
@@ -143,9 +146,11 @@ function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreePath: st
       } catch (error) {
         logger.warn(`patch apply 失败: ${error}`);
         printWarning(MESSAGES.VALIDATE_PATCH_APPLY_FAILED(branchName));
-        throw error;
+        return { success: false };
       }
     }
+
+    return { success: true };
   } finally {
     // 确保临时 commit 一定会被撤销，恢复目标 worktree 原状
     // 每个操作独立 try-catch，避免前一个失败导致后续操作不执行
@@ -161,6 +166,31 @@ function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreePath: st
         logger.error(`恢复暂存区失败: ${error}`);
       }
     }
+  }
+}
+
+/**
+ * patch apply 失败后的交互处理：询问用户是否自动执行 sync
+ * @param {string} targetWorktreePath - 目标 worktree 路径
+ * @param {string} branchName - 分支名
+ */
+async function handlePatchApplyFailure(targetWorktreePath: string, branchName: string): Promise<void> {
+  // 询问用户是否自动执行 sync
+  const confirmed = await confirmAction(MESSAGES.VALIDATE_CONFIRM_AUTO_SYNC(branchName));
+
+  if (!confirmed) {
+    // 用户拒绝自动 sync
+    printWarning(MESSAGES.VALIDATE_AUTO_SYNC_DECLINED(branchName));
+    return;
+  }
+
+  // 用户确认，执行 sync
+  printInfo(MESSAGES.VALIDATE_AUTO_SYNC_START(branchName));
+  const syncResult = executeSyncForBranch(targetWorktreePath, branchName);
+
+  if (syncResult.hasConflict) {
+    // sync 存在冲突，提示用户手动解决
+    printWarning(MESSAGES.VALIDATE_AUTO_SYNC_CONFLICT(targetWorktreePath));
   }
 }
 
@@ -231,9 +261,15 @@ async function handleValidateClean(options: ValidateOptions): Promise<void> {
  * @param {string} branchName - 分支名
  * @param {boolean} hasUncommitted - 目标 worktree 是否有未提交修改
  */
-function handleFirstValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string, hasUncommitted: boolean): void {
+async function handleFirstValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string, hasUncommitted: boolean): Promise<void> {
   // 通过 patch 迁移目标分支全量变更到主 worktree
-  migrateChangesViaPatch(targetWorktreePath, mainWorktreePath, branchName, hasUncommitted);
+  const result = migrateChangesViaPatch(targetWorktreePath, mainWorktreePath, branchName, hasUncommitted);
+
+  if (!result.success) {
+    // patch 失败，询问用户是否自动 sync
+    await handlePatchApplyFailure(targetWorktreePath, branchName);
+    return;
+  }
 
   // 保存快照为 git tree 对象
   saveCurrentSnapshotTree(mainWorktreePath, projectName, branchName);
@@ -250,7 +286,7 @@ function handleFirstValidate(targetWorktreePath: string, mainWorktreePath: strin
  * @param {string} branchName - 分支名
  * @param {boolean} hasUncommitted - 目标 worktree 是否有未提交修改
  */
-function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string, hasUncommitted: boolean): void {
+async function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string, hasUncommitted: boolean): Promise<void> {
   // 步骤 1：读取旧快照（tree hash + 当时的 HEAD commit hash）
   const { treeHash: oldTreeHash, headCommitHash: oldHeadCommitHash } = readSnapshot(projectName, branchName);
 
@@ -262,7 +298,13 @@ function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath:
   }
 
   // 步骤 3：通过 patch 从目标分支获取最新全量变更
-  migrateChangesViaPatch(targetWorktreePath, mainWorktreePath, branchName, hasUncommitted);
+  const result = migrateChangesViaPatch(targetWorktreePath, mainWorktreePath, branchName, hasUncommitted);
+
+  if (!result.success) {
+    // patch 失败，询问用户是否自动 sync
+    await handlePatchApplyFailure(targetWorktreePath, branchName);
+    return;
+  }
 
   // 步骤 4：保存最新快照为 git tree 对象（同时记录当前 HEAD）
   saveCurrentSnapshotTree(mainWorktreePath, projectName, branchName);
@@ -441,14 +483,14 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
     if (!isWorkingDirClean(mainWorktreePath)) {
       await handleDirtyMainWorktree(mainWorktreePath);
     }
-    handleIncrementalValidate(targetWorktreePath, mainWorktreePath, projectName, branchName, hasUncommitted);
+    await handleIncrementalValidate(targetWorktreePath, mainWorktreePath, projectName, branchName, hasUncommitted);
   } else {
     // 首次模式：先确保主 worktree 干净
     if (!isWorkingDirClean(mainWorktreePath)) {
       await handleDirtyMainWorktree(mainWorktreePath);
     }
 
-    handleFirstValidate(targetWorktreePath, mainWorktreePath, projectName, branchName, hasUncommitted);
+    await handleFirstValidate(targetWorktreePath, mainWorktreePath, projectName, branchName, hasUncommitted);
   }
 
   // validate 成功后执行用户指定的命令
