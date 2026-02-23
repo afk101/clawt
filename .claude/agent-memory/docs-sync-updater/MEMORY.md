@@ -7,7 +7,7 @@
 - 命令流程在 `5. 需求场景详细设计` 下，每个命令一个子章节（5.1-5.14）
 - run 命令对应 `5.2 批量创建 Worktree + 执行 Claude Code 任务`，流程按步骤编号描述
 - merge 命令对应 `5.6 合并验证过的分支`，-b 可选，支持模糊匹配（与 resume/validate 共享匹配逻辑），流程按步骤编号描述
-- config 命令对应 `5.10 查看和管理全局配置`，包含查看配置和 config reset 子命令两部分（使用 `####` 子标题区分）
+- config 命令对应 `5.10 交互式查看和修改全局配置`，包含四个子章节：交互式修改（config / config set 无参数）、直接设置（config set key value）、获取（config get）、恢复默认（config reset），使用 `####` 子标题区分
 - resume 命令对应 `5.11 在已有 Worktree 中恢复会话`，统一使用多选交互（resolveTargetWorktrees），选 1 个当前终端恢复，选多个在独立终端 Tab 批量恢复（-b 可选）
 - validate 命令对应 `5.4 在主 Worktree 验证其他分支`，-b 可选，支持模糊匹配（与 resume 共享匹配逻辑）
 - sync 命令对应 `5.12 将主分支代码同步到目标 Worktree`，-b 可选，支持模糊匹配（与 resume/validate/merge 共享匹配逻辑）
@@ -72,9 +72,9 @@ run 命令有两种模式（自 claudeCodeCommand 特性后）：
   - `formatDuration` 从 `src/utils/progress.ts` 移至 `src/utils/formatter.ts`
   - 进度面板每个任务行末尾显示 worktree 路径（终端可点击跳转）
 
-## 命令清单（11 个）
+## 命令清单（12 个）
 
-`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`、`sync`、`reset`、`status`
+`create`、`run`、`resume`、`list`、`remove`、`validate`、`merge`、`config`、`sync`、`reset`、`status`、`alias`
 
 Notes:
 - resume 和 run（交互式模式）共用 `launchInteractiveClaude()`，该函数从 run.ts 提取到 src/utils/claude.ts
@@ -91,6 +91,11 @@ Notes:
 - `promptMultiSelectBranches` 支持「全选」选项（顶部 [select-all]），通过扩展 MultiSelect 覆写 space() 实现全选 toggle
 - `SELECT_ALL_NAME` 和 `SELECT_ALL_LABEL` 常量定义在 `src/constants/prompt.ts`
 - `VALID_TERMINAL_APPS` 和 `ITERM2_APP_PATH` 常量定义在 `src/constants/terminal.ts`
+- config 交互式修改：对象类型配置项（如 `aliases`）在 Enquirer.Select 列表中标灰不可选（`disabled: CONFIG_ALIAS_DISABLED_HINT`），提示用户通过专用命令管理
+- `CONFIG_ALIAS_DISABLED_HINT` 常量定义在 `src/constants/messages/config.ts`，通过 `src/constants/messages/index.ts` 和 `src/constants/index.ts` 导出
+- `parseConfigValue()` 和 `promptConfigValue()` 在 `src/utils/config-strategy.ts`，基于配置项类型和 `allowedValues` 自动分发值解析/提示策略
+- `saveConfig()` 在 `src/utils/config.ts`，通用配置写入函数
+- `ConfigItemDefinition` 支持可选 `allowedValues` 字段（`readonly string[]`），用于 string 类型枚举校验
 
 ## validate 快照机制
 

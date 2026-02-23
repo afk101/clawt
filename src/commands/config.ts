@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
 import Enquirer from 'enquirer';
-import { DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, MESSAGES } from '../constants/index.js';
+import { DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, MESSAGES, CONFIG_ALIAS_DISABLED_HINT } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import {
   loadConfig,
@@ -123,10 +123,15 @@ async function handleInteractiveConfigSet(): Promise<void> {
   logger.info('config set 命令执行，进入交互式配置');
 
   // 构建选择列表，显示配置项名称、当前值和描述
-  const choices = keys.map((k) => ({
-    name: k,
-    message: `${k}: ${formatConfigValue(config[k])}  ${chalk.dim(`— ${CONFIG_DESCRIPTIONS[k]}`)}`,
-  }));
+  // 对象类型配置项（如 aliases）标灰不可选，提示用户通过专用命令管理
+  const choices = keys.map((k) => {
+    const isObject = typeof DEFAULT_CONFIG[k] === 'object';
+    return {
+      name: k,
+      message: `${k}: ${isObject ? chalk.dim(JSON.stringify(config[k])) : formatConfigValue(config[k])}  ${chalk.dim(`— ${CONFIG_DESCRIPTIONS[k]}`)}`,
+      ...(isObject && { disabled: CONFIG_ALIAS_DISABLED_HINT }),
+    };
+  });
 
   // @ts-expect-error enquirer 类型声明未导出 Select 类，但运行时存在
   const selectedKey: keyof ClawtConfig = await new Enquirer.Select({

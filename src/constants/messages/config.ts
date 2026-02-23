@@ -1,3 +1,6 @@
+/** 对象类型配置项禁用提示（如 aliases 需通过专用命令管理） */
+export const CONFIG_ALIAS_DISABLED_HINT = '(通过 clawt alias 命令管理)';
+
 /** config 命令专属提示消息 */
 export const CONFIG_CMD_MESSAGES = {
   /** 配置已恢复为默认值 */

@@ -2,15 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 
 // mock enquirer（必须在所有 import 之前）
-const { mockSelectRun, mockInputRun } = vi.hoisted(() => {
+const { mockSelectRun, mockInputRun, mockSelectConstructorArgs } = vi.hoisted(() => {
   const mockSelectRun = vi.fn();
   const mockInputRun = vi.fn();
-  return { mockSelectRun, mockInputRun };
+  /** 用于捕获 Select 构造时传入的参数 */
+  const mockSelectConstructorArgs: unknown[] = [];
+  return { mockSelectRun, mockInputRun, mockSelectConstructorArgs };
 });
 
 vi.mock('enquirer', () => ({
   default: {
-    Select: function MockSelect() { return { run: mockSelectRun }; },
+    Select: function MockSelect(opts: unknown) { mockSelectConstructorArgs.push(opts); return { run: mockSelectRun }; },
     Input: function MockInput() { return { run: mockInputRun }; },
   },
 }));
@@ -48,6 +50,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     confirmDestructiveOps: true,
     maxConcurrency: 0,
     terminalApp: 'auto',
+    aliases: {},
   },
   CONFIG_DESCRIPTIONS: {
     autoDeleteBranch: '自动删除分支',
@@ -56,6 +59,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     confirmDestructiveOps: '破坏性操作确认',
     maxConcurrency: '最大并发数',
     terminalApp: '终端应用',
+    aliases: '命令别名映射',
   },
   CONFIG_DEFINITIONS: {
     autoDeleteBranch: { defaultValue: false, description: '自动删除分支' },
@@ -64,7 +68,9 @@ vi.mock('../../../src/constants/index.js', () => ({
     confirmDestructiveOps: { defaultValue: true, description: '破坏性操作确认' },
     maxConcurrency: { defaultValue: 0, description: '最大并发数' },
     terminalApp: { defaultValue: 'auto', description: '终端应用', allowedValues: ['auto', 'iterm2', 'terminal'] },
+    aliases: { defaultValue: {}, description: '命令别名映射' },
   },
+  CONFIG_ALIAS_DISABLED_HINT: '(通过 clawt alias 命令管理)',
   MESSAGES: {
     CONFIG_RESET_SUCCESS: '配置已恢复为默认值',
     DESTRUCTIVE_OP_CANCELLED: '已取消操作',
@@ -104,6 +110,7 @@ function createMockConfig() {
     confirmDestructiveOps: true,
     maxConcurrency: 0,
     terminalApp: 'auto',
+    aliases: {},
   };
 }
 
@@ -117,6 +124,7 @@ beforeEach(() => {
   mockedConfirmDestructiveAction.mockReset();
   mockSelectRun.mockReset();
   mockInputRun.mockReset();
+  mockSelectConstructorArgs.length = 0;
 });
 
 describe('registerConfigCommand', () => {
@@ -373,6 +381,29 @@ describe('handleConfigSet — 交互模式', () => {
       expect.objectContaining({ terminalApp: 'iterm2' }),
     );
     expect(mockedPrintSuccess).toHaveBeenCalled();
+  });
+
+  it('aliases 选项带 disabled 属性且不可选', async () => {
+    mockedLoadConfig.mockReturnValue(createMockConfig());
+    // 选择一个普通配置项完成交互流程
+    mockSelectRun.mockResolvedValueOnce('autoDeleteBranch');
+    mockSelectRun.mockResolvedValueOnce('true');
+
+    const program = new Command();
+    program.exitOverride();
+    registerConfigCommand(program);
+    await program.parseAsync(['config', 'set'], { from: 'user' });
+
+    // 捕获第一次 Select 构造参数（配置项选择列表）
+    const selectOpts = mockSelectConstructorArgs[0] as { choices: Array<{ name: string; disabled?: string }> };
+    const aliasesChoice = selectOpts.choices.find((c) => c.name === 'aliases');
+    expect(aliasesChoice).toBeDefined();
+    expect(aliasesChoice!.disabled).toBe('(通过 clawt alias 命令管理)');
+
+    // 普通配置项不应有 disabled 属性
+    const normalChoice = selectOpts.choices.find((c) => c.name === 'autoDeleteBranch');
+    expect(normalChoice).toBeDefined();
+    expect(normalChoice!.disabled).toBeUndefined();
   });
 });
 

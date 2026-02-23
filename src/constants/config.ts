@@ -37,7 +37,7 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
   },
   aliases: {
     defaultValue: {} as Record<string, string>,
-    description: '命令别名映射（通过 clawt alias 命令管理）',
+    description: '命令别名映射',
   },
 };
 

@@ -21,7 +21,7 @@
   - [5.7 默认配置文件](#57-默认配置文件)
   - [5.8 获取当前项目所有 Worktree](#58-获取当前项目所有-worktree)
   - [5.9 日志系统](#59-日志系统)
-  - [5.10 查看和管理全局配置](#510-查看和管理全局配置)
+  - [5.10 交互式查看和修改全局配置](#510-交互式查看和修改全局配置)
   - [5.11 在已有 Worktree 中恢复会话](#511-在已有-worktree-中恢复会话)
   - [5.12 将主分支代码同步到目标 Worktree](#512-将主分支代码同步到目标-worktree)
   - [5.13 重置主 Worktree 工作区和暂存区](#513-重置主-worktree-工作区和暂存区)
@@ -174,7 +174,9 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt merge`         | 合并某个已验证的 worktree 分支到主 worktree       | 5.6      |
 | `clawt remove`        | 移除 worktree（支持模糊匹配/多选/全部）             | 5.5      |
 | `clawt list`          | 列出当前项目所有 worktree（支持 `--json` 格式输出） | 5.8      |
-| `clawt config`        | 查看全局配置                                     | 5.10     |
+| `clawt config`        | 交互式查看和修改全局配置（等同于 `config set`）      | 5.10     |
+| `clawt config set`    | 修改配置项（无参数进入交互式，有参数直接设置）          | 5.10     |
+| `clawt config get`    | 获取单个配置项的值                                 | 5.10     |
 | `clawt config reset`  | 将配置恢复为默认值                                | 5.10     |
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复） | 5.11     |
 | `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
@@ -1000,57 +1002,95 @@ clawt validate -b feature-scheme --debug
 
 ---
 
-### 5.10 查看和管理全局配置
+### 5.10 交互式查看和修改全局配置
 
 **命令：**
 
 ```bash
-# 查看全局配置
+# 交互式修改配置（等同于 config set 无参数）
 clawt config
+
+# 修改配置项（无参数进入交互式，有参数直接设置）
+clawt config set [key] [value]
+
+# 获取单个配置项的值
+clawt config get <key>
 
 # 将配置恢复为默认值
 clawt config reset
 ```
 
-#### 查看配置
+#### 交互式修改配置（`config` / `config set`）
+
+直接执行 `clawt config` 或 `clawt config set`（不带参数）进入交互式配置修改模式。
 
 **运行流程：**
 
 1. 读取全局配置文件 `~/.clawt/config.json`
-2. 遍历所有配置项（以 `CONFIG_DEFINITIONS` 为单一数据源），逐项展示：
-   - 配置项名称（粗体）
+2. 列出所有配置项供用户选择（`Enquirer.Select`），每项显示：
+   - 配置项名称
    - 当前值（布尔值绿色/黄色，字符串青色）
    - 配置项描述（灰色）
-3. 输出配置文件路径，提示用户可直接编辑
+   - 对象类型配置项（如 `aliases`）标灰不可选，提示用户通过专用命令管理
+3. 用户选择某个配置项后，根据值类型自动选择提示策略：
+   - **boolean 类型** → `Select`（true / false）
+   - **number 类型** → `Input`（带数字校验）
+   - **string 类型 + 有 `allowedValues`** → `Select`（枚举列表）
+   - **string 类型 + 无 `allowedValues`** → `Input`（自由输入）
+4. 将修改后的配置持久化到配置文件
+5. 输出成功提示：`✓ <key> 已设置为 <value>`
 
-**输出格式：**
+#### 直接设置配置项（`config set <key> <value>`）
 
-```
-配置文件路径: ~/.clawt/config.json
-────────────────────────────────────────
-  autoDeleteBranch: false
-  移除 worktree 时是否自动删除对应本地分支
+当带参数执行 `clawt config set <key> <value>` 时，直接修改指定配置项。
 
-  claudeCodeCommand: claude
-  Claude Code CLI 启动指令
+**参数：**
 
-  autoPullPush: false
-  merge 成功后是否自动执行 git pull 和 git push
+| 参数 | 必填 | 说明 |
+| ---- | ---- | ---- |
+| `key` | 否 | 配置项名称（不传则进入交互式模式） |
+| `value` | 否 | 配置值（传了 `key` 时必填） |
 
-  confirmDestructiveOps: true
-  执行破坏性操作（reset、validate --clean）前是否提示确认
+**运行流程：**
 
-────────────────────────────────────────
+1. 校验 `key` 是否为有效的配置项名称（基于 `DEFAULT_CONFIG` 的键列表），无效则输出错误及可用配置项列表
+2. 校验 `value` 是否缺失，缺失则提示用法：`clawt config set <key> <value>`
+3. 根据目标配置项的类型解析并校验值：
+   - **boolean** → 仅接受 `true` 或 `false`
+   - **number** → `Number()` 解析，`NaN` 报错
+   - **string + 有 `allowedValues`** → 校验值是否在枚举列表中
+   - **string + 无 `allowedValues`** → 无额外校验
+4. 加载配置、修改目标项、持久化
+5. 输出成功提示：`✓ <key> 已设置为 <value>`
 
-```
+#### 获取单个配置项（`config get <key>`）
 
-#### 恢复默认配置
+**参数：**
+
+| 参数 | 必填 | 说明 |
+| ---- | ---- | ---- |
+| `key` | 是 | 配置项名称 |
+
+**运行流程：**
+
+1. 校验 `key` 是否为有效的配置项名称，无效则输出错误及可用配置项列表
+2. 读取配置文件，获取目标配置项的值
+3. 输出：`<key> = <value>`
+
+#### 恢复默认配置（`config reset`）
 
 **运行流程：**
 
 1. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的操作和后果：当前配置将被覆盖为默认值），用户取消则退出
 2. 将默认配置写入 `~/.clawt/config.json`（覆盖现有配置文件）
 3. 输出成功提示：`✓ 配置已恢复为默认值`
+
+**实现要点：**
+
+- 配置项类型定义：`ConfigItemDefinition` 新增可选字段 `allowedValues`（`readonly string[]`），仅对 string 类型有效，用于枚举值校验和交互式 Select 提示
+- 值解析与提示策略：`src/utils/config-strategy.ts` 中的 `parseConfigValue()`（CLI 字符串解析）和 `promptConfigValue()`（交互式提示），基于类型和 `allowedValues` 自动分发
+- `saveConfig(config)`：`src/utils/config.ts` 中新增的通用配置写入函数，将完整配置对象持久化到文件
+- `formatConfigValue(value)`：支持 boolean、string、number、对象类型（如 `aliases`，按键值对逐行展示）的格式化显示
 
 ---
 

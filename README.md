@@ -143,11 +143,28 @@ clawt status --json   # JSON 格式
 clawt reset
 ```
 
-### `clawt config` — 查看配置
+### `clawt config` — 交互式查看和修改配置
 
 ```bash
-clawt config          # 查看当前配置
-clawt config reset    # 恢复默认配置
+clawt config                          # 交互式修改配置（选择配置项并修改值）
+clawt config set <key> <value>        # 直接设置某个配置项
+clawt config get <key>                # 获取某个配置项的值
+clawt config reset                    # 恢复默认配置
+```
+
+**使用示例：**
+
+```bash
+# 交互式修改（列出所有配置项，方向键选择，根据类型自动提示）
+clawt config
+
+# 直接设置
+clawt config set autoDeleteBranch true
+clawt config set maxConcurrency 4
+clawt config set terminalApp iterm2
+
+# 查看某项配置
+clawt config get maxConcurrency
 ```
 
 ### `clawt alias` — 管理命令别名
