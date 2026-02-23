@@ -460,18 +460,19 @@ Claude Code CLI 以 `--output-format json` 运行时，退出后会在 stdout �
 
 ```bash
 # 指定分支名（支持模糊匹配）
-clawt validate -b <branchName> [--clean]
+clawt validate -b <branchName> [--clean] [-r <command>]
 
 # 不指定分支名（列出所有分支供选择）
-clawt validate [--clean]
+clawt validate [--clean] [-r <command>]
 ```
 
 **参数：**
 
-| 参数      | 必填 | 说明                                                                     |
-| --------- | ---- | ------------------------------------------------------------------------ |
-| `-b`      | 否   | 要验证的 worktree 分支名（支持模糊匹配，不传则列出所有分支供选择）           |
-| `--clean` | 否   | 清理 validate 状态（重置主 worktree 并删除快照）                            |
+| 参数          | 必填 | 说明                                                                     |
+| ------------- | ---- | ------------------------------------------------------------------------ |
+| `-b`          | 否   | 要验证的 worktree 分支名（支持模糊匹配，不传则列出所有分支供选择）           |
+| `--clean`     | 否   | 清理 validate 状态（重置主 worktree 并删除快照）                            |
+| `-r, --run`   | 否   | validate 成功后在主 worktree 中执行的命令（如测试、构建等）                  |
 
 > **限制：** 单次只能验证一个分支，不支持批量验证。
 
@@ -597,6 +598,45 @@ git restore --staged .
   可以开始验证了
 ```
 
+##### 步骤 6：执行 `--run` 命令（可选）
+
+如果用户传入了 `-r, --run` 选项，在 validate 成功后自动在主 worktree 中执行指定命令：
+
+```bash
+# 示例
+clawt validate -b feature-scheme-1 -r "npm test"
+```
+
+**执行说明：**
+
+- 命令通过 `spawnSync` + `inherit` stdio 模式在主 worktree 中执行，输出实时显示在终端
+- 命令执行失败（退出码非 0 或进程启动失败）**不影响** validate 本身的结果，仅输出提示信息
+- `--clean` 模式下传入 `--run` 会被忽略（只执行 clean 逻辑）
+
+**输出格式：**
+
+```
+# 命令执行成功
+正在主 worktree 中执行命令: npm test
+────────────────────────────────────────
+... 命令的实时输出 ...
+────────────────────────────────────────
+✓ 命令执行完成: npm test，退出码: 0
+
+# 命令执行失败（退出码非 0）
+正在主 worktree 中执行命令: npm test
+────────────────────────────────────────
+... 命令的实时输出 ...
+────────────────────────────────────────
+✗ 命令执行完成: npm test，退出码: 1
+
+# 命令执行出错（进程启动失败）
+正在主 worktree 中执行命令: nonexistent
+────────────────────────────────────────
+────────────────────────────────────────
+✗ 命令执行出错: spawn ENOENT
+```
+
 #### 增量 validate（存在历史快照）
 
 当 `~/.clawt/validate-snapshots/<project>/<branchName>.tree` 存在时，自动进入增量模式：
@@ -665,6 +705,10 @@ git apply --cached < patch
 ✓ 已将分支 feature-scheme-1 的变更应用到主 worktree
   可以开始验证了
 ```
+
+##### 步骤 7：执行 `--run` 命令（可选）
+
+与首次 validate 的步骤 6 相同，增量 validate 成功后也会执行 `-r, --run` 指定的命令。
 
 ---
 

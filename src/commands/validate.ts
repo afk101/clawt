@@ -34,9 +34,12 @@ import {
   removeSnapshot,
   confirmDestructiveAction,
   printSuccess,
+  printError,
   printWarning,
   printInfo,
+  printSeparator,
   resolveTargetWorktree,
+  runCommandInherited,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -58,6 +61,7 @@ export function registerValidateCommand(program: Command): void {
     .description('在主 worktree 验证某个 worktree 分支的变更')
     .option('-b, --branch <branchName>', '要验证的分支名（支持模糊匹配，不传则列出所有分支）')
     .option('--clean', '清理 validate 状态（重置主 worktree 并删除快照）')
+    .option('-r, --run <command>', 'validate 成功后在主 worktree 中执行的命令')
     .action(async (options: ValidateOptions) => {
       await handleValidate(options);
     });
@@ -301,6 +305,35 @@ function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath:
 }
 
 /**
+ * 在主 worktree 中执行用户指定的命令
+ * 命令执行失败不影响 validate 本身的结果，仅输出提示
+ * @param {string} command - 要执行的命令字符串
+ * @param {string} mainWorktreePath - 主 worktree 路径
+ */
+function executeRunCommand(command: string, mainWorktreePath: string): void {
+  printInfo('');
+  printInfo(MESSAGES.VALIDATE_RUN_START(command));
+  printSeparator();
+
+  const result = runCommandInherited(command, { cwd: mainWorktreePath });
+
+  printSeparator();
+
+  if (result.error) {
+    // 进程启动失败（如命令不存在）
+    printError(MESSAGES.VALIDATE_RUN_ERROR(command, result.error.message));
+    return;
+  }
+
+  const exitCode = result.status ?? 1;
+  if (exitCode === 0) {
+    printSuccess(MESSAGES.VALIDATE_RUN_SUCCESS(command));
+  } else {
+    printError(MESSAGES.VALIDATE_RUN_FAILED(command, exitCode));
+  }
+}
+
+/**
  * 执行 validate 命令的核心逻辑
  * @param {ValidateOptions} options - 命令选项
  */
@@ -349,5 +382,10 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
     }
 
     handleFirstValidate(targetWorktreePath, mainWorktreePath, projectName, branchName, hasUncommitted);
+  }
+
+  // validate 成功后执行用户指定的命令
+  if (options.run) {
+    executeRunCommand(options.run, mainWorktreePath);
   }
 }

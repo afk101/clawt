@@ -1,4 +1,4 @@
-import { execSync, execFileSync, spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
+import { execSync, execFileSync, spawn, spawnSync, type ChildProcess, type SpawnSyncReturns, type StdioOptions } from 'node:child_process';
 import { logger } from '../logger/index.js';
 
 /**
@@ -71,4 +71,24 @@ export function execCommandWithInput(command: string, args: string[], options: {
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   return result.trim();
+}
+
+/**
+ * 同步执行命令，继承父进程的 stdio（实时输出到终端）
+ * 使用 shell 模式以支持管道、重定向等 shell 语法
+ * @param {string} command - 要执行的命令字符串
+ * @param {object} options - 可选配置
+ * @param {string} options.cwd - 工作目录
+ * @returns {SpawnSyncReturns<Buffer>} spawnSync 的返回结果
+ */
+export function runCommandInherited(
+  command: string,
+  options?: { cwd?: string },
+): SpawnSyncReturns<Buffer> {
+  logger.debug(`执行命令(inherit): ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
+  return spawnSync(command, {
+    cwd: options?.cwd,
+    stdio: 'inherit',
+    shell: true,
+  });
 }

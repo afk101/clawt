@@ -1,4 +1,4 @@
-export { execCommand, spawnProcess, killAllChildProcesses, execCommandWithInput } from './shell.js';
+export { execCommand, spawnProcess, killAllChildProcesses, execCommandWithInput, runCommandInherited } from './shell.js';
 export {
   getGitCommonDir,
   getGitTopLevel,
