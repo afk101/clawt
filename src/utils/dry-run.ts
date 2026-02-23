@@ -6,7 +6,7 @@ import { getProjectWorktreeDir } from './worktree.js';
 import { printInfo, printDoubleSeparator, printSeparator } from './formatter.js';
 
 /** dry-run 模式下任务描述的最大显示长度 */
-const DRY_RUN_TASK_DESC_MAX_LENGTH = 70;
+const DRY_RUN_TASK_DESC_MAX_LENGTH = 80;
 
 /**
  * 截取任务描述，超出最大长度时末尾加省略号
