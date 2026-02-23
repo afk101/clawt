@@ -25,10 +25,18 @@ export function loadConfig(): ClawtConfig {
 }
 
 /**
+ * 将指定配置对象写入配置文件
+ * @param {ClawtConfig} config - 要写入的完整配置对象
+ */
+export function writeConfig(config: ClawtConfig): void {
+  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+/**
  * 将默认配置写入配置文件
  */
 export function writeDefaultConfig(): void {
-  writeFileSync(CONFIG_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2), 'utf-8');
+  writeConfig(DEFAULT_CONFIG);
 }
 
 /**

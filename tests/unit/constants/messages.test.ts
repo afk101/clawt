@@ -37,6 +37,8 @@ describe('MESSAGES', () => {
       'SYNC_SELECT_BRANCH',
       'PULL_CONFLICT',
       'PUSH_FAILED',
+      'ALIAS_LIST_EMPTY',
+      'ALIAS_LIST_TITLE',
     ] as const;
 
     it.each(stringKeys)('%s 是非空字符串', (key) => {
@@ -235,6 +237,32 @@ describe('MESSAGES', () => {
     it('SYNC_MULTIPLE_MATCHES 包含名称', () => {
       const result = MESSAGES.SYNC_MULTIPLE_MATCHES('feat');
       expect(result).toContain('feat');
+    });
+
+    it('ALIAS_SET_SUCCESS 包含别名和命令', () => {
+      const result = MESSAGES.ALIAS_SET_SUCCESS('ls', 'list');
+      expect(result).toContain('ls');
+      expect(result).toContain('list');
+    });
+
+    it('ALIAS_REMOVE_SUCCESS 包含别名', () => {
+      const result = MESSAGES.ALIAS_REMOVE_SUCCESS('ls');
+      expect(result).toContain('ls');
+    });
+
+    it('ALIAS_NOT_FOUND 包含别名', () => {
+      const result = MESSAGES.ALIAS_NOT_FOUND('xxx');
+      expect(result).toContain('xxx');
+    });
+
+    it('ALIAS_CONFLICTS_BUILTIN 包含别名', () => {
+      const result = MESSAGES.ALIAS_CONFLICTS_BUILTIN('list');
+      expect(result).toContain('list');
+    });
+
+    it('ALIAS_TARGET_NOT_FOUND 包含命令名', () => {
+      const result = MESSAGES.ALIAS_TARGET_NOT_FOUND('xxx');
+      expect(result).toContain('xxx');
     });
   });
 });

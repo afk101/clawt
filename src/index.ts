@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import { ClawtError } from './errors/index.js';
 import { logger, enableConsoleTransport } from './logger/index.js';
 import { EXIT_CODES } from './constants/index.js';
-import { printError, ensureClawtDirs } from './utils/index.js';
+import { printError, ensureClawtDirs, loadConfig, applyAliases } from './utils/index.js';
 import { registerListCommand } from './commands/list.js';
 import { registerCreateCommand } from './commands/create.js';
 import { registerRemoveCommand } from './commands/remove.js';
@@ -15,6 +15,7 @@ import { registerConfigCommand } from './commands/config.js';
 import { registerSyncCommand } from './commands/sync.js';
 import { registerResetCommand } from './commands/reset.js';
 import { registerStatusCommand } from './commands/status.js';
+import { registerAliasCommand } from './commands/alias.js';
 
 // 从 package.json 读取版本号，避免硬编码
 const require = createRequire(import.meta.url);
@@ -50,6 +51,11 @@ registerConfigCommand(program);
 registerSyncCommand(program);
 registerResetCommand(program);
 registerStatusCommand(program);
+registerAliasCommand(program);
+
+// 加载配置并应用命令别名
+const config = loadConfig();
+applyAliases(program, config.aliases);
 
 // 全局未捕获异常处理
 process.on('uncaughtException', (error) => {

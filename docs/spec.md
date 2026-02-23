@@ -26,6 +26,7 @@
   - [5.12 将主分支代码同步到目标 Worktree](#512-将主分支代码同步到目标-worktree)
   - [5.13 重置主 Worktree 工作区和暂存区](#513-重置主-worktree-工作区和暂存区)
   - [5.14 项目全局状态总览](#514-项目全局状态总览)
+  - [5.15 命令别名管理](#515-命令别名管理)
 - [6. 错误处理规范](#6-错误处理规范)
 - [7. 非功能性需求](#7-非功能性需求)
   - [7.1 性能](#71-性能)
@@ -179,6 +180,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
 | `clawt reset`         | 重置主 worktree 工作区和暂存区                       | 5.13     |
 | `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出）          | 5.14     |
+| `clawt alias`         | 管理命令别名（列出 / 设置 / 移除）                       | 5.15     |
 
 **全局选项：**
 
@@ -842,7 +844,8 @@ clawt merge [-m <commitMessage>]
   "autoPullPush": false,
   "confirmDestructiveOps": true,
   "maxConcurrency": 0,
-  "terminalApp": "auto"
+  "terminalApp": "auto",
+  "aliases": {}
 }
 ```
 
@@ -856,6 +859,7 @@ clawt merge [-m <commitMessage>]
 | `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean、config reset）前是否提示确认 |
 | `maxConcurrency` | `number` | `0` | run 命令默认最大并发数，`0` 表示不限制 |
 | `terminalApp` | `string` | `"auto"` | 批量 resume 使用的终端应用：`auto`（自动检测）、`iterm2`、`terminal`（macOS） |
+| `aliases` | `Record<string, string>` | `{}` | 命令别名映射，键为别名，值为目标内置命令名 |
 
 ---
 
@@ -1347,6 +1351,112 @@ clawt status [--json]
 - 消息常量在 `MESSAGES.STATUS_*` 系列
 - `getCommitCountBehind()` 是新增的工具函数（在 `src/utils/git.ts`），通过 `git rev-list --count <branch>..HEAD` 计算落后提交数
 - `getProjectSnapshotBranches()` 是新增的工具函数（在 `src/utils/validate-snapshot.ts`），通过扫描快照目录下的 `.tree` 文件提取分支名列表
+
+---
+
+### 5.15 命令别名管理
+
+**命令：**
+
+```bash
+# 列出所有命令别名
+clawt alias
+clawt alias list
+
+# 设置命令别名
+clawt alias set <alias> <command>
+
+# 移除命令别名
+clawt alias remove <alias>
+```
+
+**子命令：**
+
+| 子命令 | 说明 |
+| ------ | ---- |
+| `clawt alias` / `clawt alias list` | 列出所有已配置的命令别名 |
+| `clawt alias set <alias> <command>` | 设置命令别名，将 `<alias>` 映射到 `<command>` |
+| `clawt alias remove <alias>` | 移除指定的命令别名 |
+
+**参数：**
+
+| 参数 | 必填 | 说明 |
+| ---- | ---- | ---- |
+| `<alias>` | 是（set / remove） | 别名名称 |
+| `<command>` | 是（set） | 目标内置命令名 |
+
+**约束规则：**
+
+1. **别名不能覆盖内置命令名**：别名不能与已注册的内置命令同名（`list`、`create`、`remove`、`run`、`resume`、`validate`、`merge`、`config`、`sync`、`reset`、`status`、`alias`）。如果用户尝试设置与内置命令同名的别名，报错退出
+2. **目标必须是内置命令**：别名的目标（`<command>`）必须是已注册的内置命令名。如果指定了不存在的目标命令，报错退出
+3. **参数透传**：通过别名调用时，所有选项和参数会完全透传给目标命令，行为与直接调用目标命令完全一致
+
+**持久化：**
+
+别名配置存储在 `~/.clawt/config.json` 的 `aliases` 字段中（类型 `Record<string, string>`，默认 `{}`）。
+
+**运行流程：**
+
+#### `alias list`（默认）
+
+1. 读取配置文件中的 `aliases` 字段
+2. 如果没有配置任何别名，输出提示 `当前没有配置任何命令别名`
+3. 如果有别名，逐行输出所有别名映射
+
+**输出格式：**
+
+```
+命令别名列表：
+
+  l → list
+  r → run
+  v → validate
+```
+
+#### `alias set <alias> <command>`
+
+1. **校验别名不与内置命令冲突**：检查 `<alias>` 是否为内置命令名，是则报错退出
+2. **校验目标命令存在**：检查 `<command>` 是否为已注册的内置命令名，不是则报错退出
+3. 将别名写入配置文件的 `aliases` 字段（如果别名已存在，覆盖旧值）
+4. 输出成功提示
+
+**输出格式：**
+
+```
+✓ 已设置别名: l → list
+```
+
+#### `alias remove <alias>`
+
+1. 读取配置文件中的 `aliases` 字段
+2. 检查指定的别名是否存在，不存在则报错退出
+3. 从 `aliases` 中删除该别名并写入配置文件
+4. 输出成功提示
+
+**输出格式：**
+
+```
+✓ 已移除别名: l
+```
+
+**别名使用示例：**
+
+```bash
+# 设置别名
+clawt alias set l list
+clawt alias set r run
+clawt alias set v validate
+
+# 使用别名（等同于对应的完整命令）
+clawt l          # 等同于 clawt list
+clawt r task.md  # 等同于 clawt run task.md
+
+# 查看所有别名
+clawt alias list
+
+# 移除别名
+clawt alias remove l
+```
 
 ---
 

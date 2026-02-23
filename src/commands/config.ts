@@ -84,5 +84,14 @@ function formatConfigValue(value: ClawtConfig[keyof ClawtConfig]): string {
   if (typeof value === 'boolean') {
     return value ? chalk.green('true') : chalk.yellow('false');
   }
+  // 对象类型（如 aliases）按键值对逐行展示
+  if (typeof value === 'object' && value !== null) {
+    const entries = Object.entries(value);
+    if (entries.length === 0) {
+      return chalk.dim('(无)');
+    }
+    const lines = entries.map(([k, v]) => `    ${chalk.cyan(k)} → ${chalk.cyan(String(v))}`);
+    return '\n' + lines.join('\n');
+  }
   return chalk.cyan(String(value));
 }

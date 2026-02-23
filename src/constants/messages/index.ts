@@ -9,6 +9,7 @@ import { REMOVE_MESSAGES } from './remove.js';
 import { RESET_MESSAGES } from './reset.js';
 import { CONFIG_CMD_MESSAGES } from './config.js';
 import { STATUS_MESSAGES } from './status.js';
+import { ALIAS_MESSAGES } from './alias.js';
 
 /**
  * 提示消息模板
@@ -26,4 +27,5 @@ export const MESSAGES = {
   ...RESET_MESSAGES,
   ...CONFIG_CMD_MESSAGES,
   ...STATUS_MESSAGES,
+  ...ALIAS_MESSAGES,
 } as const;

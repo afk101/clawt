@@ -33,6 +33,10 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     defaultValue: 'auto',
     description: '批量 resume 使用的终端应用：auto（自动检测）、iterm2、terminal（macOS）',
   },
+  aliases: {
+    defaultValue: {} as Record<string, string>,
+    description: '命令别名映射（通过 clawt alias 命令管理）',
+  },
 };
 
 /**

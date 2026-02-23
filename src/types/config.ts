@@ -12,6 +12,8 @@ export interface ClawtConfig {
   maxConcurrency: number;
   /** 批量 resume 使用的终端应用：'auto'（自动检测）、'iterm2'、'terminal'（macOS） */
   terminalApp: string;
+  /** 命令别名映射，键为别名，值为目标内置命令名 */
+  aliases: Record<string, string>;
 }
 
 /** 单个配置项的完整定义（默认值 + 描述） */

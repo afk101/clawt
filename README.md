@@ -150,6 +150,33 @@ clawt config          # 查看当前配置
 clawt config reset    # 恢复默认配置
 ```
 
+### `clawt alias` — 管理命令别名
+
+```bash
+clawt alias                          # 列出所有命令别名
+clawt alias list                     # 列出所有命令别名
+clawt alias set <alias> <command>    # 设置命令别名
+clawt alias remove <alias>           # 移除命令别名
+```
+
+**使用示例：**
+
+```bash
+# 设置别名
+clawt alias set l list
+clawt alias set r run
+clawt alias set v validate
+
+# 使用别名（等同于对应的完整命令）
+clawt l          # 等同于 clawt list
+clawt r task.md  # 等同于 clawt run task.md
+
+# 移除别名
+clawt alias remove l
+```
+
+> **约束：** 别名不能覆盖内置命令名，目标必须是已注册的内置命令。别名的选项和参数会完全透传给目标命令。
+
 ## 配置
 
 配置文件位于 `~/.clawt/config.json`，安装后自动生成：
@@ -162,6 +189,7 @@ clawt config reset    # 恢复默认配置
 | `confirmDestructiveOps` | `true` | 破坏性操作前确认 |
 | `maxConcurrency` | `0` | run 命令最大并发数，`0` 为不限制 |
 | `terminalApp` | `"auto"` | 批量 resume 使用的终端：`auto` / `iterm2` / `terminal` |
+| `aliases` | `{}` | 命令别名映射（如 `{"l": "list", "r": "run"}`） |
 
 ## 全局选项
 

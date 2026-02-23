@@ -18,7 +18,7 @@ vi.mock('../../../src/utils/fs.js', () => ({
 }));
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadConfig, getConfigValue, writeDefaultConfig, ensureClawtDirs } from '../../../src/utils/config.js';
+import { loadConfig, getConfigValue, writeDefaultConfig, writeConfig, ensureClawtDirs } from '../../../src/utils/config.js';
 import { DEFAULT_CONFIG } from '../../../src/constants/index.js';
 import { ensureDir } from '../../../src/utils/fs.js';
 
@@ -72,6 +72,18 @@ describe('writeDefaultConfig', () => {
     expect(mockedWriteFileSync).toHaveBeenCalledWith(
       expect.any(String),
       JSON.stringify(DEFAULT_CONFIG, null, 2),
+      'utf-8',
+    );
+  });
+});
+
+describe('writeConfig', () => {
+  it('将指定配置写入配置文件', () => {
+    const customConfig = { ...DEFAULT_CONFIG, aliases: { ls: 'list' } };
+    writeConfig(customConfig);
+    expect(mockedWriteFileSync).toHaveBeenCalledWith(
+      expect.any(String),
+      JSON.stringify(customConfig, null, 2),
       'utf-8',
     );
   });
