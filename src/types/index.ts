@@ -3,5 +3,5 @@ export type { CreateOptions, RunOptions, ValidateOptions, MergeOptions, RemoveOp
 export type { WorktreeInfo, WorktreeStatus } from './worktree.js';
 export type { ClaudeCodeResult } from './claudeCode.js';
 export type { TaskResult, TaskSummary } from './taskResult.js';
-export type { WorktreeDetailedStatus, MainWorktreeStatus, SnapshotInfo, StatusResult } from './status.js';
+export type { WorktreeDetailedStatus, MainWorktreeStatus, SnapshotInfo, SnapshotSummary, StatusResult } from './status.js';
 export type { TaskFileEntry, ParseTaskFileOptions } from './taskFile.js';

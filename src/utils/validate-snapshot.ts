@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync, rmdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync, rmdirSync, statSync } from 'node:fs';
 import { VALIDATE_SNAPSHOTS_DIR } from '../constants/index.js';
 import { ensureDir } from './fs.js';
 import { logger } from '../logger/index.js';
@@ -32,6 +32,19 @@ function getSnapshotHeadPath(projectName: string, branchName: string): string {
  */
 export function hasSnapshot(projectName: string, branchName: string): boolean {
   return existsSync(getSnapshotPath(projectName, branchName));
+}
+
+/**
+ * 获取指定项目和分支的 validate 快照文件修改时间
+ * @param {string} projectName - 项目名
+ * @param {string} branchName - 分支名
+ * @returns {string | null} ISO 8601 格式的修改时间，快照不存在时返回 null
+ */
+export function getSnapshotModifiedTime(projectName: string, branchName: string): string | null {
+  const snapshotPath = getSnapshotPath(projectName, branchName);
+  if (!existsSync(snapshotPath)) return null;
+  const stat = statSync(snapshotPath);
+  return stat.mtime.toISOString();
 }
 
 /**

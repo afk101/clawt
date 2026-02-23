@@ -63,6 +63,7 @@ import {
   getCommitTreeHash,
   gitDiffTree,
   gitApplyCachedCheck,
+  getBranchCreatedAt,
 } from '../../../src/utils/git.js';
 
 const mockedExecCommand = vi.mocked(execCommand);
@@ -572,5 +573,40 @@ describe('getCommitCountBehind', () => {
   it('命令失败时返回 0', () => {
     mockedExecCommand.mockImplementation(() => { throw new Error('fail'); });
     expect(getCommitCountBehind('feature')).toBe(0);
+  });
+});
+
+describe('getBranchCreatedAt', () => {
+  it('多条 reflog 记录时返回最后一条（分支创建时间）', () => {
+    mockedExecCommand.mockReturnValue('2026-02-21T10:00:00+08:00\n2026-02-20T14:30:00+08:00');
+    expect(getBranchCreatedAt('feature')).toBe('2026-02-20T14:30:00+08:00');
+    expect(mockedExecCommand).toHaveBeenCalledWith(
+      'git reflog show feature --format=%cI',
+      { cwd: undefined },
+    );
+  });
+
+  it('单条 reflog 记录时返回该时间', () => {
+    mockedExecCommand.mockReturnValue('2026-02-20T14:30:00+08:00');
+    expect(getBranchCreatedAt('feature')).toBe('2026-02-20T14:30:00+08:00');
+  });
+
+  it('无 reflog 记录时返回 null', () => {
+    mockedExecCommand.mockReturnValue('');
+    expect(getBranchCreatedAt('feature')).toBeNull();
+  });
+
+  it('命令失败时返回 null', () => {
+    mockedExecCommand.mockImplementation(() => { throw new Error('fail'); });
+    expect(getBranchCreatedAt('feature')).toBeNull();
+  });
+
+  it('传递 cwd 参数', () => {
+    mockedExecCommand.mockReturnValue('2026-02-20T14:30:00+08:00');
+    getBranchCreatedAt('feature', '/repo');
+    expect(mockedExecCommand).toHaveBeenCalledWith(
+      'git reflog show feature --format=%cI',
+      { cwd: '/repo' },
+    );
   });
 });

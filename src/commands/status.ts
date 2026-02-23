@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import chalk from 'chalk';
 import { MESSAGES } from '../constants/index.js';
 import { logger } from '../logger/index.js';
-import type { StatusOptions, WorktreeDetailedStatus, MainWorktreeStatus, SnapshotInfo, StatusResult, WorktreeInfo } from '../types/index.js';
+import type { StatusOptions, WorktreeDetailedStatus, MainWorktreeStatus, SnapshotSummary, StatusResult, WorktreeInfo } from '../types/index.js';
 import {
   validateMainWorktree,
   getProjectName,
@@ -14,8 +14,10 @@ import {
   getDiffStat,
   hasMergeConflict,
   hasLocalCommits,
-  hasSnapshot,
+  getSnapshotModifiedTime,
   getProjectSnapshotBranches,
+  getBranchCreatedAt,
+  formatRelativeTime,
   printInfo,
   printDoubleSeparator,
   printSeparator,
@@ -96,6 +98,7 @@ function collectWorktreeDetailedStatus(worktree: WorktreeInfo, projectName: stri
   const changeStatus = detectChangeStatus(worktree);
   const { commitsAhead, commitsBehind } = countCommitDivergence(worktree.branch);
   const { insertions, deletions } = countDiffStat(worktree.path);
+  const createdAt = resolveBranchCreatedAt(worktree.branch);
 
   return {
     path: worktree.path,
@@ -103,9 +106,10 @@ function collectWorktreeDetailedStatus(worktree: WorktreeInfo, projectName: stri
     changeStatus,
     commitsAhead,
     commitsBehind,
-    hasSnapshot: hasSnapshot(projectName, worktree.branch),
+    snapshotTime: resolveSnapshotTime(projectName, worktree.branch),
     insertions,
     deletions,
+    createdAt,
   };
 }
 
@@ -162,20 +166,47 @@ function countDiffStat(worktreePath: string): { insertions: number; deletions: n
 }
 
 /**
- * 收集未清理的 validate 快照信息
- * 对比快照分支与现有 worktree 分支，标识孤立快照
+ * 获取分支的创建时间
+ * @param {string} branchName - 分支名
+ * @returns {string | null} ISO 8601 格式的创建时间，获取失败时返回 null
+ */
+function resolveBranchCreatedAt(branchName: string): string | null {
+  try {
+    return getBranchCreatedAt(branchName);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 获取分支的 validate 快照修改时间
+ * @param {string} projectName - 项目名
+ * @param {string} branchName - 分支名
+ * @returns {string | null} ISO 8601 格式的快照时间，无快照时返回 null
+ */
+function resolveSnapshotTime(projectName: string, branchName: string): string | null {
+  try {
+    return getSnapshotModifiedTime(projectName, branchName);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 收集 validate 快照摘要信息
  * @param {string} projectName - 项目名
  * @param {WorktreeInfo[]} worktrees - 当前有效的 worktree 列表
- * @returns {SnapshotInfo[]} 快照信息列表
+ * @returns {SnapshotSummary} 快照摘要
  */
-function collectSnapshots(projectName: string, worktrees: WorktreeInfo[]): SnapshotInfo[] {
+function collectSnapshots(projectName: string, worktrees: WorktreeInfo[]): SnapshotSummary {
   const snapshotBranches = getProjectSnapshotBranches(projectName);
   const worktreeBranchSet = new Set(worktrees.map((wt) => wt.branch));
+  const orphaned = snapshotBranches.filter((branch) => !worktreeBranchSet.has(branch)).length;
 
-  return snapshotBranches.map((branch) => ({
-    branch,
-    worktreeExists: worktreeBranchSet.has(branch),
-  }));
+  return {
+    total: snapshotBranches.length,
+    orphaned,
+  };
 }
 
 /**
@@ -256,31 +287,39 @@ function printWorktreeItem(wt: WorktreeDetailedStatus): void {
   const statusLabel = formatChangeStatusLabel(wt.changeStatus);
   printInfo(`  ${chalk.bold('●')} ${chalk.bold(wt.branch)}   [${statusLabel}]`);
 
-  // 差异统计行
-  const parts: string[] = [];
-
-  // 行数变更（仅在有变更时展示）
+  // 变更行数
   if (wt.insertions > 0 || wt.deletions > 0) {
-    parts.push(`${chalk.green(`+${wt.insertions}`)} ${chalk.red(`-${wt.deletions}`)}`);
+    printInfo(`    ${chalk.green(`+${wt.insertions}`)} ${chalk.red(`-${wt.deletions}`)}`);
   }
 
   // 本地提交数
   if (wt.commitsAhead > 0) {
-    parts.push(chalk.yellow(`${wt.commitsAhead} 个本地提交`));
+    printInfo(`    ${chalk.yellow(`${wt.commitsAhead} 个本地提交`)}`);
   }
 
   // 与主分支的同步状态
   if (wt.commitsBehind > 0) {
-    parts.push(chalk.yellow(`落后主分支 ${wt.commitsBehind} 个提交`));
+    printInfo(`    ${chalk.yellow(`落后主分支 ${wt.commitsBehind} 个提交`)}`);
   } else {
-    parts.push(chalk.green('与主分支同步'));
+    printInfo(`    ${chalk.green('与主分支同步')}`);
   }
 
-  printInfo(`    ${parts.join('   ')}`);
+  // 分支创建时间
+  if (wt.createdAt) {
+    const relativeTime = formatRelativeTime(wt.createdAt);
+    if (relativeTime) {
+      printInfo(`    ${chalk.gray(MESSAGES.STATUS_CREATED_AT(relativeTime))}`);
+    }
+  }
 
-  // 快照状态
-  if (wt.hasSnapshot) {
-    printInfo(`    ${chalk.blue('有 validate 快照')}`);
+  // 验证状态
+  if (wt.snapshotTime) {
+    const relativeTime = formatRelativeTime(wt.snapshotTime);
+    if (relativeTime) {
+      printInfo(`    ${chalk.green(MESSAGES.STATUS_LAST_VALIDATED(relativeTime))}`);
+    }
+  } else {
+    printInfo(`    ${chalk.red(MESSAGES.STATUS_NOT_VALIDATED)}`);
   }
 
   printInfo('');
@@ -305,23 +344,13 @@ function formatChangeStatusLabel(status: WorktreeDetailedStatus['changeStatus'])
 }
 
 /**
- * 输出未清理快照区块
- * @param {SnapshotInfo[]} snapshots - 快照信息列表
+ * 输出快照摘要区块
+ * @param {SnapshotSummary} snapshots - 快照摘要信息
  */
-function printSnapshotsSection(snapshots: SnapshotInfo[]): void {
-  printInfo(`  ${chalk.bold('◆')} ${chalk.bold(MESSAGES.STATUS_SNAPSHOTS_SECTION)} (${snapshots.length} 个)`);
-  printInfo('');
-
-  if (snapshots.length === 0) {
-    printInfo(`    ${MESSAGES.STATUS_NO_SNAPSHOTS}`);
-    printInfo('');
-    return;
-  }
-
-  for (const snap of snapshots) {
-    const orphanLabel = snap.worktreeExists ? '' : `  ${chalk.yellow(MESSAGES.STATUS_SNAPSHOT_ORPHANED)}`;
-    const icon = snap.worktreeExists ? chalk.blue('●') : chalk.yellow('⚠');
-    printInfo(`  ${icon} ${snap.branch}${orphanLabel}`);
+function printSnapshotsSection(snapshots: SnapshotSummary): void {
+  printInfo(`  ${chalk.bold('◆')} ${chalk.bold(MESSAGES.STATUS_SNAPSHOTS_SECTION)} (${snapshots.total} 个)`);
+  if (snapshots.orphaned > 0) {
+    printInfo(`    ${chalk.yellow(MESSAGES.STATUS_SNAPSHOT_ORPHANED(snapshots.orphaned))}`);
   }
   printInfo('');
 }

@@ -17,7 +17,11 @@ vi.mock('../../../src/constants/index.js', () => ({
     STATUS_CHANGE_UNCOMMITTED: '未提交',
     STATUS_CHANGE_CONFLICT: '冲突',
     STATUS_CHANGE_CLEAN: '干净',
-    STATUS_SNAPSHOT_ORPHANED: '(孤立)',
+    STATUS_SNAPSHOT_ORPHANED: (count: number) => `其中 ${count} 个快照对应的 worktree 已不存在`,
+    STATUS_CREATED_AT: (relativeTime: string) => `创建于 ${relativeTime}`,
+    STATUS_NO_DIVERGED_COMMITS: '尚无分叉提交',
+    STATUS_LAST_VALIDATED: (relativeTime: string) => `上次验证: ${relativeTime}`,
+    STATUS_NOT_VALIDATED: '✗ 未验证',
   },
 }));
 
@@ -32,8 +36,10 @@ vi.mock('../../../src/utils/index.js', () => ({
   getDiffStat: vi.fn(),
   hasMergeConflict: vi.fn(),
   hasLocalCommits: vi.fn(),
-  hasSnapshot: vi.fn(),
+  getSnapshotModifiedTime: vi.fn(),
   getProjectSnapshotBranches: vi.fn(),
+  getBranchCreatedAt: vi.fn(),
+  formatRelativeTime: vi.fn(),
   printInfo: vi.fn(),
   printDoubleSeparator: vi.fn(),
   printSeparator: vi.fn(),
@@ -50,8 +56,10 @@ import {
   getDiffStat,
   hasMergeConflict,
   hasLocalCommits,
-  hasSnapshot,
+  getSnapshotModifiedTime,
   getProjectSnapshotBranches,
+  getBranchCreatedAt,
+  formatRelativeTime,
   printInfo,
 } from '../../../src/utils/index.js';
 
@@ -64,8 +72,10 @@ const mockedGetCommitCountBehind = vi.mocked(getCommitCountBehind);
 const mockedGetDiffStat = vi.mocked(getDiffStat);
 const mockedHasMergeConflict = vi.mocked(hasMergeConflict);
 const mockedHasLocalCommits = vi.mocked(hasLocalCommits);
-const mockedHasSnapshot = vi.mocked(hasSnapshot);
+const mockedGetSnapshotModifiedTime = vi.mocked(getSnapshotModifiedTime);
 const mockedGetProjectSnapshotBranches = vi.mocked(getProjectSnapshotBranches);
+const mockedGetBranchCreatedAt = vi.mocked(getBranchCreatedAt);
+const mockedFormatRelativeTime = vi.mocked(formatRelativeTime);
 const mockedPrintInfo = vi.mocked(printInfo);
 
 beforeEach(() => {
@@ -79,7 +89,9 @@ beforeEach(() => {
   mockedGetDiffStat.mockReturnValue({ insertions: 0, deletions: 0 });
   mockedHasMergeConflict.mockReturnValue(false);
   mockedHasLocalCommits.mockReturnValue(false);
-  mockedHasSnapshot.mockReturnValue(false);
+  mockedGetSnapshotModifiedTime.mockReturnValue(null);
+  mockedGetBranchCreatedAt.mockReturnValue(null);
+  mockedFormatRelativeTime.mockReturnValue('3 天前');
   mockedPrintInfo.mockReset();
 });
 
@@ -167,7 +179,7 @@ describe('handleStatus', () => {
     expect(parsed.main.isClean).toBe(false);
   });
 
-  it('存在快照时标识孤立快照', () => {
+  it('快照摘要包含总数和孤立数', () => {
     mockedGetProjectSnapshotBranches.mockReturnValue(['feature', 'deleted-branch']);
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
@@ -184,9 +196,8 @@ describe('handleStatus', () => {
       try { JSON.parse(call[0]); return true; } catch { return false; }
     });
     const parsed = JSON.parse(jsonCall![0]);
-    expect(parsed.snapshots).toHaveLength(2);
-    expect(parsed.snapshots[0]).toEqual({ branch: 'feature', worktreeExists: true });
-    expect(parsed.snapshots[1]).toEqual({ branch: 'deleted-branch', worktreeExists: false });
+    expect(parsed.snapshots.total).toBe(2);
+    expect(parsed.snapshots.orphaned).toBe(1);
   });
 
   it('uncommitted 变更状态正确检测', () => {
@@ -210,5 +221,113 @@ describe('handleStatus', () => {
     });
     const parsed = JSON.parse(jsonCall![0]);
     expect(parsed.worktrees[0].changeStatus).toBe('uncommitted');
+  });
+
+  it('createdAt 字段包含在 JSON 输出中', () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature' },
+    ]);
+    mockedGetBranchCreatedAt.mockReturnValue('2026-02-20T14:30:00+08:00');
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    program.parse(['status', '--json'], { from: 'user' });
+
+    const jsonCall = consoleSpy.mock.calls.find((call) => {
+      try { JSON.parse(call[0]); return true; } catch { return false; }
+    });
+    const parsed = JSON.parse(jsonCall![0]);
+    expect(parsed.worktrees[0].createdAt).toBe('2026-02-20T14:30:00+08:00');
+  });
+
+  it('snapshotTime 字段包含在 JSON 输出中', () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature' },
+    ]);
+    mockedGetSnapshotModifiedTime.mockReturnValue('2026-02-22T10:00:00.000Z');
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    program.parse(['status', '--json'], { from: 'user' });
+
+    const jsonCall = consoleSpy.mock.calls.find((call) => {
+      try { JSON.parse(call[0]); return true; } catch { return false; }
+    });
+    const parsed = JSON.parse(jsonCall![0]);
+    expect(parsed.worktrees[0].snapshotTime).toBe('2026-02-22T10:00:00.000Z');
+  });
+
+  it('文本模式显示分支创建时间', () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature' },
+    ]);
+    mockedGetBranchCreatedAt.mockReturnValue('2026-02-20T14:30:00+08:00');
+    mockedFormatRelativeTime.mockReturnValue('2 天前');
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    program.parse(['status'], { from: 'user' });
+
+    const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0]);
+    const createdAtLine = printedLines.find((line) => line.includes('创建于'));
+    expect(createdAtLine).toBeDefined();
+  });
+
+  it('文本模式 createdAt 为 null 时不显示创建时间', () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature' },
+    ]);
+    mockedGetBranchCreatedAt.mockReturnValue(null);
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    program.parse(['status'], { from: 'user' });
+
+    const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0]);
+    const createdAtLine = printedLines.find((line) => line.includes('创建于'));
+    expect(createdAtLine).toBeUndefined();
+  });
+
+  it('文本模式无快照时显示未验证警示', () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature' },
+    ]);
+    mockedGetSnapshotModifiedTime.mockReturnValue(null);
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    program.parse(['status'], { from: 'user' });
+
+    const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0]);
+    const unverifiedLine = printedLines.find((line) => line.includes('未验证'));
+    expect(unverifiedLine).toBeDefined();
+  });
+
+  it('文本模式有快照时显示上次验证时间', () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature' },
+    ]);
+    mockedGetSnapshotModifiedTime.mockReturnValue('2026-02-22T10:00:00.000Z');
+    mockedFormatRelativeTime.mockReturnValue('5 小时前');
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    program.parse(['status'], { from: 'user' });
+
+    const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0]);
+    const validatedLine = printedLines.find((line) => line.includes('上次验证'));
+    expect(validatedLine).toBeDefined();
+    const unverifiedLine = printedLines.find((line) => line.includes('未验证'));
+    expect(unverifiedLine).toBeUndefined();
   });
 });

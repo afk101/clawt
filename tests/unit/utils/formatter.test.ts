@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle, formatDuration } from '../../../src/utils/formatter.js';
+import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle, formatDuration, formatRelativeTime } from '../../../src/utils/formatter.js';
 import { createWorktreeStatus } from '../../helpers/fixtures.js';
 
 describe('formatWorktreeStatus', () => {
@@ -134,5 +134,46 @@ describe('formatDuration', () => {
 
   it('大数值时正确格式化', () => {
     expect(formatDuration(3661000)).toBe('61m01s');
+  });
+});
+
+describe('formatRelativeTime', () => {
+  it('不到 1 分钟时返回"刚刚"', () => {
+    const now = new Date();
+    expect(formatRelativeTime(now.toISOString())).toBe('刚刚');
+  });
+
+  it('数分钟前', () => {
+    const date = new Date(Date.now() - 5 * 60 * 1000);
+    expect(formatRelativeTime(date.toISOString())).toBe('5 分钟前');
+  });
+
+  it('数小时前', () => {
+    const date = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    expect(formatRelativeTime(date.toISOString())).toBe('3 小时前');
+  });
+
+  it('数天前', () => {
+    const date = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    expect(formatRelativeTime(date.toISOString())).toBe('7 天前');
+  });
+
+  it('数月前', () => {
+    const date = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+    expect(formatRelativeTime(date.toISOString())).toBe('2 个月前');
+  });
+
+  it('数年前', () => {
+    const date = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000);
+    expect(formatRelativeTime(date.toISOString())).toBe('1 年前');
+  });
+
+  it('无效日期返回 null', () => {
+    expect(formatRelativeTime('invalid-date')).toBeNull();
+  });
+
+  it('未来时间返回"刚刚"', () => {
+    const future = new Date(Date.now() + 60 * 60 * 1000);
+    expect(formatRelativeTime(future.toISOString())).toBe('刚刚');
   });
 });
