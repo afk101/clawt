@@ -16,6 +16,7 @@ import {
   printInfo,
   printSuccess,
   printError,
+  printHint,
   confirmAction,
   removeSnapshot,
   removeProjectSnapshots,
@@ -85,6 +86,9 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
 
   if (!autoDelete) {
     shouldDeleteBranch = await confirmAction('是否同时删除对应的本地分支？');
+    if (!shouldDeleteBranch) {
+      printHint(MESSAGES.REMOVE_BRANCHES_KEPT);
+    }
   }
 
   // 执行移除，收集失败项

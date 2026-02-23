@@ -36,6 +36,14 @@ export function printInfo(message: string): void {
 }
 
 /**
+ * 输出提示信息（橙色）
+ * @param {string} message - 消息内容
+ */
+export function printHint(message: string): void {
+  console.log(chalk.hex('#FF8C00')(message));
+}
+
+/**
  * 输出分隔线
  */
 export function printSeparator(): void {
