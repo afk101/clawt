@@ -12,7 +12,6 @@ describe('MESSAGES', () => {
       'TARGET_WORKTREE_CLEAN',
       'MERGE_CONFLICT',
       'COMMIT_MESSAGE_REQUIRED',
-      'TARGET_WORKTREE_DIRTY_NO_MESSAGE',
       'TARGET_WORKTREE_NO_CHANGES',
       'INTERRUPTED',
       'INTERRUPT_CONFIRM_CLEANUP',
@@ -49,6 +48,11 @@ describe('MESSAGES', () => {
   });
 
   describe('模板函数消息', () => {
+    it('TARGET_WORKTREE_DIRTY_NO_MESSAGE 包含 worktree 路径', () => {
+      const result = MESSAGES.TARGET_WORKTREE_DIRTY_NO_MESSAGE('/path/to/wt');
+      expect(result).toContain('/path/to/wt');
+    });
+
     it('BRANCH_EXISTS 包含分支名', () => {
       const result = MESSAGES.BRANCH_EXISTS('feature-a');
       expect(result).toContain('feature-a');

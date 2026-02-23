@@ -19,7 +19,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   validateClaudeCodeInstalled: vi.fn(),
   getProjectWorktrees: vi.fn(),
   launchInteractiveClaude: vi.fn(),
-  resolveTargetWorktree: vi.fn(),
+  resolveTargetWorktrees: vi.fn(),
 }));
 
 import { registerResumeCommand } from '../../../src/commands/resume.js';
@@ -28,21 +28,21 @@ import {
   validateClaudeCodeInstalled,
   getProjectWorktrees,
   launchInteractiveClaude,
-  resolveTargetWorktree,
+  resolveTargetWorktrees,
 } from '../../../src/utils/index.js';
 
 const mockedValidateMainWorktree = vi.mocked(validateMainWorktree);
 const mockedValidateClaudeCodeInstalled = vi.mocked(validateClaudeCodeInstalled);
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
 const mockedLaunchInteractiveClaude = vi.mocked(launchInteractiveClaude);
-const mockedResolveTargetWorktree = vi.mocked(resolveTargetWorktree);
+const mockedResolveTargetWorktrees = vi.mocked(resolveTargetWorktrees);
 
 beforeEach(() => {
   mockedValidateMainWorktree.mockReset();
   mockedValidateClaudeCodeInstalled.mockReset();
   mockedGetProjectWorktrees.mockReset();
   mockedLaunchInteractiveClaude.mockReset();
-  mockedResolveTargetWorktree.mockReset();
+  mockedResolveTargetWorktrees.mockReset();
 });
 
 describe('registerResumeCommand', () => {
@@ -58,7 +58,7 @@ describe('handleResume', () => {
   it('成功恢复 Claude Code 会话', async () => {
     const worktree = { path: '/path/feature', branch: 'feature' };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
-    mockedResolveTargetWorktree.mockResolvedValue(worktree);
+    mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
 
     const program = new Command();
     program.exitOverride();
@@ -67,14 +67,14 @@ describe('handleResume', () => {
 
     expect(mockedValidateMainWorktree).toHaveBeenCalled();
     expect(mockedValidateClaudeCodeInstalled).toHaveBeenCalled();
-    expect(mockedResolveTargetWorktree).toHaveBeenCalled();
+    expect(mockedResolveTargetWorktrees).toHaveBeenCalled();
     expect(mockedLaunchInteractiveClaude).toHaveBeenCalledWith(worktree, { autoContinue: true });
   });
 
-  it('不传 -b 时也能调用 resolveTargetWorktree', async () => {
+  it('不传 -b 时也能调用 resolveTargetWorktrees', async () => {
     const worktree = { path: '/path/feature', branch: 'feature' };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
-    mockedResolveTargetWorktree.mockResolvedValue(worktree);
+    mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
 
     const program = new Command();
     program.exitOverride();
@@ -82,7 +82,7 @@ describe('handleResume', () => {
     await program.parseAsync(['resume'], { from: 'user' });
 
     // branchName 参数为 undefined
-    expect(mockedResolveTargetWorktree).toHaveBeenCalledWith(
+    expect(mockedResolveTargetWorktrees).toHaveBeenCalledWith(
       expect.any(Array),
       expect.any(Object),
       undefined,
