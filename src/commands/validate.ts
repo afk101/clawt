@@ -40,8 +40,10 @@ import {
   printSeparator,
   resolveTargetWorktree,
   runCommandInherited,
+  parseParallelCommands,
+  runParallelCommands,
 } from '../utils/index.js';
-import type { WorktreeResolveMessages } from '../utils/index.js';
+import type { WorktreeResolveMessages, ParallelCommandResult } from '../utils/index.js';
 
 /** validate 命令的分支解析消息配置 */
 const VALIDATE_RESOLVE_MESSAGES: WorktreeResolveMessages = {
@@ -305,13 +307,11 @@ function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath:
 }
 
 /**
- * 在主 worktree 中执行用户指定的命令
- * 命令执行失败不影响 validate 本身的结果，仅输出提示
+ * 执行单个命令（同步方式，保持原有行为不变）
  * @param {string} command - 要执行的命令字符串
  * @param {string} mainWorktreePath - 主 worktree 路径
  */
-function executeRunCommand(command: string, mainWorktreePath: string): void {
-  printInfo('');
+function executeSingleCommand(command: string, mainWorktreePath: string): void {
   printInfo(MESSAGES.VALIDATE_RUN_START(command));
   printSeparator();
 
@@ -330,6 +330,73 @@ function executeRunCommand(command: string, mainWorktreePath: string): void {
     printSuccess(MESSAGES.VALIDATE_RUN_SUCCESS(command));
   } else {
     printError(MESSAGES.VALIDATE_RUN_FAILED(command, exitCode));
+  }
+}
+
+/**
+ * 汇总输出并行命令的执行结果
+ * @param {ParallelCommandResult[]} results - 各命令的执行结果数组
+ */
+function reportParallelResults(results: ParallelCommandResult[]): void {
+  printSeparator();
+
+  const successCount = results.filter((r) => r.exitCode === 0 && !r.error).length;
+  const failedCount = results.length - successCount;
+
+  for (const result of results) {
+    if (result.error) {
+      printError(MESSAGES.VALIDATE_PARALLEL_CMD_ERROR(result.command, result.error));
+    } else if (result.exitCode === 0) {
+      printSuccess(MESSAGES.VALIDATE_PARALLEL_CMD_SUCCESS(result.command));
+    } else {
+      printError(MESSAGES.VALIDATE_PARALLEL_CMD_FAILED(result.command, result.exitCode));
+    }
+  }
+
+  if (failedCount === 0) {
+    printSuccess(MESSAGES.VALIDATE_PARALLEL_RUN_ALL_SUCCESS(results.length));
+  } else {
+    printError(MESSAGES.VALIDATE_PARALLEL_RUN_SUMMARY(successCount, failedCount));
+  }
+}
+
+/**
+ * 并行执行多个命令并汇总结果
+ * @param {string[]} commands - 要并行执行的命令数组
+ * @param {string} mainWorktreePath - 主 worktree 路径
+ */
+async function executeParallelCommands(commands: string[], mainWorktreePath: string): Promise<void> {
+  printInfo(MESSAGES.VALIDATE_PARALLEL_RUN_START(commands.length));
+
+  for (let i = 0; i < commands.length; i++) {
+    printInfo(MESSAGES.VALIDATE_PARALLEL_CMD_START(i + 1, commands.length, commands[i]));
+  }
+
+  printSeparator();
+
+  const results = await runParallelCommands(commands, { cwd: mainWorktreePath });
+
+  reportParallelResults(results);
+}
+
+/**
+ * 在主 worktree 中执行用户指定的命令
+ * 根据命令字符串中的 & 分隔符决定是单命令执行还是并行执行
+ * 命令执行失败不影响 validate 本身的结果，仅输出提示
+ * @param {string} command - 要执行的命令字符串
+ * @param {string} mainWorktreePath - 主 worktree 路径
+ */
+async function executeRunCommand(command: string, mainWorktreePath: string): Promise<void> {
+  printInfo('');
+
+  const commands = parseParallelCommands(command);
+
+  if (commands.length <= 1) {
+    // 单命令（包括含 && 的串行命令），走原有同步路径
+    executeSingleCommand(commands[0] || command, mainWorktreePath);
+  } else {
+    // 多命令，并行执行
+    await executeParallelCommands(commands, mainWorktreePath);
   }
 }
 
@@ -386,6 +453,6 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
 
   // validate 成功后执行用户指定的命令
   if (options.run) {
-    executeRunCommand(options.run, mainWorktreePath);
+    await executeRunCommand(options.run, mainWorktreePath);
   }
 }

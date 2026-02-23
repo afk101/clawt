@@ -603,39 +603,103 @@ git restore --staged .
 如果用户传入了 `-r, --run` 选项，在 validate 成功后自动在主 worktree 中执行指定命令：
 
 ```bash
-# 示例
+# 示例：单命令
 clawt validate -b feature-scheme-1 -r "npm test"
+
+# 示例：并行执行多个命令（& 为并行分隔符）
+clawt validate -b feature-scheme-1 -r "pnpm test & pnpm build"
 ```
 
 **执行说明：**
 
-- 命令通过 `spawnSync` + `inherit` stdio 模式在主 worktree 中执行，输出实时显示在终端
 - 命令执行失败（退出码非 0 或进程启动失败）**不影响** validate 本身的结果，仅输出提示信息
 - `--clean` 模式下传入 `--run` 会被忽略（只执行 clean 逻辑）
+
+**命令解析规则：**
+
+`-r` 选项支持通过 `&` 将多个命令并行执行。解析由 `parseParallelCommands()`（`src/utils/shell.ts`）负责：
+
+1. 先将命令字符串中的 `&&` 临时替换为占位符，避免被误拆
+2. 按单个 `&` 分割为多个独立命令
+3. 还原占位符为 `&&`，去除首尾空白，过滤空串
+
+| 输入示例 | 解析结果 | 执行方式 |
+| -------- | -------- | -------- |
+| `"npm test"` | `["npm test"]` | 单命令，同步执行（`spawnSync` + `inherit`） |
+| `"npm lint && npm test"` | `["npm lint && npm test"]` | 单命令（`&&` 不拆分），同步执行 |
+| `"npm test & npm build"` | `["npm test", "npm build"]` | 并行执行（`spawn` + `Promise.all`） |
+| `"npm lint && npm test & npm build"` | `["npm lint && npm test", "npm build"]` | 并行执行 2 个命令 |
+
+**单命令执行：**
+
+当解析后只有 1 个命令时，通过 `spawnSync` + `inherit` stdio 模式同步执行，输出实时显示在终端。
+
+**并行命令执行：**
+
+当解析后有多个命令时，通过 `runParallelCommands()`（`src/utils/shell.ts`）执行：
+
+- 每个命令通过 Node.js `spawn` 以 shell 模式启动，`stdio: 'inherit'`
+- 使用 `Promise.all` 等待全部命令完成
+- 完成后汇总输出各命令的执行结果
+
+**向后兼容性：**
+
+- `-r "npm test"` — 单命令，走原有同步路径，行为无变化
+- `-r "npm lint && npm test"` — `&&` 不拆分，走原有同步路径，行为无变化
+- `-r "npm test & npm build"` — **新行为**：并行执行，等全部完成后汇总
 
 **输出格式：**
 
 ```
-# 命令执行成功
+# 单命令执行成功
 正在主 worktree 中执行命令: npm test
 ────────────────────────────────────────
 ... 命令的实时输出 ...
 ────────────────────────────────────────
 ✓ 命令执行完成: npm test，退出码: 0
 
-# 命令执行失败（退出码非 0）
+# 单命令执行失败（退出码非 0）
 正在主 worktree 中执行命令: npm test
 ────────────────────────────────────────
 ... 命令的实时输出 ...
 ────────────────────────────────────────
 ✗ 命令执行完成: npm test，退出码: 1
 
-# 命令执行出错（进程启动失败）
+# 单命令执行出错（进程启动失败）
 正在主 worktree 中执行命令: nonexistent
 ────────────────────────────────────────
 ────────────────────────────────────────
 ✗ 命令执行出错: spawn ENOENT
+
+# 并行命令执行（全部成功）
+正在并行执行 2 个命令...
+[1/2] pnpm test
+[2/2] pnpm build
+────────────────────────────────────────
+... 各命令的实时输出（交错显示） ...
+────────────────────────────────────────
+  ✓ pnpm test
+  ✓ pnpm build
+✓ 全部 2 个命令执行成功
+
+# 并行命令执行（部分失败）
+正在并行执行 2 个命令...
+[1/2] pnpm test
+[2/2] pnpm build
+────────────────────────────────────────
+... 各命令的实时输出（交错显示） ...
+────────────────────────────────────────
+  ✗ pnpm test（退出码: 1）
+  ✓ pnpm build
+共 2 个命令，1 个成功，1 个失败
 ```
+
+**实现要点：**
+
+- 命令解析：`parseParallelCommands()`（`src/utils/shell.ts`）
+- 并行执行：`runParallelCommands()`（`src/utils/shell.ts`），返回 `ParallelCommandResult[]`
+- 结果汇总：`reportParallelResults()`（`src/commands/validate.ts`）
+- 消息常量：`MESSAGES.VALIDATE_PARALLEL_*` 系列（`src/constants/messages/validate.ts`）
 
 #### 增量 validate（存在历史快照）
 

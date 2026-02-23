@@ -32,4 +32,25 @@ export const VALIDATE_MESSAGES = {
   /** --run 命令执行异常（进程启动失败等） */
   VALIDATE_RUN_ERROR: (command: string, errorMessage: string) =>
     `✗ 命令执行出错: ${errorMessage}`,
+  /** 并行命令开始执行提示 */
+  VALIDATE_PARALLEL_RUN_START: (count: number) =>
+    `正在并行执行 ${count} 个命令...`,
+  /** 并行执行中单个命令开始提示（带序号） */
+  VALIDATE_PARALLEL_CMD_START: (index: number, total: number, command: string) =>
+    `[${index}/${total}] ${command}`,
+  /** 并行执行全部成功汇总提示 */
+  VALIDATE_PARALLEL_RUN_ALL_SUCCESS: (count: number) =>
+    `✓ 全部 ${count} 个命令执行成功`,
+  /** 并行执行部分失败汇总提示 */
+  VALIDATE_PARALLEL_RUN_SUMMARY: (successCount: number, failedCount: number) =>
+    `共 ${successCount + failedCount} 个命令，${successCount} 个成功，${failedCount} 个失败`,
+  /** 并行执行中单个命令成功 */
+  VALIDATE_PARALLEL_CMD_SUCCESS: (command: string) =>
+    `  ✓ ${command}`,
+  /** 并行执行中单个命令失败 */
+  VALIDATE_PARALLEL_CMD_FAILED: (command: string, exitCode: number) =>
+    `  ✗ ${command}（退出码: ${exitCode}）`,
+  /** 并行执行中单个命令启动失败 */
+  VALIDATE_PARALLEL_CMD_ERROR: (command: string, errorMessage: string) =>
+    `  ✗ ${command}（错误: ${errorMessage}）`,
 } as const;
