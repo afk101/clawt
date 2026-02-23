@@ -24,6 +24,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     REMOVE_SELECT_BRANCH: '请选择要移除的分支（空格选择，回车确认）',
     REMOVE_MULTIPLE_MATCHES: (name: string) => `"${name}" 匹配到多个分支`,
     REMOVE_NO_MATCH: (name: string, branches: string[]) => `未找到与 "${name}" 匹配的分支，可用：${branches.join(', ')}`,
+    REMOVE_BRANCHES_KEPT: '已保留本地分支，可稍后使用 git branch -D <分支名> 手动删除',
   },
 }));
 
@@ -40,6 +41,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   printInfo: vi.fn(),
   printSuccess: vi.fn(),
   printError: vi.fn(),
+  printHint: vi.fn(),
   confirmAction: vi.fn(),
   removeSnapshot: vi.fn(),
   removeProjectSnapshots: vi.fn(),
@@ -59,6 +61,7 @@ import {
   removeProjectSnapshots,
   printSuccess,
   printError,
+  printHint,
   resolveTargetWorktrees,
 } from '../../../src/utils/index.js';
 
@@ -72,6 +75,7 @@ const mockedRemoveSnapshot = vi.mocked(removeSnapshot);
 const mockedRemoveProjectSnapshots = vi.mocked(removeProjectSnapshots);
 const mockedPrintSuccess = vi.mocked(printSuccess);
 const mockedPrintError = vi.mocked(printError);
+const mockedPrintHint = vi.mocked(printHint);
 const mockedResolveTargetWorktrees = vi.mocked(resolveTargetWorktrees);
 
 beforeEach(() => {
@@ -86,6 +90,7 @@ beforeEach(() => {
   mockedRemoveProjectSnapshots.mockReset();
   mockedPrintSuccess.mockReset();
   mockedPrintError.mockReset();
+  mockedPrintHint.mockReset();
   mockedResolveTargetWorktrees.mockReset();
 });
 
@@ -199,6 +204,8 @@ describe('handleRemove', () => {
     expect(mockedConfirmAction).toHaveBeenCalled();
     // 用户拒绝删除分支
     expect(mockedDeleteBranch).not.toHaveBeenCalled();
+    // 应提示用户分支已保留
+    expect(mockedPrintHint).toHaveBeenCalledWith('已保留本地分支，可稍后使用 git branch -D <分支名> 手动删除');
   });
 
   it('-b 指定不存在的分支时 resolveTargetWorktrees 抛出错误', async () => {
