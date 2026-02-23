@@ -47,6 +47,18 @@
 - `confirmDestructiveAction` 在 `src/utils/formatter.ts`，被 reset、validate --clean 和 config reset 使用
 - sanitizeBranchName 清理后为空串时抛出 BRANCH_NAME_EMPTY 错误
 
+## 进度面板与流解析
+
+- 进度面板使用备选屏幕缓冲区（Alt Screen）+ Synchronized Output 防闪烁 + 行宽截断
+- `ProgressRenderer`（`src/utils/progress.ts`）负责面板生命周期：start（进入备选屏幕）、render（清屏重绘）、stop（退出备选屏幕+主屏幕输出最终状态）
+- `src/utils/progress-render.ts` 包含纯渲染函数（`renderTaskLine`、`renderSummaryLine`、`truncateToTerminalWidth`）和 `TaskProgress` 类型
+- `src/utils/stream-parser.ts` 负责 Claude Code stream-json 输出的流式解析，包含 `createLineBuffer`、`parseStreamLine`、`parseStreamEvent`、`formatActivityText`、`truncateText` 函数
+- ANSI 转义常量（`ALT_SCREEN_ENTER/LEAVE`、`SYNC_OUTPUT_START/END`、`LINE_WRAP_DISABLE/ENABLE`、`CLEAR_SCREEN`、`CURSOR_HOME` 等）定义在 `src/constants/progress.ts`
+- `ACTIVITY_TEXT_MAX_LENGTH`（30）、`TEXT_ACTIVITY_PREFIX`（思考中）、`RESULT_PREVIEW_MAX_LENGTH`（40）、`DEFAULT_TERMINAL_COLUMNS`（80）定义在 `src/constants/progress.ts`
+- `string-width` 库用于计算含 ANSI 的字符串可见宽度（正确处理中文/emoji）
+- docs/spec.md 中进度面板说明位于 `5.3 任务完成通知机制` 章节下的 `#### 进度面板渲染机制` 子章节
+- run 命令使用 `--output-format stream-json --verbose` 调用 claude CLI（替代旧的 `--output-format json`）
+
 ## 配置项同步检查点
 
 配置项变更时需在以下 4 处保持一致：
@@ -70,7 +82,7 @@ run 命令有两种模式（自 claudeCodeCommand 特性后）：
   - 批量任务执行逻辑从 `src/commands/run.ts` 提取到 `src/utils/task-executor.ts`（公共函数 `executeBatchTasks`）
   - 进度面板渲染逻辑从 `src/utils/progress.ts` 拆分出 `src/utils/progress-render.ts`（纯渲染函数 + TaskProgress 类型）
   - `formatDuration` 从 `src/utils/progress.ts` 移至 `src/utils/formatter.ts`
-  - 进度面板每个任务行末尾显示 worktree 路径（终端可点击跳转）
+  - 进度面板每个任务行第二列显示 worktree 路径（终端可点击跳转），运行中显示活动描述，完成/失败显示结果预览
 
 ## 命令清单（12 个）
 
