@@ -18,7 +18,7 @@ vi.mock('../../../src/utils/fs.js', () => ({
 }));
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadConfig, getConfigValue, writeDefaultConfig, writeConfig, ensureClawtDirs } from '../../../src/utils/config.js';
+import { loadConfig, getConfigValue, writeDefaultConfig, writeConfig, saveConfig, ensureClawtDirs } from '../../../src/utils/config.js';
 import { DEFAULT_CONFIG } from '../../../src/constants/index.js';
 import { ensureDir } from '../../../src/utils/fs.js';
 
@@ -93,5 +93,17 @@ describe('ensureClawtDirs', () => {
   it('确保三个全局目录存在', () => {
     ensureClawtDirs();
     expect(mockedEnsureDir).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('saveConfig', () => {
+  it('将配置对象写入配置文件', () => {
+    const customConfig = { ...DEFAULT_CONFIG, autoDeleteBranch: true };
+    saveConfig(customConfig);
+    expect(mockedWriteFileSync).toHaveBeenCalledWith(
+      expect.any(String),
+      JSON.stringify(customConfig, null, 2),
+      'utf-8',
+    );
   });
 });

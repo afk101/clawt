@@ -22,6 +22,8 @@ export interface ConfigItemDefinition<T> {
   defaultValue: T;
   /** 配置项描述，用于 config 命令展示 */
   description: string;
+  /** 可选：允许的枚举值列表，仅对 string 类型有效 */
+  allowedValues?: T extends string ? readonly string[] : never;
 }
 
 /** 所有配置项的完整定义映射 */

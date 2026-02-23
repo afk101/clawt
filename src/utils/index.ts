@@ -48,7 +48,7 @@ export {
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled } from './validation.js';
 export { createWorktrees, getProjectWorktrees, getProjectWorktreeDir, cleanupWorktrees, getWorktreeStatus, createWorktreesByBranches } from './worktree.js';
-export { loadConfig, writeDefaultConfig, writeConfig, getConfigValue, ensureClawtDirs } from './config.js';
+export { loadConfig, writeDefaultConfig, writeConfig, saveConfig, getConfigValue, ensureClawtDirs } from './config.js';
 export { printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus, isWorktreeIdle, formatDuration } from './formatter.js';
 export { ensureDir, removeEmptyDir } from './fs.js';
 export { multilineInput } from './prompt.js';
@@ -61,4 +61,5 @@ export { parseTaskFile, loadTaskFile } from './task-file.js';
 export { executeBatchTasks } from './task-executor.js';
 export { detectTerminalApp, openCommandInNewTerminalTab } from './terminal.js';
 export { applyAliases } from './alias.js';
+export { isValidConfigKey, getValidConfigKeys, parseConfigValue, promptConfigValue, formatConfigValue } from './config-strategy.js';
 
