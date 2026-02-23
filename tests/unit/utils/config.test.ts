@@ -18,7 +18,7 @@ vi.mock('../../../src/utils/fs.js', () => ({
 }));
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { loadConfig, getConfigValue, writeDefaultConfig, writeConfig, saveConfig, ensureClawtDirs } from '../../../src/utils/config.js';
+import { loadConfig, getConfigValue, writeDefaultConfig, writeConfig, saveConfig, ensureClawtDirs, parseConcurrency } from '../../../src/utils/config.js';
 import { DEFAULT_CONFIG } from '../../../src/constants/index.js';
 import { ensureDir } from '../../../src/utils/fs.js';
 
@@ -93,6 +93,28 @@ describe('ensureClawtDirs', () => {
   it('确保三个全局目录存在', () => {
     ensureClawtDirs();
     expect(mockedEnsureDir).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('parseConcurrency', () => {
+  it('命令行参数 undefined 时返回配置值', () => {
+    expect(parseConcurrency(undefined, 5)).toBe(5);
+  });
+
+  it('命令行参数为有效正整数时返回解析值', () => {
+    expect(parseConcurrency('3', 0)).toBe(3);
+  });
+
+  it('命令行参数为 0 时返回 0（不限制）', () => {
+    expect(parseConcurrency('0', 5)).toBe(0);
+  });
+
+  it('命令行参数为负数时抛出错误', () => {
+    expect(() => parseConcurrency('-1', 0)).toThrow();
+  });
+
+  it('命令行参数为非数字时抛出错误', () => {
+    expect(() => parseConcurrency('abc', 0)).toThrow();
   });
 });
 

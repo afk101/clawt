@@ -31,6 +31,14 @@ vi.mock('../../../src/constants/index.js', () => ({
     BRANCH_OR_FILE_REQUIRED: '请指定 -b 或 -f',
     TASK_FILE_LOADED: (count: number, path: string) => `✓ 从 ${path} 加载了 ${count} 个任务`,
     TASK_FILE_MISSING_TASK_BY_INDEX: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少任务描述`,
+    DRY_RUN_TITLE: 'Dry Run 预览',
+    DRY_RUN_TASK_COUNT: (count: number) => `任务数: ${count}`,
+    DRY_RUN_CONCURRENCY: (concurrency: number) => `并发数: ${concurrency === 0 ? '不限制' : concurrency}`,
+    DRY_RUN_WORKTREE_DIR: (dir: string) => `Worktree 目录: ${dir}`,
+    DRY_RUN_BRANCH_EXISTS_WARNING: (name: string) => `分支 ${name} 已存在`,
+    DRY_RUN_INTERACTIVE_MODE: '模式: 交互式（无预设任务）',
+    DRY_RUN_READY: '预览完成，无冲突。移除 --dry-run 即可正式执行。',
+    DRY_RUN_HAS_CONFLICT: '存在分支冲突，实际执行时将会报错。请先处理冲突的分支。',
   },
 }));
 
@@ -46,8 +54,11 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
     validateClaudeCodeInstalled: vi.fn(),
     createWorktrees: vi.fn(),
     sanitizeBranchName: vi.fn(),
+    generateBranchNames: vi.fn(),
     checkBranchExists: vi.fn(),
     getConfigValue: vi.fn().mockReturnValue(0),
+    parseConcurrency: vi.fn().mockReturnValue(0),
+    getProjectWorktreeDir: vi.fn().mockReturnValue('/mock/.clawt/worktrees/test-project'),
     printSuccess: vi.fn(),
     printError: vi.fn(),
     printWarning: vi.fn(),
@@ -57,7 +68,9 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
     confirmAction: vi.fn(),
     launchInteractiveClaude: vi.fn(),
     loadTaskFile: vi.fn(),
+    parseTasksFromOptions: vi.fn(),
     createWorktreesByBranches: vi.fn(),
+    printDryRunPreview: vi.fn(),
   };
 });
 
@@ -80,6 +93,7 @@ vi.mock('../../../src/utils/worktree.js', () => ({
 
 vi.mock('../../../src/utils/config.js', () => ({
   getConfigValue: vi.fn().mockReturnValue(0),
+  parseConcurrency: vi.fn().mockReturnValue(0),
   loadConfig: vi.fn(),
   writeDefaultConfig: vi.fn(),
   ensureClawtDirs: vi.fn(),
@@ -110,30 +124,45 @@ vi.mock('../../../src/utils/progress.js', () => ({
   },
 }));
 
+vi.mock('../../../src/utils/dry-run.js', () => ({
+  truncateTaskDesc: vi.fn(),
+  printDryRunPreview: vi.fn(),
+}));
+
 import { registerRunCommand } from '../../../src/commands/run.js';
 import {
   createWorktrees,
   createWorktreesByBranches,
   sanitizeBranchName,
+  generateBranchNames,
   checkBranchExists,
+  parseConcurrency,
   printSuccess,
+  printDryRunPreview,
   launchInteractiveClaude,
   getConfigValue,
   loadTaskFile,
+  parseTasksFromOptions,
+  validateClaudeCodeInstalled,
 } from '../../../src/utils/index.js';
 import { spawnProcess } from '../../../src/utils/shell.js';
-import { printInfo } from '../../../src/utils/formatter.js';
+import { printInfo as formatterPrintInfo } from '../../../src/utils/formatter.js';
 
 const mockedCreateWorktrees = vi.mocked(createWorktrees);
 const mockedCreateWorktreesByBranches = vi.mocked(createWorktreesByBranches);
 const mockedSanitizeBranchName = vi.mocked(sanitizeBranchName);
+const mockedGenerateBranchNames = vi.mocked(generateBranchNames);
 const mockedCheckBranchExists = vi.mocked(checkBranchExists);
+const mockedParseConcurrency = vi.mocked(parseConcurrency);
 const mockedSpawnProcess = vi.mocked(spawnProcess);
 const mockedPrintSuccess = vi.mocked(printSuccess);
-const mockedPrintInfo = vi.mocked(printInfo);
+const mockedPrintDryRunPreview = vi.mocked(printDryRunPreview);
+const mockedFormatterPrintInfo = vi.mocked(formatterPrintInfo);
 const mockedLaunchInteractiveClaude = vi.mocked(launchInteractiveClaude);
 const mockedGetConfigValue = vi.mocked(getConfigValue);
 const mockedLoadTaskFile = vi.mocked(loadTaskFile);
+const mockedParseTasksFromOptions = vi.mocked(parseTasksFromOptions);
+const mockedValidateClaudeCodeInstalled = vi.mocked(validateClaudeCodeInstalled);
 
 /**
  * 创建模拟子进程
@@ -166,16 +195,33 @@ beforeEach(() => {
   mockedCreateWorktrees.mockReset();
   mockedCreateWorktreesByBranches.mockReset();
   mockedSanitizeBranchName.mockReset();
+  mockedGenerateBranchNames.mockReset();
   mockedCheckBranchExists.mockReset();
+  mockedParseConcurrency.mockReset();
+  mockedParseConcurrency.mockReturnValue(0);
   mockedSpawnProcess.mockReset();
   mockedPrintSuccess.mockReset();
-  mockedPrintInfo.mockReset();
+  mockedPrintDryRunPreview.mockReset();
+  mockedFormatterPrintInfo.mockReset();
   mockedLaunchInteractiveClaude.mockReset();
   mockedGetConfigValue.mockReset();
   mockedGetConfigValue.mockReturnValue(0 as any);
   mockedLoadTaskFile.mockReset();
+  mockedParseTasksFromOptions.mockReset();
+  mockedValidateClaudeCodeInstalled.mockReset();
   // sanitizeBranchName 默认返回输入值
   mockedSanitizeBranchName.mockImplementation((name: string) => name);
+  // generateBranchNames 默认使用真实逻辑
+  mockedGenerateBranchNames.mockImplementation((name: string, count: number) => {
+    if (count === 1) return [name];
+    return Array.from({ length: count }, (_, i) => `${name}-${i + 1}`);
+  });
+  // parseTasksFromOptions 默认使用真实逻辑
+  mockedParseTasksFromOptions.mockImplementation((rawTasks: string[]) => {
+    const tasks = rawTasks.map((t) => t.trim()).filter(Boolean);
+    if (tasks.length === 0) throw new Error('任务列表不能为空');
+    return tasks;
+  });
 });
 
 describe('registerRunCommand', () => {
@@ -285,6 +331,7 @@ describe('handleRun', () => {
   });
 
   it('传 --concurrency 限制并发数', async () => {
+    mockedParseConcurrency.mockReturnValue(1);
     const worktrees = [
       { path: '/path/feat-1', branch: 'feat-1' },
       { path: '/path/feat-2', branch: 'feat-2' },
@@ -311,7 +358,7 @@ describe('handleRun', () => {
     // 所有任务都应执行完毕
     expect(mockedSpawnProcess).toHaveBeenCalledTimes(3);
     // 应输出并发限制提示
-    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('并发限制'));
+    expect(mockedFormatterPrintInfo).toHaveBeenCalledWith(expect.stringContaining('并发限制'));
   });
 
   it('--concurrency 为 0 时不限制并发', async () => {
@@ -336,12 +383,13 @@ describe('handleRun', () => {
     await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1', 'task2', '-c', '0'], { from: 'user' });
 
     // 不限制并发时不输出并发限制提示
-    expect(mockedPrintInfo).not.toHaveBeenCalledWith(expect.stringContaining('并发限制'));
+    expect(mockedFormatterPrintInfo).not.toHaveBeenCalledWith(expect.stringContaining('并发限制'));
     expect(mockedSpawnProcess).toHaveBeenCalledTimes(2);
   });
 
   it('未传 -c 时使用全局配置的 maxConcurrency', async () => {
     mockedGetConfigValue.mockReturnValue(2 as any);
+    mockedParseConcurrency.mockReturnValue(2);
 
     const worktrees = [
       { path: '/path/feat-1', branch: 'feat-1' },
@@ -366,7 +414,7 @@ describe('handleRun', () => {
     await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1', 'task2', 'task3'], { from: 'user' });
 
     // 应输出并发限制提示（使用配置值 2）
-    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('并发限制'));
+    expect(mockedFormatterPrintInfo).toHaveBeenCalledWith(expect.stringContaining('并发限制'));
     expect(mockedSpawnProcess).toHaveBeenCalledTimes(3);
   });
 
@@ -452,5 +500,111 @@ describe('handleRun', () => {
     await expect(
       program.parseAsync(['run', '--tasks', 'task1'], { from: 'user' }),
     ).rejects.toThrow();
+  });
+});
+
+describe('handleRun --dry-run', () => {
+  it('--dry-run + --tasks 展示任务预览，不创建 worktree 也不启动 Claude Code', async () => {
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '--tasks', '实现登录功能', '修复首页bug', '--dry-run'], { from: 'user' });
+
+    // 不创建 worktree
+    expect(mockedCreateWorktrees).not.toHaveBeenCalled();
+    expect(mockedCreateWorktreesByBranches).not.toHaveBeenCalled();
+    // 不启动 Claude Code
+    expect(mockedLaunchInteractiveClaude).not.toHaveBeenCalled();
+    expect(mockedSpawnProcess).not.toHaveBeenCalled();
+    // 应调用 generateBranchNames 生成分支名
+    expect(mockedGenerateBranchNames).toHaveBeenCalledWith('feat', 2);
+    // 应调用 printDryRunPreview 输出预览
+    expect(mockedPrintDryRunPreview).toHaveBeenCalledWith(['feat-1', 'feat-2'], ['实现登录功能', '修复首页bug'], 0);
+  });
+
+  it('--dry-run 不调用 validateClaudeCodeInstalled', async () => {
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1', '--dry-run'], { from: 'user' });
+
+    expect(mockedValidateClaudeCodeInstalled).not.toHaveBeenCalled();
+  });
+
+  it('--dry-run 交互式模式展示单个 worktree 信息', async () => {
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '--dry-run'], { from: 'user' });
+
+    // 不创建 worktree
+    expect(mockedCreateWorktrees).not.toHaveBeenCalled();
+    // 不启动 Claude Code
+    expect(mockedLaunchInteractiveClaude).not.toHaveBeenCalled();
+    // 交互式模式：分支名列表为单个，任务为空数组
+    expect(mockedPrintDryRunPreview).toHaveBeenCalledWith(['feat'], [], 0);
+  });
+
+  it('--dry-run + -f 从任务文件展示预览', async () => {
+    mockedLoadTaskFile.mockReturnValue([
+      { branch: 'feat-login', task: '实现登录功能' },
+      { branch: 'fix-bug', task: '修复问题' },
+    ]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-f', 'tasks.md', '--dry-run'], { from: 'user' });
+
+    // 应加载任务文件
+    expect(mockedLoadTaskFile).toHaveBeenCalledWith('tasks.md', { branchRequired: true });
+    // 不创建 worktree
+    expect(mockedCreateWorktrees).not.toHaveBeenCalled();
+    expect(mockedCreateWorktreesByBranches).not.toHaveBeenCalled();
+    // 不启动 Claude Code
+    expect(mockedSpawnProcess).not.toHaveBeenCalled();
+    // 应调用 printDryRunPreview
+    expect(mockedPrintDryRunPreview).toHaveBeenCalledWith(
+      ['feat-login', 'fix-bug'],
+      ['实现登录功能', '修复问题'],
+      0,
+    );
+  });
+
+  it('--dry-run + -f + -b 模式使用 -b 自动编号', async () => {
+    mockedLoadTaskFile.mockReturnValue([
+      { task: '任务1' },
+      { task: '任务2' },
+    ]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '-f', 'tasks.md', '--dry-run'], { from: 'user' });
+
+    // 应使用 generateBranchNames 自动编号
+    expect(mockedGenerateBranchNames).toHaveBeenCalledWith('feat', 2);
+    // 不实际创建 worktree
+    expect(mockedCreateWorktrees).not.toHaveBeenCalled();
+    // 应调用 printDryRunPreview
+    expect(mockedPrintDryRunPreview).toHaveBeenCalled();
+  });
+
+  it('--dry-run 传递并发配置给 printDryRunPreview', async () => {
+    mockedParseConcurrency.mockReturnValue(3);
+
+    const program = new Command();
+    program.exitOverride();
+    registerRunCommand(program);
+    await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1', 'task2', '-c', '3', '--dry-run'], { from: 'user' });
+
+    // 不创建 worktree
+    expect(mockedCreateWorktrees).not.toHaveBeenCalled();
+    // 应将并发数传递给 printDryRunPreview
+    expect(mockedPrintDryRunPreview).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.any(Array),
+      3,
+    );
   });
 });

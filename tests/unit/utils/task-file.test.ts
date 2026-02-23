@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseTaskFile, loadTaskFile } from '../../../src/utils/task-file.js';
+import { parseTaskFile, loadTaskFile, parseTasksFromOptions } from '../../../src/utils/task-file.js';
 import { existsSync, readFileSync } from 'node:fs';
 
 vi.mock('node:fs', () => ({
@@ -232,5 +232,30 @@ describe('loadTaskFile', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].branch).toBeUndefined();
     expect(entries[0].task).toBe('实现登录功能');
+  });
+});
+
+describe('parseTasksFromOptions', () => {
+  it('正常解析任务列表', () => {
+    const tasks = parseTasksFromOptions(['task1', 'task2', 'task3']);
+    expect(tasks).toEqual(['task1', 'task2', 'task3']);
+  });
+
+  it('去除首尾空白', () => {
+    const tasks = parseTasksFromOptions(['  task1  ', '  task2  ']);
+    expect(tasks).toEqual(['task1', 'task2']);
+  });
+
+  it('过滤空字符串', () => {
+    const tasks = parseTasksFromOptions(['task1', '', '  ', 'task2']);
+    expect(tasks).toEqual(['task1', 'task2']);
+  });
+
+  it('全部为空时抛出错误', () => {
+    expect(() => parseTasksFromOptions(['', '  '])).toThrow('任务列表不能为空');
+  });
+
+  it('空数组时抛出错误', () => {
+    expect(() => parseTasksFromOptions([])).toThrow('任务列表不能为空');
   });
 });

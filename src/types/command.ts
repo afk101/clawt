@@ -16,6 +16,8 @@ export interface RunOptions {
   concurrency?: string;
   /** 任务文件路径（与 --tasks 互斥） */
   file?: string;
+  /** 预览模式，仅展示任务计划不实际执行 */
+  dryRun?: boolean;
 }
 
 /** validate 命令选项 */

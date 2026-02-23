@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { CONFIG_PATH, CLAWT_HOME, LOGS_DIR, WORKTREES_DIR, DEFAULT_CONFIG, MESSAGES } from '../constants/index.js';
+import { ClawtError } from '../errors/index.js';
 import { ensureDir } from './fs.js';
 import { logger } from '../logger/index.js';
 import type { ClawtConfig } from '../types/index.js';
@@ -64,4 +65,23 @@ export function ensureClawtDirs(): void {
   ensureDir(CLAWT_HOME);
   ensureDir(LOGS_DIR);
   ensureDir(WORKTREES_DIR);
+}
+
+/**
+ * 解析并发数参数
+ * 优先级：命令行参数 > 全局配置 > 默认值 0
+ * @param {string | undefined} optionValue - 命令行传入的并发数字符串
+ * @param {number} configValue - 全局配置中的默认并发数
+ * @returns {number} 解析后的并发数，0 表示不限制
+ */
+export function parseConcurrency(optionValue: string | undefined, configValue: number): number {
+  if (optionValue === undefined) {
+    return configValue;
+  }
+
+  const parsed = parseInt(optionValue, 10);
+  if (Number.isNaN(parsed) || parsed < 0) {
+    throw new ClawtError(MESSAGES.CONCURRENCY_INVALID);
+  }
+  return parsed;
 }

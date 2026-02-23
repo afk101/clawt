@@ -43,4 +43,20 @@ export const RUN_MESSAGES = {
   TASK_FILE_LOADED: (count: number, path: string) => `✓ 从 ${path} 加载了 ${count} 个任务`,
   /** 未指定 -b 或 -f */
   BRANCH_OR_FILE_REQUIRED: '请指定 -b 分支名或 -f 任务文件',
+  /** dry-run 预览标题 */
+  DRY_RUN_TITLE: 'Dry Run 预览',
+  /** dry-run 任务数量 */
+  DRY_RUN_TASK_COUNT: (count: number) => `任务数: ${count}`,
+  /** dry-run 并发数 */
+  DRY_RUN_CONCURRENCY: (concurrency: number) => `并发数: ${concurrency === 0 ? '不限制' : concurrency}`,
+  /** dry-run worktree 目录 */
+  DRY_RUN_WORKTREE_DIR: (dir: string) => `Worktree: ${dir}`,
+  /** dry-run 分支已存在警告 */
+  DRY_RUN_BRANCH_EXISTS_WARNING: (name: string) => `分支 ${name} 已存在`,
+  /** dry-run 交互式模式提示（无任务描述） */
+  DRY_RUN_INTERACTIVE_MODE: '模式: 交互式（无预设任务）',
+  /** dry-run 预览完成且无冲突 */
+  DRY_RUN_READY: '预览完成，无冲突。移除 --dry-run 即可正式执行。',
+  /** dry-run 存在分支冲突 */
+  DRY_RUN_HAS_CONFLICT: '存在分支冲突，实际执行时将会报错。请先处理冲突的分支。',
 } as const;
