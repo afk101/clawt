@@ -7,6 +7,8 @@ import { cleanupWorktrees } from './worktree.js';
 import { getConfigValue } from './config.js';
 import { printSuccess, printWarning, printInfo, printDoubleSeparator, confirmAction } from './formatter.js';
 import { ProgressRenderer } from './progress.js';
+import { createLineBuffer, parseStreamLine, parseStreamEvent, truncateText } from './stream-parser.js';
+import { RESULT_PREVIEW_MAX_LENGTH } from '../constants/index.js';
 
 /** executeClaudeTask 的返回结构，包含子进程引用和结果 Promise */
 interface ClaudeTaskHandle {
@@ -17,15 +19,23 @@ interface ClaudeTaskHandle {
 }
 
 /**
- * 在指定 worktree 中执行 Claude Code 任务，由于是--output-format json形式，所以这里固定claude code cli的启动命令
+ * 活动更新回调函数类型
+ * @param {string} activityText - 活动描述文本
+ */
+type ActivityCallback = (activityText: string) => void;
+
+/**
+ * 在指定 worktree 中执行 Claude Code 任务，使用 stream-json 格式获取实时事件
  * @param {WorktreeInfo} worktree - worktree 信息
  * @param {string} task - 任务描述
+ * @param {ActivityCallback} [onActivity] - 活动更新回调（可选）
  * @returns {ClaudeTaskHandle} 包含子进程引用和结果 Promise
  */
-function executeClaudeTask(worktree: WorktreeInfo, task: string): ClaudeTaskHandle {
+function executeClaudeTask(worktree: WorktreeInfo, task: string, onActivity?: ActivityCallback): ClaudeTaskHandle {
+  // 旧版使用 --output-format json，现改为 stream-json --verbose 以支持实时活动信息
   const child = spawnProcess(
     'claude',
-    ['-p', task, '--output-format', 'json', '--permission-mode', 'bypassPermissions'],
+    ['-p', task, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'bypassPermissions'],
     {
       cwd: worktree.path,
       // stdin 必须设置为 'ignore'，不能用 'pipe'
@@ -37,11 +47,27 @@ function executeClaudeTask(worktree: WorktreeInfo, task: string): ClaudeTaskHand
   );
 
   const promise = new Promise<TaskResult>((resolve) => {
-    let stdout = '';
     let stderr = '';
+    let finalResult: ClaudeCodeResult | null = null;
+    const lineBuffer = createLineBuffer();
 
     child.stdout?.on('data', (data: Buffer) => {
-      stdout += data.toString();
+      const lines = lineBuffer.push(data.toString());
+      for (const line of lines) {
+        const event = parseStreamLine(line);
+        if (!event) continue;
+
+        const parsed = parseStreamEvent(event);
+        if (!parsed) continue;
+
+        if (parsed.kind === 'result') {
+          // 最终结果事件
+          finalResult = parsed.result ?? null;
+        } else if (parsed.activityText && onActivity) {
+          // 活动事件，回调通知
+          onActivity(parsed.activityText);
+        }
+      }
     });
 
     child.stderr?.on('data', (data: Buffer) => {
@@ -49,16 +75,21 @@ function executeClaudeTask(worktree: WorktreeInfo, task: string): ClaudeTaskHand
     });
 
     child.on('close', (code) => {
-      let result: ClaudeCodeResult | null = null;
-      let success = code === 0;
-
-      try {
-        if (stdout.trim()) {
-          result = JSON.parse(stdout.trim()) as ClaudeCodeResult;
-          success = !result.is_error;
+      // 处理缓冲区中可能残留的最后一行
+      const remaining = lineBuffer.flush();
+      if (remaining) {
+        const event = parseStreamLine(remaining);
+        if (event) {
+          const parsed = parseStreamEvent(event);
+          if (parsed?.kind === 'result') {
+            finalResult = parsed.result ?? null;
+          }
         }
-      } catch {
-        logger.warn(`解析 Claude Code 输出失败: ${stdout.substring(0, 200)}`);
+      }
+
+      let success = code === 0;
+      if (finalResult) {
+        success = !finalResult.is_error;
       }
 
       resolve({
@@ -66,7 +97,7 @@ function executeClaudeTask(worktree: WorktreeInfo, task: string): ClaudeTaskHand
         branch: worktree.branch,
         worktreePath: worktree.path,
         success,
-        result,
+        result: finalResult,
         error: success ? undefined : stderr || '任务执行失败',
       });
     });
@@ -134,16 +165,25 @@ async function handleInterruptCleanup(worktrees: WorktreeInfo[]): Promise<void> 
  * @param {number} startTime - 任务批次启动时间戳
  */
 function updateRendererStatus(renderer: ProgressRenderer, index: number, result: TaskResult, startTime: number): void {
+  // 从 ClaudeCodeResult.result 中提取结果预览文本
+  // 先清理换行符和多余空白（结果文本可能包含多行），再截断到最大长度
+  const rawResultText = result.result?.result;
+  const resultPreview = rawResultText
+    ? truncateText(rawResultText.replace(/[\n\r\t]+/g, ' ').trim(), RESULT_PREVIEW_MAX_LENGTH)
+    : undefined;
+
   if (result.success) {
     renderer.markDone(
       index,
       result.result?.duration_ms ?? (Date.now() - startTime),
       result.result?.total_cost_usd ?? 0,
+      resultPreview,
     );
   } else {
     renderer.markFailed(
       index,
       result.result?.duration_ms ?? (Date.now() - startTime),
+      resultPreview,
     );
   }
 }
@@ -192,13 +232,10 @@ async function executeWithConcurrency(
       // 标记为运行中
       renderer.markRunning(index);
 
-      const handle = executeClaudeTask(wt, task);
-      childProcesses.push(handle.child);
-
-      // 监听 stderr 输出，更新任务活动时间戳
-      handle.child.stderr?.on('data', () => {
-        renderer.updateActivity(index);
+      const handle = executeClaudeTask(wt, task, (activityText) => {
+        renderer.updateActivityText(index, activityText);
       });
+      childProcesses.push(handle.child);
 
       handle.promise.then((result) => {
         results[index] = result;
@@ -248,13 +285,10 @@ async function executeAllParallel(
   const handles = worktrees.map((wt, index) => {
     const task = tasks[index];
     logger.info(`启动任务 ${index + 1}: ${task} (worktree: ${wt.path})`);
-    const handle = executeClaudeTask(wt, task);
-    childProcesses.push(handle.child);
-
-    // 监听 stderr 输出，更新任务活动时间戳
-    handle.child.stderr?.on('data', () => {
-      renderer.updateActivity(index);
+    const handle = executeClaudeTask(wt, task, (activityText) => {
+      renderer.updateActivityText(index, activityText);
     });
+    childProcesses.push(handle.child);
 
     return handle;
   });
