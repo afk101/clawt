@@ -20,9 +20,6 @@ importers:
       string-width:
         specifier: ^8.2.0
         version: 8.2.0
-      strip-ansi:
-        specifier: ^7.1.2
-        version: 7.1.2
       winston:
         specifier: ^3.17.0
         version: 3.19.0
