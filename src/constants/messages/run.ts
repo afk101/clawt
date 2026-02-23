@@ -17,11 +17,11 @@ export const RUN_MESSAGES = {
   PROGRESS_TASK_STARTED: (index: number, total: number, branch: string, path: string) =>
     `[${index}/${total}] ${branch} 启动  ${path}`,
   /** 非 TTY 环境降级输出：任务完成 */
-  PROGRESS_TASK_DONE: (index: number, total: number, branch: string, duration: string, cost: string, path: string) =>
-    `[${index}/${total}] ${branch} ✓ 完成 ${duration} ${cost}  ${path}`,
+  PROGRESS_TASK_DONE: (index: number, total: number, branch: string, duration: string, cost: string, detail: string) =>
+    `[${index}/${total}] ${branch} ✓ 完成 ${duration} ${cost}  ${detail}`,
   /** 非 TTY 环境降级输出：任务失败 */
-  PROGRESS_TASK_FAILED: (index: number, total: number, branch: string, duration: string, path: string) =>
-    `[${index}/${total}] ${branch} ✗ 失败 ${duration}  ${path}`,
+  PROGRESS_TASK_FAILED: (index: number, total: number, branch: string, duration: string, detail: string) =>
+    `[${index}/${total}] ${branch} ✗ 失败 ${duration}  ${detail}`,
   /** 并发限制提示 */
   CONCURRENCY_INFO: (concurrency: number, total: number) =>
     `并发限制: ${concurrency}，共 ${total} 个任务`,
