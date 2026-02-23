@@ -24,6 +24,8 @@ export interface ValidateOptions {
   branch?: string;
   /** 清理 validate 状态 */
   clean?: boolean;
+  /** validate 成功后在主 worktree 中执行的命令 */
+  run?: string;
 }
 
 /** merge 命令选项 */

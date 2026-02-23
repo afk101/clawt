@@ -22,4 +22,14 @@ export const VALIDATE_MESSAGES = {
   VALIDATE_SELECT_BRANCH: '请选择要验证的分支',
   /** validate 模糊匹配到多个结果提示 */
   VALIDATE_MULTIPLE_MATCHES: (name: string) => `"${name}" 匹配到多个分支，请选择：`,
+  /** --run 命令开始执行提示 */
+  VALIDATE_RUN_START: (command: string) => `正在主 worktree 中执行命令: ${command}`,
+  /** --run 命令执行成功（退出码 0） */
+  VALIDATE_RUN_SUCCESS: (command: string) => `✓ 命令执行完成: ${command}，退出码: 0`,
+  /** --run 命令执行失败（退出码非 0） */
+  VALIDATE_RUN_FAILED: (command: string, exitCode: number) =>
+    `✗ 命令执行完成: ${command}，退出码: ${exitCode}`,
+  /** --run 命令执行异常（进程启动失败等） */
+  VALIDATE_RUN_ERROR: (command: string, errorMessage: string) =>
+    `✗ 命令执行出错: ${errorMessage}`,
 } as const;
