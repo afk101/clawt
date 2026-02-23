@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CONFIG_DEFINITIONS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS } from '../../../src/constants/config.js';
+import { VALID_TERMINAL_APPS } from '../../../src/constants/terminal.js';
 
 describe('CONFIG_DEFINITIONS', () => {
   it('所有配置项都有 defaultValue 和 description', () => {
@@ -21,7 +22,7 @@ describe('DEFAULT_CONFIG', () => {
 
   it('每个 key 的值等于对应 CONFIG_DEFINITIONS 的 defaultValue', () => {
     for (const [key, def] of Object.entries(CONFIG_DEFINITIONS)) {
-      expect((DEFAULT_CONFIG as Record<string, unknown>)[key]).toBe(def.defaultValue);
+      expect((DEFAULT_CONFIG as unknown as Record<string, unknown>)[key]).toBe(def.defaultValue);
     }
   });
 
@@ -51,6 +52,28 @@ describe('CONFIG_DESCRIPTIONS', () => {
     for (const desc of Object.values(CONFIG_DESCRIPTIONS)) {
       expect(typeof desc).toBe('string');
       expect(desc.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('CONFIG_DEFINITIONS — allowedValues', () => {
+  it('terminalApp 的 allowedValues 与 VALID_TERMINAL_APPS 一致', () => {
+    expect(CONFIG_DEFINITIONS.terminalApp.allowedValues).toEqual(VALID_TERMINAL_APPS);
+  });
+
+  it('有 allowedValues 的配置项，defaultValue 必须在其中', () => {
+    for (const [, def] of Object.entries(CONFIG_DEFINITIONS)) {
+      if (def.allowedValues) {
+        expect(def.allowedValues).toContain(def.defaultValue);
+      }
+    }
+  });
+
+  it('非 string 类型的配置项不应有 allowedValues', () => {
+    for (const [, def] of Object.entries(CONFIG_DEFINITIONS)) {
+      if (typeof def.defaultValue !== 'string') {
+        expect(def.allowedValues).toBeUndefined();
+      }
     }
   });
 });

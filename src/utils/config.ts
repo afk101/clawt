@@ -32,6 +32,14 @@ export function writeDefaultConfig(): void {
 }
 
 /**
+ * 将配置对象完整写入配置文件
+ * @param {ClawtConfig} config - 要持久化的配置对象
+ */
+export function saveConfig(config: ClawtConfig): void {
+  writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+/**
  * 获取配置中指定字段的值
  * @param {keyof ClawtConfig} key - 配置字段名
  * @returns {ClawtConfig[keyof ClawtConfig]} 配置值

@@ -1,4 +1,5 @@
 import type { ClawtConfig, ConfigDefinitions } from '../types/index.js';
+import { VALID_TERMINAL_APPS } from './terminal.js';
 
 /** Claude Code 系统约束提示，禁止代码执行完成后构建项目验证 */
 export const APPEND_SYSTEM_PROMPT =
@@ -32,6 +33,7 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
   terminalApp: {
     defaultValue: 'auto',
     description: '批量 resume 使用的终端应用：auto（自动检测）、iterm2、terminal（macOS）',
+    allowedValues: VALID_TERMINAL_APPS,
   },
 };
 
