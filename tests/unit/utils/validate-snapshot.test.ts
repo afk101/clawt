@@ -8,6 +8,7 @@ vi.mock('node:fs', () => ({
   unlinkSync: vi.fn(),
   readdirSync: vi.fn(),
   rmdirSync: vi.fn(),
+  statSync: vi.fn(),
 }));
 
 // mock logger
@@ -29,11 +30,12 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
   };
 });
 
-import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync, rmdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync, rmdirSync, statSync } from 'node:fs';
 import { ensureDir } from '../../../src/utils/fs.js';
 import {
   getSnapshotPath,
   hasSnapshot,
+  getSnapshotModifiedTime,
   readSnapshot,
   readSnapshotTreeHash,
   writeSnapshot,
@@ -48,6 +50,7 @@ const mockedWriteFileSync = vi.mocked(writeFileSync);
 const mockedUnlinkSync = vi.mocked(unlinkSync);
 const mockedReaddirSync = vi.mocked(readdirSync);
 const mockedRmdirSync = vi.mocked(rmdirSync);
+const mockedStatSync = vi.mocked(statSync);
 const mockedEnsureDir = vi.mocked(ensureDir);
 
 describe('getSnapshotPath', () => {
@@ -172,5 +175,22 @@ describe('getProjectSnapshotBranches', () => {
     mockedExistsSync.mockReturnValue(false);
     const result = getProjectSnapshotBranches('proj');
     expect(result).toEqual([]);
+  });
+});
+
+describe('getSnapshotModifiedTime', () => {
+  it('快照存在时返回 ISO 时间字符串', () => {
+    mockedExistsSync.mockReturnValue(true);
+    const testDate = new Date('2026-02-22T10:00:00.000Z');
+    // @ts-expect-error statSync 返回类型简化
+    mockedStatSync.mockReturnValue({ mtime: testDate });
+    const result = getSnapshotModifiedTime('proj', 'branch');
+    expect(result).toBe('2026-02-22T10:00:00.000Z');
+  });
+
+  it('快照不存在时返回 null', () => {
+    mockedExistsSync.mockReturnValue(false);
+    const result = getSnapshotModifiedTime('proj', 'branch');
+    expect(result).toBeNull();
   });
 });

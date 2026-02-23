@@ -481,3 +481,23 @@ export function gitApplyCachedCheck(patchContent: Buffer, cwd?: string): boolean
     return false;
   }
 }
+
+/**
+ * 获取分支的创建时间（通过 reflog 获取分支创建时的时间戳）
+ * reflog 的最后一条记录即为分支创建时的记录
+ * @param {string} branchName - 目标分支名
+ * @param {string} [cwd] - 工作目录
+ * @returns {string | null} ISO 8601 格式的时间字符串，无法获取时返回 null
+ */
+export function getBranchCreatedAt(branchName: string, cwd?: string): string | null {
+  try {
+    const output = execCommand(`git reflog show ${branchName} --format=%cI`, { cwd });
+    if (!output.trim()) return null;
+    // 取最后一行，即分支创建时的 reflog 记录
+    const lines = output.trim().split('\n');
+    const lastLine = lines[lines.length - 1];
+    return lastLine || null;
+  } catch {
+    return null;
+  }
+}

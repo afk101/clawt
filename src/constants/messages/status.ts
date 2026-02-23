@@ -7,7 +7,7 @@ export const STATUS_MESSAGES = {
   /** status worktrees 区块标题 */
   STATUS_WORKTREES_SECTION: 'Worktree 列表',
   /** status 快照区块标题 */
-  STATUS_SNAPSHOTS_SECTION: '未清理的 Validate 快照',
+  STATUS_SNAPSHOTS_SECTION: 'Validate 快照',
   /** status 无 worktree */
   STATUS_NO_WORKTREES: '(无活跃 worktree)',
   /** status 无未清理快照 */
@@ -21,5 +21,13 @@ export const STATUS_MESSAGES = {
   /** status 变更状态：无变更 */
   STATUS_CHANGE_CLEAN: '无变更',
   /** status 快照对应 worktree 已不存在 */
-  STATUS_SNAPSHOT_ORPHANED: '(对应 worktree 已不存在)',
+  STATUS_SNAPSHOT_ORPHANED: (count: number) => `其中 ${count} 个快照对应的 worktree 已不存在`,
+  /** status 分支创建时间标签 */
+  STATUS_CREATED_AT: (relativeTime: string) => `创建于 ${relativeTime}`,
+  /** status 分支无分叉提交时的提示 */
+  STATUS_NO_DIVERGED_COMMITS: '尚无分叉提交',
+  /** status 上次验证时间标签 */
+  STATUS_LAST_VALIDATED: (relativeTime: string) => `上次验证: ${relativeTime}`,
+  /** status 未验证警示 */
+  STATUS_NOT_VALIDATED: '✗ 未验证',
 } as const;

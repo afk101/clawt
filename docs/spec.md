@@ -1367,7 +1367,7 @@ clawt status [--json]
 
 **使用场景：**
 
-在管理多个 worktree 时，快速了解项目全局状态：主 worktree 当前分支及干净状态、所有 worktree 的变更情况和与主分支的同步状态、未清理的 validate 快照。
+在管理多个 worktree 时，快速了解项目全局状态：主 worktree 当前分支及干净状态、所有 worktree 的变更情况和与主分支的同步状态、validate 快照摘要。
 
 **运行流程：**
 
@@ -1382,17 +1382,18 @@ clawt status [--json]
      - **变更状态**（优先级：合并冲突 > 未提交修改 > 已提交 > 无变更）
      - **行数差异**（新增/删除行数，通过 `getDiffStat()` 获取）
      - **提交差异**（相对于主分支的领先提交数 `getCommitCountAhead()` 和落后提交数 `getCommitCountBehind()`）
-     - **快照状态**（是否存在 validate 快照）
-4. **收集未清理的 validate 快照**：
+     - **快照时间**（validate 快照文件的 mtime，通过 `getSnapshotModifiedTime()` 获取，返回 ISO 8601 时间字符串或 null）
+     - **分支创建时间**（通过 `getBranchCreatedAt()` 从 git reflog 获取分支创建时的时间戳）
+4. **收集 validate 快照摘要**：
    - 通过 `getProjectSnapshotBranches()` 扫描快照目录下的 `.tree` 文件获取所有存在快照的分支名
-   - 对比现有 worktree 分支列表，标识孤立快照（对应 worktree 已不存在的快照）
+   - 统计快照总数和孤立快照数（对应 worktree 已不存在的快照）
 5. **输出状态信息**：
    - 指定 `--json` → 以 JSON 格式输出完整状态数据（`JSON.stringify`）
    - 未指定 → 以文本格式输出
 
 **文本输出格式（默认）：**
 
-输出分为三个区块：主 Worktree、Worktree 列表、未清理的 Validate 快照。
+输出分为三个区块：主 Worktree、Worktree 列表、Validate 快照摘要。每个 worktree 条目每行展示一种信息。
 
 ```
 ════════════════════════════════════════
@@ -1409,16 +1410,18 @@ clawt status [--json]
 
   ● feature-login   [已提交]
     +120 -30   3 个本地提交   与主分支同步
-    有 validate 快照
+    创建于 3 天前
+    上次验证: 2 小时前
 
   ● feature-signup   [未提交修改]
     +45 -10   1 个本地提交   落后主分支 2 个提交
+    创建于 1 天前
+    ✗ 未验证
 
 ────────────────────────────────────────
 
-  ◆ 未清理的 Validate 快照 (1 个)
-
-  ⚠ old-feature   (对应 worktree 已不存在)
+  ◆ Validate 快照 (3 个)
+    其中 1 个快照对应的 worktree 已不存在
 
 ════════════════════════════════════════
 ```
@@ -1438,11 +1441,21 @@ clawt status [--json]
 - 本地提交数（`N 个本地提交`）仅在有提交时展示
 - 与主分支同步状态始终展示（落后时显示黄色，同步时显示绿色）
 
+**分支创建时间行：**
+
+- 通过 `getBranchCreatedAt()` 从 git reflog 获取分支创建时间，以 `formatRelativeTime()` 格式化为中文相对时间（如"3 天前"、"2 小时前"、"刚刚"）
+- 展示为灰色文本 `创建于 X前`，无法获取时不展示
+
+**验证状态行：**
+
+- 有快照时：显示绿色 `上次验证: X前`（通过 `getSnapshotModifiedTime()` 获取快照文件 mtime，再用 `formatRelativeTime()` 格式化）
+- 无快照时：显示红色 `✗ 未验证` 警示
+
 **快照区块：**
 
-- 每个快照显示对应的分支名
-- 如果对应的 worktree 仍存在，显示蓝色圆点图标
-- 如果对应的 worktree 已不存在（孤立快照），显示黄色警告图标并标注 `(对应 worktree 已不存在)`
+- 标题显示快照总数
+- 如果存在孤立快照（对应 worktree 已不存在），显示黄色警告 `其中 N 个快照对应的 worktree 已不存在`
+- 无孤立快照时不显示额外信息
 
 **JSON 输出格式（`--json`）：**
 
@@ -1460,25 +1473,31 @@ clawt status [--json]
       "changeStatus": "committed",
       "commitsAhead": 3,
       "commitsBehind": 0,
-      "hasSnapshot": true,
+      "snapshotTime": "2025-02-06T12:30:00.000Z",
       "insertions": 120,
-      "deletions": 30
+      "deletions": 30,
+      "createdAt": "2025-02-03T10:00:00.000Z"
     }
   ],
-  "snapshots": [
-    {
-      "branch": "old-feature",
-      "worktreeExists": false
-    }
-  ],
+  "snapshots": {
+    "total": 3,
+    "orphaned": 1
+  },
   "totalWorktrees": 1
 }
 ```
 
 **实现要点：**
 
-- 类型定义在 `src/types/status.ts`：`WorktreeDetailedStatus`、`MainWorktreeStatus`、`SnapshotInfo`、`StatusResult`
-- 消息常量在 `MESSAGES.STATUS_*` 系列
+- 类型定义在 `src/types/status.ts`：`WorktreeDetailedStatus`（`hasSnapshot` 已改为 `snapshotTime: string | null`，新增 `createdAt: string | null`）、`MainWorktreeStatus`、`SnapshotInfo`、`SnapshotSummary`（新增，包含 `total` 和 `orphaned`）、`StatusResult`（`snapshots` 已从 `SnapshotInfo[]` 改为 `SnapshotSummary`）
+- 消息常量在 `MESSAGES.STATUS_*` 系列，新增：
+  - `STATUS_LAST_VALIDATED`：上次验证时间标签（如 `上次验证: 2 小时前`）
+  - `STATUS_NOT_VALIDATED`：未验证红色警示文本（`✗ 未验证`）
+  - `STATUS_CREATED_AT`：分支创建时间标签（如 `创建于 3 天前`）
+  - `STATUS_SNAPSHOT_ORPHANED`：改为接受数量参数的函数（如 `其中 1 个快照对应的 worktree 已不存在`）
+- `getBranchCreatedAt()` 是新增的工具函数（在 `src/utils/git.ts`），通过 `git reflog show <branch> --format=%cI` 获取 reflog 最后一条记录的时间戳（即分支创建时间），返回 ISO 8601 格式字符串或 null
+- `getSnapshotModifiedTime()` 是新增的工具函数（在 `src/utils/validate-snapshot.ts`），通过 `fs.statSync` 获取快照文件的修改时间（mtime），返回 ISO 8601 格式字符串或 null
+- `formatRelativeTime()` 是新增的格式化函数（在 `src/utils/formatter.ts`），将 ISO 8601 日期字符串转换为中文相对时间描述（如"3 天前"、"2 小时前"、"刚刚"），无效日期时返回 null
 - `getCommitCountBehind()` 是新增的工具函数（在 `src/utils/git.ts`），通过 `git rev-list --count <branch>..HEAD` 计算落后提交数
 - `getProjectSnapshotBranches()` 是新增的工具函数（在 `src/utils/validate-snapshot.ts`），通过扫描快照目录下的 `.tree` 文件提取分支名列表
 

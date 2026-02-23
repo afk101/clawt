@@ -10,12 +10,14 @@ export interface WorktreeDetailedStatus {
   commitsAhead: number;
   /** 落后于主分支的提交数 */
   commitsBehind: number;
-  /** 是否存在 validate 快照 */
-  hasSnapshot: boolean;
+  /** 上次 validate 验证时间（ISO 8601 时间字符串），无快照时为 null */
+  snapshotTime: string | null;
   /** 工作区和暂存区的新增行数 */
   insertions: number;
   /** 工作区和暂存区的删除行数 */
   deletions: number;
+  /** 分支创建时间（首次分叉提交的 ISO 8601 时间字符串），无分叉提交时为 null */
+  createdAt: string | null;
 }
 
 /** 主 worktree 状态信息 */
@@ -36,14 +38,22 @@ export interface SnapshotInfo {
   worktreeExists: boolean;
 }
 
+/** validate 快照摘要信息 */
+export interface SnapshotSummary {
+  /** 快照总数 */
+  total: number;
+  /** 孤立快照数（对应 worktree 已不存在） */
+  orphaned: number;
+}
+
 /** status 命令的完整输出结构 */
 export interface StatusResult {
   /** 主 worktree 状态 */
   main: MainWorktreeStatus;
   /** 各 worktree 的详细状态 */
   worktrees: WorktreeDetailedStatus[];
-  /** 未清理的 validate 快照列表 */
-  snapshots: SnapshotInfo[];
+  /** validate 快照摘要 */
+  snapshots: SnapshotSummary;
   /** worktree 总数 */
   totalWorktrees: number;
 }

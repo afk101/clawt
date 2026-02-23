@@ -142,3 +142,45 @@ export function formatDuration(ms: number): string {
   const seconds = Math.floor(totalSeconds % 60);
   return `${minutes}m${String(seconds).padStart(2, '0')}s`;
 }
+
+/**
+ * 将 ISO 8601 日期字符串格式化为中文相对时间描述
+ * 例如: "3 天前"、"2 小时前"、"刚刚"
+ * @param {string} isoDateString - ISO 8601 格式的日期字符串
+ * @returns {string | null} 中文相对时间描述，无效日期时返回 null
+ */
+export function formatRelativeTime(isoDateString: string): string | null {
+  const date = new Date(isoDateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+
+  // 无效日期返回 null
+  if (isNaN(diffMs)) {
+    return null;
+  }
+
+  // 未来时间或不到 1 分钟
+  if (diffMs < 0 || diffMs < 60 * 1000) {
+    return '刚刚';
+  }
+
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffHours < 1) {
+    return `${diffMinutes} 分钟前`;
+  }
+  if (diffDays < 1) {
+    return `${diffHours} 小时前`;
+  }
+  if (diffDays < 30) {
+    return `${diffDays} 天前`;
+  }
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return `${months} 个月前`;
+  }
+  const years = Math.floor(diffDays / 365);
+  return `${years} 年前`;
+}
