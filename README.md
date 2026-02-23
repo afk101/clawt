@@ -123,11 +123,18 @@ clawt validate -b <branch>                    # 将变更迁移到主 worktree �
 clawt validate -b <branch> --clean             # 清理 validate 状态
 clawt validate -b <branch> -r "npm test"       # validate 成功后自动运行测试
 clawt validate -b <branch> -r "npm run build"  # validate 成功后自动构建
+clawt validate -b <branch> -r "pnpm test & pnpm build"  # 并行执行多个命令
 ```
 
 支持增量模式：再次 validate 同一分支时，可通过 `git diff` 查看两次之间的增量差异。
 
-`-r, --run` 选项可在 validate 成功后自动在主 worktree 中执行指定命令（如测试、构建等），命令执行失败不影响 validate 结果。
+`-r, --run` 选项可在 validate 成功后自动在主 worktree 中执行指定命令（如测试、构建等），命令执行失败不影响 validate 结果。支持用 `&` 分隔多个命令并行执行：
+
+| 用法 | 行为 |
+| ---- | ---- |
+| `-r "npm test"` | 单命令，同步执行 |
+| `-r "npm lint && npm test"` | `&&` 不拆分，同步执行 |
+| `-r "pnpm test & pnpm build"` | 并行执行，等全部完成后汇总结果 |
 
 ### `clawt sync` — 同步主分支代码到目标 worktree
 

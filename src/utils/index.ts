@@ -1,4 +1,5 @@
-export { execCommand, spawnProcess, killAllChildProcesses, execCommandWithInput, runCommandInherited } from './shell.js';
+export { execCommand, spawnProcess, killAllChildProcesses, execCommandWithInput, runCommandInherited, parseParallelCommands, runParallelCommands } from './shell.js';
+export type { ParallelCommandResult } from './shell.js';
 export {
   getGitCommonDir,
   getGitTopLevel,

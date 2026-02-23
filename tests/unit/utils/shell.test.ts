@@ -13,7 +13,7 @@ vi.mock('../../../src/logger/index.js', () => ({
 }));
 
 import { execSync, execFileSync, spawn } from 'node:child_process';
-import { execCommand, execCommandWithInput, spawnProcess, killAllChildProcesses } from '../../../src/utils/shell.js';
+import { execCommand, execCommandWithInput, spawnProcess, killAllChildProcesses, parseParallelCommands } from '../../../src/utils/shell.js';
 
 const mockedExecSync = vi.mocked(execSync);
 const mockedExecFileSync = vi.mocked(execFileSync);
@@ -104,5 +104,46 @@ describe('killAllChildProcesses', () => {
 
   it('空数组时不报错', () => {
     expect(() => killAllChildProcesses([])).not.toThrow();
+  });
+});
+
+describe('parseParallelCommands', () => {
+  it('单个命令返回包含该命令的数组', () => {
+    expect(parseParallelCommands('pnpm test')).toEqual(['pnpm test']);
+  });
+
+  it('使用 & 分隔的多个命令被正确拆分', () => {
+    expect(parseParallelCommands('pnpm test & pnpm build')).toEqual(['pnpm test', 'pnpm build']);
+  });
+
+  it('&& 不会被拆分，保持为单条命令', () => {
+    expect(parseParallelCommands('pnpm lint && pnpm test')).toEqual(['pnpm lint && pnpm test']);
+  });
+
+  it('混合场景：&& 和 & 同时存在', () => {
+    expect(parseParallelCommands('pnpm lint && pnpm test & pnpm build')).toEqual([
+      'pnpm lint && pnpm test',
+      'pnpm build',
+    ]);
+  });
+
+  it('多个 & 分隔的命令', () => {
+    expect(parseParallelCommands('cmd1 & cmd2 & cmd3')).toEqual(['cmd1', 'cmd2', 'cmd3']);
+  });
+
+  it('空字符串返回空数组', () => {
+    expect(parseParallelCommands('')).toEqual([]);
+  });
+
+  it('去除命令首尾空白', () => {
+    expect(parseParallelCommands('  pnpm test  &  pnpm build  ')).toEqual(['pnpm test', 'pnpm build']);
+  });
+
+  it('多个 && 不拆分', () => {
+    expect(parseParallelCommands('cmd1 && cmd2 && cmd3')).toEqual(['cmd1 && cmd2 && cmd3']);
+  });
+
+  it('尾部 & 后无内容时过滤空字符串', () => {
+    expect(parseParallelCommands('pnpm test & ')).toEqual(['pnpm test']);
   });
 });

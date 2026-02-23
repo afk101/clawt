@@ -32,6 +32,13 @@ vi.mock('../../../src/constants/index.js', () => ({
     VALIDATE_RUN_SUCCESS: (cmd: string) => `✓ 命令执行完成: ${cmd}`,
     VALIDATE_RUN_FAILED: (cmd: string, code: number) => `✗ 命令失败: ${cmd}，退出码: ${code}`,
     VALIDATE_RUN_ERROR: (cmd: string, msg: string) => `✗ 命令出错: ${msg}`,
+    VALIDATE_PARALLEL_RUN_START: (count: number) => `正在并行执行 ${count} 个命令...`,
+    VALIDATE_PARALLEL_CMD_START: (index: number, total: number, cmd: string) => `[${index}/${total}] ${cmd}`,
+    VALIDATE_PARALLEL_RUN_ALL_SUCCESS: (count: number) => `✓ 全部 ${count} 个命令执行成功`,
+    VALIDATE_PARALLEL_RUN_SUMMARY: (s: number, f: number) => `共 ${s + f} 个命令，${s} 个成功，${f} 个失败`,
+    VALIDATE_PARALLEL_CMD_SUCCESS: (cmd: string) => `  ✓ ${cmd}`,
+    VALIDATE_PARALLEL_CMD_FAILED: (cmd: string, code: number) => `  ✗ ${cmd}（退出码: ${code}）`,
+    VALIDATE_PARALLEL_CMD_ERROR: (cmd: string, msg: string) => `  ✗ ${cmd}（错误: ${msg}）`,
     SEPARATOR: '────',
   },
 }));
@@ -79,6 +86,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   runCommandInherited: vi.fn(),
   printError: vi.fn(),
   printSeparator: vi.fn(),
+  parseParallelCommands: vi.fn(),
+  runParallelCommands: vi.fn(),
 }));
 
 import { registerValidateCommand } from '../../../src/commands/validate.js';
@@ -116,6 +125,8 @@ import {
   runCommandInherited,
   printError,
   printSeparator,
+  parseParallelCommands,
+  runParallelCommands,
 } from '../../../src/utils/index.js';
 
 const mockedGetProjectName = vi.mocked(getProjectName);
@@ -151,6 +162,8 @@ const mockedPrintWarning = vi.mocked(printWarning);
 const mockedRunCommandInherited = vi.mocked(runCommandInherited);
 const mockedPrintError = vi.mocked(printError);
 const mockedPrintSeparator = vi.mocked(printSeparator);
+const mockedParseParallelCommands = vi.mocked(parseParallelCommands);
+const mockedRunParallelCommands = vi.mocked(runParallelCommands);
 
 const worktree = { path: '/path/feature', branch: 'feature' };
 
@@ -188,6 +201,10 @@ beforeEach(() => {
   mockedRunCommandInherited.mockReset();
   mockedPrintError.mockReset();
   mockedPrintSeparator.mockReset();
+  mockedParseParallelCommands.mockReset();
+  mockedRunParallelCommands.mockReset();
+  // 默认让 parseParallelCommands 返回单命令数组，保持旧测试兼容
+  mockedParseParallelCommands.mockImplementation((cmd: string) => [cmd]);
 });
 
 describe('registerValidateCommand', () => {
@@ -514,5 +531,91 @@ describe('--run 选项', () => {
     await program.parseAsync(['validate', '-b', 'feature', '-r', 'npm test'], { from: 'user' });
 
     expect(mockedRunCommandInherited).not.toHaveBeenCalled();
+  });
+});
+
+describe('--run 并行命令', () => {
+  /** 设置首次 validate 成功的公共 mock */
+  function setupSuccessfulFirstValidate(): void {
+    mockedIsWorkingDirClean.mockReturnValue(true);
+    mockedHasLocalCommits.mockReturnValue(true);
+    mockedHasSnapshot.mockReturnValue(false);
+    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
+    mockedGitWriteTree.mockReturnValue('treehash');
+    mockedGetHeadCommitHash.mockReturnValue('headhash');
+  }
+
+  it('& 分隔的命令触发并行执行', async () => {
+    setupSuccessfulFirstValidate();
+    mockedParseParallelCommands.mockReturnValue(['pnpm test', 'pnpm build']);
+    mockedRunParallelCommands.mockResolvedValue([
+      { command: 'pnpm test', exitCode: 0 },
+      { command: 'pnpm build', exitCode: 0 },
+    ]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerValidateCommand(program);
+    await program.parseAsync(['validate', '-b', 'feature', '-r', 'pnpm test & pnpm build'], { from: 'user' });
+
+    // 应该调用并行执行而非同步执行
+    expect(mockedRunParallelCommands).toHaveBeenCalledWith(['pnpm test', 'pnpm build'], { cwd: '/repo' });
+    expect(mockedRunCommandInherited).not.toHaveBeenCalled();
+    // 全部成功，printSuccess 被调用（validate 成功 + 各命令成功 + 汇总成功）
+    expect(mockedPrintSuccess).toHaveBeenCalled();
+  });
+
+  it('并行执行部分失败时输出错误汇总', async () => {
+    setupSuccessfulFirstValidate();
+    mockedParseParallelCommands.mockReturnValue(['pnpm test', 'pnpm build']);
+    mockedRunParallelCommands.mockResolvedValue([
+      { command: 'pnpm test', exitCode: 1 },
+      { command: 'pnpm build', exitCode: 0 },
+    ]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerValidateCommand(program);
+    await program.parseAsync(['validate', '-b', 'feature', '-r', 'pnpm test & pnpm build'], { from: 'user' });
+
+    expect(mockedRunParallelCommands).toHaveBeenCalled();
+    // 部分失败，应有错误输出
+    expect(mockedPrintError).toHaveBeenCalled();
+  });
+
+  it('单命令走原有同步路径不触发并行', async () => {
+    setupSuccessfulFirstValidate();
+    mockedParseParallelCommands.mockReturnValue(['npm test']);
+    mockedRunCommandInherited.mockReturnValue({
+      pid: 0, output: [], stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
+      status: 0, signal: null, error: undefined,
+    });
+
+    const program = new Command();
+    program.exitOverride();
+    registerValidateCommand(program);
+    await program.parseAsync(['validate', '-b', 'feature', '-r', 'npm test'], { from: 'user' });
+
+    // 单命令应该走同步路径
+    expect(mockedRunCommandInherited).toHaveBeenCalledWith('npm test', { cwd: '/repo' });
+    expect(mockedRunParallelCommands).not.toHaveBeenCalled();
+  });
+
+  it('&& 命令不触发并行执行', async () => {
+    setupSuccessfulFirstValidate();
+    mockedParseParallelCommands.mockReturnValue(['pnpm lint && pnpm test']);
+    mockedRunCommandInherited.mockReturnValue({
+      pid: 0, output: [], stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
+      status: 0, signal: null, error: undefined,
+    });
+
+    const program = new Command();
+    program.exitOverride();
+    registerValidateCommand(program);
+    await program.parseAsync(['validate', '-b', 'feature', '-r', 'pnpm lint && pnpm test'], { from: 'user' });
+
+    // && 不拆分，走同步路径
+    expect(mockedRunCommandInherited).toHaveBeenCalledWith('pnpm lint && pnpm test', { cwd: '/repo' });
+    expect(mockedRunParallelCommands).not.toHaveBeenCalled();
   });
 });

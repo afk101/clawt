@@ -1,6 +1,16 @@
 import { execSync, execFileSync, spawn, spawnSync, type ChildProcess, type SpawnSyncReturns, type StdioOptions } from 'node:child_process';
 import { logger } from '../logger/index.js';
 
+/** 并行命令执行的单个结果 */
+export interface ParallelCommandResult {
+  /** 执行的命令字符串 */
+  command: string;
+  /** 进程退出码 */
+  exitCode: number;
+  /** 进程启动失败时的错误信息 */
+  error?: string;
+}
+
 /**
  * 同步执行 shell 命令并返回 stdout
  * @param {string} command - 要执行的命令
@@ -91,4 +101,59 @@ export function runCommandInherited(
     stdio: 'inherit',
     shell: true,
   });
+}
+
+/**
+ * 解析命令字符串中的并行分隔符 `&`，将其拆分为多个独立命令
+ * `&&` 不会被拆分（属于 shell 的串行逻辑与操作符）
+ * @param {string} commandString - 命令字符串
+ * @returns {string[]} 拆分后的命令数组
+ */
+export function parseParallelCommands(commandString: string): string[] {
+  // 将 && 临时替换为占位符，避免被 & 分割逻辑误拆
+  const placeholder = '\x00AND\x00';
+  const escaped = commandString.replace(/&&/g, placeholder);
+
+  // 按单个 & 分割
+  const parts = escaped.split('&');
+
+  // 还原占位符为 &&，并去除首尾空白
+  return parts
+    .map((part) => part.replace(new RegExp(placeholder, 'g'), '&&').trim())
+    .filter((part) => part.length > 0);
+}
+
+/**
+ * 并行执行多个命令，等待全部完成后返回结果
+ * 每个命令通过 spawn 以 shell 模式启动，stdio 继承父进程（实时输出到终端）
+ * @param {string[]} commands - 要并行执行的命令数组
+ * @param {object} options - 可选配置
+ * @param {string} options.cwd - 工作目录
+ * @returns {Promise<ParallelCommandResult[]>} 各命令的执行结果
+ */
+export function runParallelCommands(
+  commands: string[],
+  options?: { cwd?: string },
+): Promise<ParallelCommandResult[]> {
+  const promises = commands.map((command) => {
+    return new Promise<ParallelCommandResult>((resolve) => {
+      logger.debug(`并行启动命令: ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
+
+      const child = spawn(command, {
+        cwd: options?.cwd,
+        stdio: 'inherit',
+        shell: true,
+      });
+
+      child.on('error', (err) => {
+        resolve({ command, exitCode: 1, error: err.message });
+      });
+
+      child.on('close', (code) => {
+        resolve({ command, exitCode: code ?? 1 });
+      });
+    });
+  });
+
+  return Promise.all(promises);
 }
