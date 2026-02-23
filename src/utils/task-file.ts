@@ -10,6 +10,24 @@ const TASK_BLOCK_REGEX = /<!-- CLAWT-TASKS:START -->([\s\S]*?)<!-- CLAWT-TASKS:E
 /** 匹配分支名行的正则：# branch: <name> */
 const BRANCH_LINE_REGEX = /^#\s*branch:\s*(.+)$/;
 
+/** 任务列表为空时的错误提示 */
+const EMPTY_TASKS_MESSAGE = '任务列表不能为空';
+
+/**
+ * 从命令行 --tasks 选项中解析出有效的任务列表
+ * 去除首尾空白并过滤空字符串，结果为空时抛出错误
+ * @param {string[]} rawTasks - 原始任务字符串数组
+ * @returns {string[]} 过滤后的有效任务列表
+ * @throws {ClawtError} 任务列表为空时抛出
+ */
+export function parseTasksFromOptions(rawTasks: string[]): string[] {
+  const tasks = rawTasks.map((t) => t.trim()).filter(Boolean);
+  if (tasks.length === 0) {
+    throw new ClawtError(EMPTY_TASKS_MESSAGE);
+  }
+  return tasks;
+}
+
 /**
  * 解析任务文件内容，提取所有任务块
  * 每个块内 `# branch: <name>` 为分支名，其余行为任务描述

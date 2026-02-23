@@ -52,6 +52,29 @@ clawt run -f tasks.md
 
 # 从任务文件读取任务，但用 -b 自动编号分支（文件中分支名可省略）
 clawt run -f tasks.md -b feat
+
+# 试运行：仅预览将要创建的 worktree 和任务，不实际执行
+clawt run -b <branch> --tasks "任务1" --tasks "任务2" --dry-run
+```
+
+**`--dry-run` 预览示例：**
+
+```
+════════════════════════════════════════
+  Dry Run 预览
+════════════════════════════════════════
+任务数: 2 │ 并发数: 不限制 │ Worktree: ~/.clawt/worktrees/project
+────────────────────────────────────────
+✓ [1/2] feat-1
+  路径: ~/.clawt/worktrees/project/feat-1
+  任务: 任务1
+
+✓ [2/2] feat-2
+  路径: ~/.clawt/worktrees/project/feat-2
+  任务: 任务2
+
+════════════════════════════════════════
+✓ 预览完成，无冲突。移除 --dry-run 即可正式执行。
 ```
 
 **任务文件格式：**
