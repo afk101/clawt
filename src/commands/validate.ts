@@ -188,10 +188,7 @@ async function handlePatchApplyFailure(targetWorktreePath: string, branchName: s
   printInfo(MESSAGES.VALIDATE_AUTO_SYNC_START(branchName));
   const syncResult = executeSyncForBranch(targetWorktreePath, branchName);
 
-  if (syncResult.hasConflict) {
-    // sync 存在冲突，提示用户手动解决
-    printWarning(MESSAGES.VALIDATE_AUTO_SYNC_CONFLICT(targetWorktreePath));
-  }
+  // sync 冲突提示已在 executeSyncForBranch 内部输出（SYNC_CONFLICT），此处无需重复提示
 }
 
 /**
