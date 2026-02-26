@@ -238,6 +238,20 @@ clawt config set terminalApp iterm2
 clawt config get maxConcurrency
 ```
 
+### `clawt completion` — Shell 自动补全
+
+为终端提供命令、子命令、选项，甚至分支名和配置项的自动补全功能。
+
+```bash
+# 自动安装补全脚本（推荐）
+clawt completion install
+
+# 或手动将脚本添加到你的 shell 配置文件
+clawt completion bash >> ~/.bashrc
+clawt completion zsh >> ~/.zshrc
+```
+> **支持特性：** 所有子命令、选项、`-b` 参数自动补全本地 `worktree` 分支名、`-f` 参数自动补全文件路径，以及 `config set/get` 键名自动补全。
+
 ### `clawt alias` — 管理命令别名
 
 ```bash

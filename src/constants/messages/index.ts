@@ -12,6 +12,7 @@ import { CONFIG_CMD_MESSAGES, CONFIG_ALIAS_DISABLED_HINT } from './config.js';
 export { CONFIG_ALIAS_DISABLED_HINT };
 import { STATUS_MESSAGES } from './status.js';
 import { ALIAS_MESSAGES } from './alias.js';
+import { COMPLETION_MESSAGES } from './completion.js';
 
 /**
  * 提示消息模板
@@ -30,4 +31,5 @@ export const MESSAGES = {
   ...CONFIG_CMD_MESSAGES,
   ...STATUS_MESSAGES,
   ...ALIAS_MESSAGES,
+  ...COMPLETION_MESSAGES,
 } as const;
