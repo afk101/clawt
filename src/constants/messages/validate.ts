@@ -59,9 +59,6 @@ export const VALIDATE_MESSAGES = {
   /** 自动 sync 开始提示 */
   VALIDATE_AUTO_SYNC_START: (branch: string) =>
     `正在自动同步主分支到 ${branch} ...`,
-  /** 自动 sync 存在冲突，无法重试 */
-  VALIDATE_AUTO_SYNC_CONFLICT: (worktreePath: string) =>
-    `同步存在冲突，请进入目标 worktree 手动解决冲突后重试\n  cd ${worktreePath}`,
   /** 用户拒绝自动 sync */
   VALIDATE_AUTO_SYNC_DECLINED: (branch: string) =>
     `请手动执行 clawt sync -b ${branch} 同步主分支后重试`,

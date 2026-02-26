@@ -17,6 +17,7 @@ import { registerResetCommand } from './commands/reset.js';
 import { registerStatusCommand } from './commands/status.js';
 import { registerAliasCommand } from './commands/alias.js';
 import { registerProjectsCommand } from './commands/projects.js';
+import { registerCompletionCommand } from './commands/completion.js';
 
 // 从 package.json 读取版本号，避免硬编码
 const require = createRequire(import.meta.url);
@@ -54,6 +55,7 @@ registerResetCommand(program);
 registerStatusCommand(program);
 registerAliasCommand(program);
 registerProjectsCommand(program);
+registerCompletionCommand(program);
 
 // 加载配置并应用命令别名
 const config = loadConfig();
