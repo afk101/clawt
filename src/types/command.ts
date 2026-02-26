@@ -69,3 +69,11 @@ export interface StatusOptions {
   /** 以 JSON 格式输出 */
   json?: boolean;
 }
+
+/** projects 命令选项 */
+export interface ProjectsOptions {
+  /** 指定项目名（可选，不传则展示所有项目概览） */
+  name?: string;
+  /** 以 JSON 格式输出 */
+  json?: boolean;
+}
