@@ -39,6 +39,10 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     defaultValue: {} as Record<string, string>,
     description: '命令别名映射',
   },
+  autoUpdate: {
+    defaultValue: true,
+    description: '是否启用自动更新检查（每 24 小时检查一次 npm registry）',
+  },
 };
 
 /**

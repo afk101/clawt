@@ -67,4 +67,5 @@ export { detectTerminalApp, openCommandInNewTerminalTab } from './terminal.js';
 export { truncateTaskDesc, printDryRunPreview } from './dry-run.js';
 export { applyAliases } from './alias.js';
 export { isValidConfigKey, getValidConfigKeys, parseConfigValue, promptConfigValue, formatConfigValue } from './config-strategy.js';
+export { checkForUpdates } from './update-checker.js';
 

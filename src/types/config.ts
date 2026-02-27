@@ -14,6 +14,8 @@ export interface ClawtConfig {
   terminalApp: string;
   /** 命令别名映射，键为别名，值为目标内置命令名 */
   aliases: Record<string, string>;
+  /** 是否启用自动更新检查 */
+  autoUpdate: boolean;
 }
 
 /** 单个配置项的完整定义（默认值 + 描述） */

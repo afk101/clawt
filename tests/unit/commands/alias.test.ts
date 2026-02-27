@@ -50,6 +50,7 @@ function mockDefaultConfig(aliases: Record<string, string> = {}) {
     maxConcurrency: 0,
     terminalApp: 'auto',
     aliases,
+    autoUpdate: true,
   };
 }
 

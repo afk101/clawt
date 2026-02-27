@@ -29,6 +29,7 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       confirmDestructiveOps: true,
       maxConcurrency: 0,
       terminalApp: 'auto',
+      autoUpdate: true,
     },
     CONFIG_DEFINITIONS: {
       autoDeleteBranch: { defaultValue: false, description: '自动删除分支' },
@@ -37,6 +38,7 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       confirmDestructiveOps: { defaultValue: true, description: '破坏性操作确认' },
       maxConcurrency: { defaultValue: 0, description: '最大并发数' },
       terminalApp: { defaultValue: 'auto', description: '终端应用', allowedValues: ['auto', 'iterm2', 'terminal'] },
+      autoUpdate: { defaultValue: true, description: '自动更新' },
     },
     MESSAGES: {
       CONFIG_INVALID_BOOLEAN: (key: string) =>
@@ -86,7 +88,8 @@ describe('getValidConfigKeys', () => {
     expect(keys).toContain('confirmDestructiveOps');
     expect(keys).toContain('maxConcurrency');
     expect(keys).toContain('terminalApp');
-    expect(keys).toHaveLength(6);
+    expect(keys).toContain('autoUpdate');
+    expect(keys).toHaveLength(7);
   });
 });
 

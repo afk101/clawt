@@ -18,3 +18,6 @@ export const VALIDATE_SNAPSHOTS_DIR = join(CLAWT_HOME, 'validate-snapshots');
 
 /** Claude Code 项目会话目录 ~/.claude/projects/ */
 export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
+
+/** 更新检查缓存文件路径 ~/.clawt/update-check.json */
+export const UPDATE_CHECK_PATH = join(CLAWT_HOME, 'update-check.json');

@@ -8,11 +8,13 @@ import { RESUME_MESSAGES } from './resume.js';
 import { REMOVE_MESSAGES } from './remove.js';
 import { RESET_MESSAGES } from './reset.js';
 import { CONFIG_CMD_MESSAGES, CONFIG_ALIAS_DISABLED_HINT } from './config.js';
-
-export { CONFIG_ALIAS_DISABLED_HINT };
 import { STATUS_MESSAGES } from './status.js';
 import { ALIAS_MESSAGES } from './alias.js';
 import { COMPLETION_MESSAGES } from './completion.js';
+import { UPDATE_MESSAGES, UPDATE_COMMANDS } from './update.js';
+
+export { CONFIG_ALIAS_DISABLED_HINT };
+export { UPDATE_MESSAGES, UPDATE_COMMANDS };
 
 /**
  * 提示消息模板

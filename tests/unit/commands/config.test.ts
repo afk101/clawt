@@ -51,6 +51,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     maxConcurrency: 0,
     terminalApp: 'auto',
     aliases: {},
+    autoUpdate: true,
   },
   CONFIG_DESCRIPTIONS: {
     autoDeleteBranch: '自动删除分支',
@@ -60,6 +61,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     maxConcurrency: '最大并发数',
     terminalApp: '终端应用',
     aliases: '命令别名映射',
+    autoUpdate: '自动更新',
   },
   CONFIG_DEFINITIONS: {
     autoDeleteBranch: { defaultValue: false, description: '自动删除分支' },
@@ -69,6 +71,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     maxConcurrency: { defaultValue: 0, description: '最大并发数' },
     terminalApp: { defaultValue: 'auto', description: '终端应用', allowedValues: ['auto', 'iterm2', 'terminal'] },
     aliases: { defaultValue: {}, description: '命令别名映射' },
+    autoUpdate: { defaultValue: true, description: '自动更新' },
   },
   CONFIG_ALIAS_DISABLED_HINT: '(通过 clawt alias 命令管理)',
   MESSAGES: {
@@ -111,6 +114,7 @@ function createMockConfig() {
     maxConcurrency: 0,
     terminalApp: 'auto',
     aliases: {},
+    autoUpdate: true,
   };
 }
 

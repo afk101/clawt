@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import { ClawtError } from './errors/index.js';
 import { logger, enableConsoleTransport } from './logger/index.js';
 import { EXIT_CODES } from './constants/index.js';
-import { printError, ensureClawtDirs, loadConfig, applyAliases } from './utils/index.js';
+import { printError, ensureClawtDirs, loadConfig, applyAliases, checkForUpdates } from './utils/index.js';
 import { registerListCommand } from './commands/list.js';
 import { registerCreateCommand } from './commands/create.js';
 import { registerRemoveCommand } from './commands/remove.js';
@@ -83,4 +83,16 @@ process.on('unhandledRejection', (reason) => {
   process.exit(EXIT_CODES.ERROR);
 });
 
-program.parse(process.argv);
+/**
+ * 异步主入口函数
+ * 执行命令解析后，根据配置项决定是否进行自动更新检查
+ */
+async function main(): Promise<void> {
+  await program.parseAsync(process.argv);
+
+  if (config.autoUpdate) {
+    await checkForUpdates(version);
+  }
+}
+
+main();
