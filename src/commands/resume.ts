@@ -11,6 +11,7 @@ import {
   launchInteractiveClaudeInNewTerminal,
   hasClaudeSessionHistory,
   resolveTargetWorktrees,
+  promptGroupedMultiSelectBranches,
   printInfo,
   printSuccess,
   confirmAction,
@@ -51,8 +52,13 @@ async function handleResume(options: ResumeOptions): Promise<void> {
   logger.info(`resume 命令执行，分支过滤: ${options.branch ?? '(无)'}`);
   const worktrees = getProjectWorktrees();
 
-  // 统一走多选解析（精确匹配 / 模糊匹配 / 交互多选）
-  const targetWorktrees = await resolveTargetWorktrees(worktrees, RESUME_RESOLVE_MESSAGES, options.branch);
+  // 未指定 -b 且有多个 worktree 时，默认使用按日期分组的多选交互
+  let targetWorktrees: WorktreeInfo[];
+  if (!options.branch && worktrees.length > 1) {
+    targetWorktrees = await promptGroupedMultiSelectBranches(worktrees, RESUME_RESOLVE_MESSAGES.selectBranch);
+  } else {
+    targetWorktrees = await resolveTargetWorktrees(worktrees, RESUME_RESOLVE_MESSAGES, options.branch);
+  }
 
   // 用户未选择任何分支时直接退出
   if (targetWorktrees.length === 0) {
