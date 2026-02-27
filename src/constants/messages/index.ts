@@ -10,6 +10,7 @@ import { RESET_MESSAGES } from './reset.js';
 import { CONFIG_CMD_MESSAGES, CONFIG_ALIAS_DISABLED_HINT } from './config.js';
 import { STATUS_MESSAGES } from './status.js';
 import { ALIAS_MESSAGES } from './alias.js';
+import { PROJECTS_MESSAGES } from './projects.js';
 import { COMPLETION_MESSAGES } from './completion.js';
 import { UPDATE_MESSAGES, UPDATE_COMMANDS } from './update.js';
 
@@ -33,5 +34,6 @@ export const MESSAGES = {
   ...CONFIG_CMD_MESSAGES,
   ...STATUS_MESSAGES,
   ...ALIAS_MESSAGES,
+  ...PROJECTS_MESSAGES,
   ...COMPLETION_MESSAGES,
 } as const;

@@ -184,3 +184,49 @@ export function formatRelativeTime(isoDateString: string): string | null {
   const years = Math.floor(diffDays / 365);
   return `${years} 年前`;
 }
+
+/**
+ * 将字节数格式化为带单位的磁盘大小字符串
+ * @param {number} bytes - 字节数
+ * @returns {string} 格式化后的大小字符串，如 "1.5 GB"、"256.0 MB"、"10.2 KB"
+ */
+export function formatDiskSize(bytes: number): string {
+  /** 1 KB 的字节数 */
+  const KB = 1024;
+  /** 1 MB 的字节数 */
+  const MB = KB * 1024;
+  /** 1 GB 的字节数 */
+  const GB = MB * 1024;
+
+  if (bytes >= GB) {
+    return `${(bytes / GB).toFixed(1)} GB`;
+  }
+  if (bytes >= MB) {
+    return `${(bytes / MB).toFixed(1)} MB`;
+  }
+  if (bytes >= KB) {
+    return `${(bytes / KB).toFixed(1)} KB`;
+  }
+  return `${bytes} B`;
+}
+
+/**
+ * 将 Date 对象格式化为本机时区的 ISO 8601 字符串
+ * 输出格式: YYYY-MM-DDTHH:mm:ss.sss+HH:MM
+ * @param {Date} date - 日期对象
+ * @returns {string} 本机时区的 ISO 8601 格式字符串
+ */
+export function formatLocalISOString(date: Date): string {
+  const tzOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+  const localDate = new Date(date.getTime() - tzOffsetMs);
+  const iso = localDate.toISOString().slice(0, -1);
+
+  // 拼接时区偏移量
+  const totalMinutes = -date.getTimezoneOffset();
+  const sign = totalMinutes >= 0 ? '+' : '-';
+  const absMinutes = Math.abs(totalMinutes);
+  const hours = String(Math.floor(absMinutes / 60)).padStart(2, '0');
+  const minutes = String(absMinutes % 60).padStart(2, '0');
+
+  return `${iso}${sign}${hours}:${minutes}`;
+}

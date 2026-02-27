@@ -29,6 +29,7 @@
   - [5.15 命令别名管理](#515-命令别名管理)
   - [5.16 Shell 自动补全](#516-clawt-completion-命令)
   - [5.17 自动更新检查](#517-自动更新检查)
+  - [5.18 跨项目 Worktree 概览](#518-跨项目-worktree-概览)
 - [6. 错误处理规范](#6-错误处理规范)
 - [7. 非功能性需求](#7-非功能性需求)
   - [7.1 性能](#71-性能)
@@ -188,6 +189,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出）          | 5.14     |
 | `clawt alias`         | 管理命令别名（列出 / 设置 / 移除）                       | 5.15     |
 | `clawt completion`    | 为终端提供 shell 自动补全功能（bash/zsh）              | 5.16     |
+| `clawt projects`      | 展示所有项目的 worktree 概览，或查看指定项目的 worktree 详情 | 5.17     |
 
 **全局选项：**
 
@@ -1655,6 +1657,9 @@ clawt status [--json]
 - `formatRelativeTime()` 是新增的格式化函数（在 `src/utils/formatter.ts`），将 ISO 8601 日期字符串转换为中文相对时间描述（如"3 天前"、"2 小时前"、"刚刚"），无效日期时返回 null
 - `getCommitCountBehind()` 是新增的工具函数（在 `src/utils/git.ts`），通过 `git rev-list --count <branch>..HEAD` 计算落后提交数
 - `getProjectSnapshotBranches()` 是新增的工具函数（在 `src/utils/validate-snapshot.ts`），通过扫描快照目录下的 `.tree` 文件提取分支名列表
+- `formatDiskSize()` 是新增的格式化函数（在 `src/utils/formatter.ts`），将字节数格式化为带单位的磁盘大小字符串（如 `"1.5 GB"`、`"256.0 MB"`、`"10.2 KB"`、`"512 B"`）
+- `formatLocalISOString()` 是新增的格式化函数（在 `src/utils/formatter.ts`），将 Date 对象格式化为本机时区的 ISO 8601 字符串（输出格式: `YYYY-MM-DDTHH:mm:ss.sss+HH:MM`），替代 `Date.toISOString()` 的 UTC 时区输出
+- `calculateDirSize()` 是新增的文件系统工具函数（在 `src/utils/fs.ts`），递归计算目录占用的磁盘大小（字节），遇到无法访问的文件或目录时静默跳过
 
 ---
 
@@ -1913,6 +1918,142 @@ CLI 在每次命令执行完毕后，根据配置项 `autoUpdate` 决定是否�
 - 入口函数：`checkForUpdates()`（在 `src/utils/update-checker.ts`）
 - 消息常量：`UPDATE_MESSAGES`、`UPDATE_COMMANDS`（在 `src/constants/messages/update.ts`）
 - 入口调用点：`src/index.ts` 的 `main()` 异步函数中，`program.parseAsync()` 之后根据 `config.autoUpdate` 条件调用
+
+---
+
+### 5.18 跨项目 Worktree 概览
+
+**命令：**
+
+```bash
+clawt projects [name] [--json]
+```
+
+**参数：**
+
+| 参数     | 必填 | 说明                                           |
+| -------- | ---- | ---------------------------------------------- |
+| `[name]` | 否   | 指定项目名，查看该项目的 worktree 详情           |
+| `--json` | 否   | 以 JSON 格式输出完整数据                        |
+
+**使用场景：**
+
+当使用 clawt 管理多个不同项目时，快速了解所有项目的 worktree 数量、磁盘占用和最近活跃时间。也可以指定项目名查看该项目下每个 worktree 的分支、路径、最后修改时间和磁盘占用。
+
+**注意：** `projects` 命令不需要在主 worktree 中执行（与其他命令不同），它直接扫描 `~/.clawt/worktrees/` 目录。
+
+**运行流程：**
+
+#### 无参数模式（项目概览）
+
+1. 扫描 `~/.clawt/worktrees/` 目录，列出所有项目子目录
+2. 对每个项目收集以下信息：
+   - **项目名**（目录名即项目名）
+   - **worktree 数量**（项目目录下的子目录数）
+   - **最近活跃时间**（取项目目录自身和所有 worktree 目录 mtime 的最大值，通过 `formatLocalISOString()` 格式化为本机时区的 ISO 8601 字符串）
+   - **磁盘占用**（通过 `calculateDirSize()` 递归计算整个项目目录的总大小）
+3. 按最近活跃时间降序排序
+4. 输出概览信息（文本或 JSON）
+
+#### 指定项目模式（worktree 详情）
+
+1. 检查 `~/.clawt/worktrees/<name>/` 是否存在，不存在则报错退出
+2. 扫描项目目录，对每个 worktree 子目录收集：
+   - **分支名**（目录名即分支名）
+   - **worktree 路径**
+   - **最后修改时间**（目录 mtime，通过 `formatLocalISOString()` 格式化）
+   - **磁盘占用**（通过 `calculateDirSize()` 递归计算）
+3. 按最后修改时间降序排序
+4. 输出详情信息（文本或 JSON）
+
+**文本输出格式（概览模式）：**
+
+```
+════════════════════════════════════════
+  项目概览
+════════════════════════════════════════
+
+  ● my-project
+    3 个 worktree   最近活跃: 2 小时前   磁盘占用: 1.5 GB
+
+  ● another-project
+    1 个 worktree   最近活跃: 3 天前   磁盘占用: 256.0 MB
+
+────────────────────────────────────────
+
+  共 2 个项目   总占用: 1.8 GB
+
+════════════════════════════════════════
+```
+
+**文本输出格式（详情模式）：**
+
+```
+════════════════════════════════════════
+  项目详情: my-project
+════════════════════════════════════════
+
+  ◆ 路径: ~/.clawt/worktrees/my-project
+    总占用: 1.5 GB
+
+────────────────────────────────────────
+
+  ● feature-login
+    ~/.clawt/worktrees/my-project/feature-login
+    最后修改: 2 小时前   磁盘占用: 800.0 MB
+
+  ● feature-signup
+    ~/.clawt/worktrees/my-project/feature-signup
+    最后修改: 1 天前   磁盘占用: 700.0 MB
+
+════════════════════════════════════════
+```
+
+**JSON 输出格式（概览模式，`--json`）：**
+
+```json
+{
+  "projects": [
+    {
+      "name": "my-project",
+      "worktreeCount": 3,
+      "lastActiveTime": "2025-06-15T18:30:00.000+08:00",
+      "diskUsage": 1610612736
+    }
+  ],
+  "totalProjects": 1,
+  "totalDiskUsage": 1610612736
+}
+```
+
+**JSON 输出格式（详情模式，`--json`）：**
+
+```json
+{
+  "name": "my-project",
+  "projectDir": "~/.clawt/worktrees/my-project",
+  "worktrees": [
+    {
+      "branch": "feature-login",
+      "path": "~/.clawt/worktrees/my-project/feature-login",
+      "lastModifiedTime": "2025-06-15T18:30:00.000+08:00",
+      "diskUsage": 838860800
+    }
+  ],
+  "totalDiskUsage": 838860800
+}
+```
+
+**实现要点：**
+
+- 命令注册函数：`registerProjectsCommand()`（在 `src/commands/projects.ts`）
+- 类型定义在 `src/types/project.ts`：`ProjectOverview`、`ProjectWorktreeDetail`、`ProjectDetailResult`、`ProjectsOverviewResult`
+- 命令选项类型：`ProjectsOptions`（在 `src/types/command.ts`）
+- 消息常量在 `PROJECTS_MESSAGES`（在 `src/constants/messages/projects.ts`）
+- 时间格式化使用 `formatLocalISOString()`（在 `src/utils/formatter.ts`），输出本机时区的 ISO 8601 字符串（替代 `Date.toISOString()` 的 UTC 输出）
+- 磁盘大小展示使用 `formatDiskSize()`（在 `src/utils/formatter.ts`），将字节数格式化为带单位的可读字符串
+- 目录大小计算使用 `calculateDirSize()`（在 `src/utils/fs.ts`），递归遍历目录计算总字节数
+- 时间的相对展示使用 `formatRelativeTime()`（在 `src/utils/formatter.ts`），将 ISO 8601 日期转换为中文相对时间（如"2 小时前"）
 
 ---
 

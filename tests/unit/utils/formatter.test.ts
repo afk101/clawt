@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle, formatDuration, formatRelativeTime } from '../../../src/utils/formatter.js';
+import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString } from '../../../src/utils/formatter.js';
 import { createWorktreeStatus } from '../../helpers/fixtures.js';
 
 describe('formatWorktreeStatus', () => {
@@ -175,5 +175,95 @@ describe('formatRelativeTime', () => {
   it('未来时间返回"刚刚"', () => {
     const future = new Date(Date.now() + 60 * 60 * 1000);
     expect(formatRelativeTime(future.toISOString())).toBe('刚刚');
+  });
+});
+
+describe('formatDiskSize', () => {
+  it('0 字节时返回 "0 B"', () => {
+    expect(formatDiskSize(0)).toBe('0 B');
+  });
+
+  it('小于 1 KB 时以 B 为单位', () => {
+    expect(formatDiskSize(1)).toBe('1 B');
+    expect(formatDiskSize(512)).toBe('512 B');
+    expect(formatDiskSize(1023)).toBe('1023 B');
+  });
+
+  it('恰好 1 KB 时返回 "1.0 KB"', () => {
+    expect(formatDiskSize(1024)).toBe('1.0 KB');
+  });
+
+  it('KB 范围内保留一位小数', () => {
+    expect(formatDiskSize(1536)).toBe('1.5 KB');
+    expect(formatDiskSize(10240)).toBe('10.0 KB');
+    expect(formatDiskSize(1024 * 1024 - 1)).toBe('1024.0 KB');
+  });
+
+  it('恰好 1 MB 时返回 "1.0 MB"', () => {
+    expect(formatDiskSize(1024 * 1024)).toBe('1.0 MB');
+  });
+
+  it('MB 范围内保留一位小数', () => {
+    expect(formatDiskSize(1.5 * 1024 * 1024)).toBe('1.5 MB');
+    expect(formatDiskSize(256 * 1024 * 1024)).toBe('256.0 MB');
+    expect(formatDiskSize(1024 * 1024 * 1024 - 1)).toBe('1024.0 MB');
+  });
+
+  it('恰好 1 GB 时返回 "1.0 GB"', () => {
+    expect(formatDiskSize(1024 * 1024 * 1024)).toBe('1.0 GB');
+  });
+
+  it('GB 范围内保留一位小数', () => {
+    expect(formatDiskSize(1.5 * 1024 * 1024 * 1024)).toBe('1.5 GB');
+    expect(formatDiskSize(10 * 1024 * 1024 * 1024)).toBe('10.0 GB');
+  });
+});
+
+describe('formatLocalISOString', () => {
+  it('返回值包含日期和时间部分', () => {
+    const date = new Date('2025-06-15T10:30:00Z');
+    const result = formatLocalISOString(date);
+    // 结果应符合 ISO 8601 带时区偏移的格式
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/);
+  });
+
+  it('返回值不以 Z 结尾（应包含时区偏移）', () => {
+    const date = new Date();
+    const result = formatLocalISOString(date);
+    expect(result).not.toMatch(/Z$/);
+  });
+
+  it('时区偏移格式为 +HH:MM 或 -HH:MM', () => {
+    const date = new Date();
+    const result = formatLocalISOString(date);
+    const tzPart = result.slice(-6);
+    expect(tzPart).toMatch(/^[+-]\d{2}:\d{2}$/);
+  });
+
+  it('时区偏移量与本机 getTimezoneOffset 一致', () => {
+    const date = new Date('2025-01-01T12:00:00Z');
+    const result = formatLocalISOString(date);
+    const tzPart = result.slice(-6);
+    const sign = tzPart[0];
+    const hours = parseInt(tzPart.slice(1, 3), 10);
+    const minutes = parseInt(tzPart.slice(4, 6), 10);
+
+    // 从偏移字符串反推总分钟数
+    const totalMinutesFromResult = (sign === '+' ? 1 : -1) * (hours * 60 + minutes);
+    const expectedMinutes = -date.getTimezoneOffset();
+    expect(totalMinutesFromResult).toBe(expectedMinutes);
+  });
+
+  it('不同日期对象产生不同的输出', () => {
+    const date1 = new Date('2025-01-01T00:00:00Z');
+    const date2 = new Date('2025-06-15T12:30:00Z');
+    expect(formatLocalISOString(date1)).not.toBe(formatLocalISOString(date2));
+  });
+
+  it('毫秒部分被保留', () => {
+    const date = new Date('2025-03-20T08:15:30.123Z');
+    const result = formatLocalISOString(date);
+    // 毫秒值应出现在结果中
+    expect(result).toContain('.123');
   });
 });
