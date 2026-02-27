@@ -214,6 +214,16 @@ clawt status --json   # JSON 格式
 clawt reset
 ```
 
+### `clawt projects` — 跨项目 worktree 概览
+
+```bash
+clawt projects             # 查看所有项目概览
+clawt projects my-project  # 查看指定项目的 worktree 详情
+clawt projects --json      # JSON 格式输出
+```
+
+展示所有项目的 worktree 数量、磁盘占用和最近活跃时间，或查看指定项目下每个 worktree 的详细信息。
+
 ### `clawt config` — 交互式查看和修改配置
 
 ```bash

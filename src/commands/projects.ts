@@ -13,6 +13,9 @@ import type {
 } from '../types/index.js';
 import {
   formatRelativeTime,
+  formatDiskSize,
+  formatLocalISOString,
+  calculateDirSize,
   printInfo,
   printDoubleSeparator,
   printSeparator,
@@ -191,7 +194,7 @@ function collectSingleWorktreeDetail(branch: string, wtPath: string): ProjectWor
   return {
     branch,
     path: wtPath,
-    lastModifiedTime: stat.mtime.toISOString(),
+    lastModifiedTime: formatLocalISOString(stat.mtime),
     diskUsage,
   };
 }
@@ -219,62 +222,7 @@ function resolveProjectLastActiveTime(projectDir: string, worktreePaths: string[
     }
   }
 
-  return latestTime.toISOString();
-}
-
-/**
- * 递归计算目录占用的磁盘大小（字节）
- * @param {string} dirPath - 目录路径
- * @returns {number} 目录总大小（字节）
- */
-function calculateDirSize(dirPath: string): number {
-  let totalSize = 0;
-
-  try {
-    const entries = readdirSync(dirPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = join(dirPath, entry.name);
-      try {
-        if (entry.isDirectory()) {
-          totalSize += calculateDirSize(fullPath);
-        } else if (entry.isFile()) {
-          totalSize += statSync(fullPath).size;
-        }
-      } catch {
-        // 忽略无法访问的文件
-      }
-    }
-  } catch {
-    // 忽略无法读取的目录
-  }
-
-  return totalSize;
-}
-
-/**
- * 将字节数格式化为人类可读的磁盘大小字符串
- * @param {number} bytes - 字节数
- * @returns {string} 格式化后的大小字符串，如 "1.5 GB"、"256.0 MB"、"10.2 KB"
- */
-function formatDiskSize(bytes: number): string {
-  /** 1 KB 的字节数 */
-  const KB = 1024;
-  /** 1 MB 的字节数 */
-  const MB = KB * 1024;
-  /** 1 GB 的字节数 */
-  const GB = MB * 1024;
-
-  if (bytes >= GB) {
-    return `${(bytes / GB).toFixed(1)} GB`;
-  }
-  if (bytes >= MB) {
-    return `${(bytes / MB).toFixed(1)} MB`;
-  }
-  if (bytes >= KB) {
-    return `${(bytes / KB).toFixed(1)} KB`;
-  }
-  return `${bytes} B`;
+  return formatLocalISOString(latestTime);
 }
 
 /**
