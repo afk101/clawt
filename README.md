@@ -100,10 +100,10 @@ clawt run -b <branch> --tasks "任务1" --tasks "任务2" --dry-run
 
 ```bash
 clawt resume -b <branch>   # 指定分支
-clawt resume                # 交互式多选
+clawt resume                # 交互式多选（按创建日期分组）
 ```
 
-支持多选：选 1 个在当前终端恢复，选多个自动在独立终端 Tab 中批量恢复（仅 macOS）。
+不传 `-b` 时，分支列表按创建日期分组显示，支持全局全选和按组全选。选 1 个在当前终端恢复，选多个自动在独立终端 Tab 中批量恢复（仅 macOS）。
 
 如果目标 worktree 存在历史会话，会自动继续上次对话（`--continue`）。
 

@@ -1,6 +1,15 @@
 import Enquirer from 'enquirer';
+import { statSync } from 'node:fs';
 import { ClawtError } from '../errors/index.js';
-import { SELECT_ALL_NAME, SELECT_ALL_LABEL } from '../constants/index.js';
+import {
+  SELECT_ALL_NAME,
+  SELECT_ALL_LABEL,
+  GROUP_SELECT_ALL_PREFIX,
+  GROUP_SELECT_ALL_LABEL,
+  GROUP_SEPARATOR_LABEL,
+  UNKNOWN_DATE_GROUP,
+  UNKNOWN_DATE_SEPARATOR_LABEL,
+} from '../constants/index.js';
 import type { WorktreeInfo } from '../types/index.js';
 
 /** enquirer MultiSelect 选项条目的运行时结构 */
@@ -263,4 +272,262 @@ export async function resolveTargetWorktree(
   // 3. 无匹配，抛出错误并列出所有可用分支
   const allBranches = worktrees.map((wt) => wt.branch);
   throw new ClawtError(messages.noMatch(branchName, allBranches));
+}
+
+/** enquirer MultiSelect 分隔线条目结构 */
+interface MultiSelectSeparator {
+  role: 'separator';
+  message: string;
+}
+
+/** enquirer MultiSelect choices 数组的条目类型 */
+type GroupedChoice = { name: string; message: string } | MultiSelectSeparator;
+
+/**
+ * 将 Date 对象格式化为本地时区的 YYYY-MM-DD 字符串
+ * @param {Date} date - 日期对象
+ * @returns {string} YYYY-MM-DD 格式的本地日期字符串
+ */
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * 获取 worktree 目录的创建日期（本地时区）
+ * 通过文件系统的 birthtime 获取目录实际创建时间，比 git reflog 更准确
+ * @param {string} dirPath - worktree 目录路径
+ * @returns {string | null} YYYY-MM-DD 格式的本地日期字符串，无法获取时返回 null
+ */
+function getWorktreeCreatedDate(dirPath: string): string | null {
+  try {
+    const stat = statSync(dirPath);
+    return formatLocalDate(stat.birthtime);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 将 YYYY-MM-DD 日期字符串格式化为中文相对日期描述
+ * 基于自然日计算，适用于日期分组场景
+ * @param {string} dateStr - YYYY-MM-DD 格式的日期字符串
+ * @returns {string} 中文相对日期描述，如"今天"、"昨天"、"3 天前"
+ */
+function formatRelativeDate(dateStr: string): string {
+  const today = formatLocalDate(new Date());
+  const todayMs = new Date(today).getTime();
+  const targetMs = new Date(dateStr).getTime();
+  const diffDays = Math.round((todayMs - targetMs) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return '今天';
+  if (diffDays === 1) return '昨天';
+  if (diffDays < 30) return `${diffDays} 天前`;
+  if (diffDays < 365) {
+    const months = Math.floor(diffDays / 30);
+    return `${months} 个月前`;
+  }
+  const years = Math.floor(diffDays / 365);
+  return `${years} 年前`;
+}
+
+/**
+ * 按创建日期对 worktree 列表进行分组
+ * 通过 worktree 目录的文件系统创建时间进行分组
+ * 无法获取日期的分支归入"未知日期"组
+ * @param {WorktreeInfo[]} worktrees - worktree 列表
+ * @returns {Map<string, WorktreeInfo[]>} 日期 → worktree 列表的映射，按日期降序排列，未知日期在最后
+ */
+export function groupWorktreesByDate(worktrees: WorktreeInfo[]): Map<string, WorktreeInfo[]> {
+  const groups = new Map<string, WorktreeInfo[]>();
+
+  for (const wt of worktrees) {
+    const dateKey = getWorktreeCreatedDate(wt.path) ?? UNKNOWN_DATE_GROUP;
+
+    if (!groups.has(dateKey)) {
+      groups.set(dateKey, []);
+    }
+    groups.get(dateKey)!.push(wt);
+  }
+
+  // 按日期降序排列，未知日期放最后
+  const sortedEntries = [...groups.entries()].sort((a, b) => {
+    if (a[0] === UNKNOWN_DATE_GROUP) return 1;
+    if (b[0] === UNKNOWN_DATE_GROUP) return -1;
+    return b[0].localeCompare(a[0]);
+  });
+
+  return new Map(sortedEntries);
+}
+
+/**
+ * 根据分组数据构建 enquirer MultiSelect 的 choices 数组
+ * 包含全局全选、每组的分隔线和组全选、以及各组内的分支选项
+ * @param {Map<string, WorktreeInfo[]>} groups - 日期分组数据
+ * @returns {GroupedChoice[]} enquirer choices 数组
+ */
+export function buildGroupedChoices(groups: Map<string, WorktreeInfo[]>): GroupedChoice[] {
+  const choices: GroupedChoice[] = [];
+
+  // 顶部插入全局全选
+  choices.push({ name: SELECT_ALL_NAME, message: SELECT_ALL_LABEL });
+
+  for (const [dateKey, worktreeList] of groups) {
+    // 分隔线
+    if (dateKey === UNKNOWN_DATE_GROUP) {
+      choices.push({ role: 'separator', message: UNKNOWN_DATE_SEPARATOR_LABEL });
+    } else {
+      const relativeTime = formatRelativeDate(dateKey);
+      choices.push({ role: 'separator', message: GROUP_SEPARATOR_LABEL(dateKey, relativeTime) });
+    }
+
+    // 组级全选
+    const groupSelectAllName = `${GROUP_SELECT_ALL_PREFIX}${dateKey}`;
+    choices.push({ name: groupSelectAllName, message: GROUP_SELECT_ALL_LABEL(dateKey) });
+
+    // 该组内各分支
+    for (const wt of worktreeList) {
+      choices.push({ name: wt.branch, message: wt.branch });
+    }
+  }
+
+  return choices;
+}
+
+/**
+ * 构建组全选 name 到该组分支 name 列表的映射
+ * 用于 space() 方法中快速查找某个组全选项对应的所有分支
+ * @param {Map<string, WorktreeInfo[]>} groups - 日期分组数据
+ * @returns {Map<string, string[]>} 组全选 name → 分支 name 列表的映射
+ */
+export function buildGroupMembershipMap(groups: Map<string, WorktreeInfo[]>): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+
+  for (const [dateKey, worktreeList] of groups) {
+    const groupSelectAllName = `${GROUP_SELECT_ALL_PREFIX}${dateKey}`;
+    map.set(groupSelectAllName, worktreeList.map((wt) => wt.branch));
+  }
+
+  return map;
+}
+
+/**
+ * 通过交互式多选列表（按日期分组）让用户选择多个分支
+ * 提供三级联动：全局全选、组级全选、单个分支
+ * @param {WorktreeInfo[]} worktrees - 可供选择的 worktree 列表
+ * @param {string} message - 选择提示信息
+ * @returns {Promise<WorktreeInfo[]>} 用户选择的 worktree 列表
+ */
+export async function promptGroupedMultiSelectBranches(
+  worktrees: WorktreeInfo[],
+  message: string,
+): Promise<WorktreeInfo[]> {
+  const groups = groupWorktreesByDate(worktrees);
+  const choices = buildGroupedChoices(groups);
+  const groupMembershipMap = buildGroupMembershipMap(groups);
+
+  // 收集所有组全选的 name，用于判断某个 choice 是否为组全选项
+  const groupSelectAllNames = new Set(groupMembershipMap.keys());
+
+  // 收集所有实际分支的 name
+  const allBranchNames = new Set(worktrees.map((wt) => wt.branch));
+
+  // @ts-expect-error enquirer 类型声明未导出 MultiSelect 类，但运行时存在
+  const MultiSelect: new (options: Record<string, unknown>) => MultiSelectInstance = Enquirer.MultiSelect;
+
+  /**
+   * 扩展 MultiSelect，实现三级联动的 space() 覆写
+   * - 全局全选：切换所有 choices（含组全选）
+   * - 组级全选：切换该组内所有分支，同步全局全选状态
+   * - 普通分支：toggle 该分支，同步所属组全选和全局全选状态
+   */
+  class MultiSelectWithGroupSelectAll extends MultiSelect {
+    space(this: MultiSelectInstance) {
+      if (!this.focused) return;
+
+      const focusedName = this.focused.name;
+
+      if (focusedName === SELECT_ALL_NAME) {
+        // 全局全选：切换所有 choices
+        const willEnable = !this.focused.enabled;
+        for (const ch of this.choices) {
+          ch.enabled = willEnable;
+        }
+        return this.render();
+      }
+
+      if (groupSelectAllNames.has(focusedName)) {
+        // 组级全选：切换该组内所有分支
+        const willEnable = !this.focused.enabled;
+        const memberNames = groupMembershipMap.get(focusedName)!;
+        // 切换组全选自身
+        this.focused.enabled = willEnable;
+        // 切换该组的所有分支
+        for (const ch of this.choices) {
+          if (memberNames.includes(ch.name)) {
+            ch.enabled = willEnable;
+          }
+        }
+        // 同步全局全选状态：检查所有实际分支是否全选
+        syncGlobalSelectAll(this.choices);
+        return this.render();
+      }
+
+      // 普通分支：toggle 该分支
+      this.toggle(this.focused);
+
+      // 同步所属组全选状态
+      syncGroupSelectAll(this.choices, focusedName);
+      // 同步全局全选状态
+      syncGlobalSelectAll(this.choices);
+
+      return this.render();
+    }
+  }
+
+  /**
+   * 同步全局全选状态
+   * 根据所有实际分支的选中状态更新全局全选项
+   * @param {MultiSelectChoice[]} choiceList - choices 列表
+   */
+  function syncGlobalSelectAll(choiceList: MultiSelectChoice[]): void {
+    const selectAllChoice = choiceList.find((ch) => ch.name === SELECT_ALL_NAME);
+    if (!selectAllChoice) return;
+
+    const branchItems = choiceList.filter((ch) => allBranchNames.has(ch.name));
+    selectAllChoice.enabled = branchItems.length > 0 && branchItems.every((ch) => ch.enabled);
+  }
+
+  /**
+   * 同步指定分支所属组的全选状态
+   * 根据该组内所有分支的选中状态更新组全选项
+   * @param {MultiSelectChoice[]} choiceList - choices 列表
+   * @param {string} branchName - 刚被 toggle 的分支名
+   */
+  function syncGroupSelectAll(choiceList: MultiSelectChoice[], branchName: string): void {
+    for (const [groupName, memberNames] of groupMembershipMap) {
+      if (!memberNames.includes(branchName)) continue;
+
+      const groupChoice = choiceList.find((ch) => ch.name === groupName);
+      if (!groupChoice) continue;
+
+      const memberChoices = choiceList.filter((ch) => memberNames.includes(ch.name));
+      groupChoice.enabled = memberChoices.length > 0 && memberChoices.every((ch) => ch.enabled);
+      break;
+    }
+  }
+
+  const selectedBranches: string[] = await new MultiSelectWithGroupSelectAll({
+    message,
+    choices,
+    // 使用空心圆/实心圆作为选中指示符
+    symbols: {
+      indicator: { on: '●', off: '○' },
+    },
+  }).run();
+
+  // 过滤掉全选项和组全选项，只返回实际选中的 worktree
+  return worktrees.filter((wt) => selectedBranches.includes(wt.branch));
 }

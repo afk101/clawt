@@ -20,6 +20,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   getProjectWorktrees: vi.fn(),
   launchInteractiveClaude: vi.fn(),
   resolveTargetWorktrees: vi.fn(),
+  promptGroupedMultiSelectBranches: vi.fn(),
 }));
 
 import { registerResumeCommand } from '../../../src/commands/resume.js';
@@ -29,6 +30,7 @@ import {
   getProjectWorktrees,
   launchInteractiveClaude,
   resolveTargetWorktrees,
+  promptGroupedMultiSelectBranches,
 } from '../../../src/utils/index.js';
 
 const mockedValidateMainWorktree = vi.mocked(validateMainWorktree);
@@ -36,6 +38,7 @@ const mockedValidateClaudeCodeInstalled = vi.mocked(validateClaudeCodeInstalled)
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
 const mockedLaunchInteractiveClaude = vi.mocked(launchInteractiveClaude);
 const mockedResolveTargetWorktrees = vi.mocked(resolveTargetWorktrees);
+const mockedPromptGroupedMultiSelectBranches = vi.mocked(promptGroupedMultiSelectBranches);
 
 beforeEach(() => {
   mockedValidateMainWorktree.mockReset();
@@ -43,6 +46,7 @@ beforeEach(() => {
   mockedGetProjectWorktrees.mockReset();
   mockedLaunchInteractiveClaude.mockReset();
   mockedResolveTargetWorktrees.mockReset();
+  mockedPromptGroupedMultiSelectBranches.mockReset();
 });
 
 describe('registerResumeCommand', () => {
@@ -55,7 +59,7 @@ describe('registerResumeCommand', () => {
 });
 
 describe('handleResume', () => {
-  it('成功恢复 Claude Code 会话', async () => {
+  it('传 -b 时走标准解析流程', async () => {
     const worktree = { path: '/path/feature', branch: 'feature' };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
@@ -68,10 +72,31 @@ describe('handleResume', () => {
     expect(mockedValidateMainWorktree).toHaveBeenCalled();
     expect(mockedValidateClaudeCodeInstalled).toHaveBeenCalled();
     expect(mockedResolveTargetWorktrees).toHaveBeenCalled();
+    expect(mockedPromptGroupedMultiSelectBranches).not.toHaveBeenCalled();
     expect(mockedLaunchInteractiveClaude).toHaveBeenCalledWith(worktree, { autoContinue: true });
   });
 
-  it('不传 -b 时也能调用 resolveTargetWorktrees', async () => {
+  it('不传 -b 且多个 worktree 时默认使用分组多选', async () => {
+    const worktrees = [
+      { path: '/path/feature-a', branch: 'feature-a' },
+      { path: '/path/feature-b', branch: 'feature-b' },
+    ];
+    mockedGetProjectWorktrees.mockReturnValue(worktrees);
+    mockedPromptGroupedMultiSelectBranches.mockResolvedValue([worktrees[0]]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerResumeCommand(program);
+    await program.parseAsync(['resume'], { from: 'user' });
+
+    expect(mockedPromptGroupedMultiSelectBranches).toHaveBeenCalledWith(
+      worktrees,
+      expect.any(String),
+    );
+    expect(mockedResolveTargetWorktrees).not.toHaveBeenCalled();
+  });
+
+  it('仅 1 个 worktree 时走标准流程', async () => {
     const worktree = { path: '/path/feature', branch: 'feature' };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
@@ -81,11 +106,7 @@ describe('handleResume', () => {
     registerResumeCommand(program);
     await program.parseAsync(['resume'], { from: 'user' });
 
-    // branchName 参数为 undefined
-    expect(mockedResolveTargetWorktrees).toHaveBeenCalledWith(
-      expect.any(Array),
-      expect.any(Object),
-      undefined,
-    );
+    expect(mockedResolveTargetWorktrees).toHaveBeenCalled();
+    expect(mockedPromptGroupedMultiSelectBranches).not.toHaveBeenCalled();
   });
 });
