@@ -292,6 +292,7 @@ clawt alias remove l
 | `maxConcurrency` | `0` | run 命令最大并发数，`0` 为不限制 |
 | `terminalApp` | `"auto"` | 批量 resume 使用的终端：`auto` / `iterm2` / `terminal` |
 | `aliases` | `{}` | 命令别名映射（如 `{"l": "list", "r": "run"}`） |
+| `autoUpdate` | `true` | 自动检查新版本（每 24 小时检查一次 npm registry） |
 
 ## 全局选项
 
