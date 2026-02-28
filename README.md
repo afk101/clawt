@@ -38,6 +38,16 @@ clawt merge -b branch-1 -m "feat: 实现xxx功能"
 
 > 所有命令必须在**主 worktree 的仓库根目录**下执行。`-b` 参数支持模糊匹配。
 
+### `clawt init` — 初始化项目级配置
+
+```bash
+clawt init                # 以当前分支作为主工作分支进行初始化
+clawt init -b <branch>    # 指定主工作分支名
+clawt init show           # 查看当前项目的 init 配置（JSON 格式）
+```
+
+设置项目的主工作分支。重复执行会更新主工作分支配置。
+
 ### `clawt run` — 创建 worktree 并执行任务
 
 ```bash
