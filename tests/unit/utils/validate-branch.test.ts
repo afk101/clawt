@@ -55,7 +55,6 @@ vi.mock('../../../src/utils/project-config.js', () => ({
 // mock formatter
 vi.mock('../../../src/utils/formatter.js', () => ({
   printWarning: vi.fn(),
-  confirmAction: vi.fn(),
 }));
 
 import {
@@ -75,12 +74,9 @@ import {
   createValidateBranch,
   deleteValidateBranch,
   rebuildValidateBranch,
-  switchBackIfOnValidateBranch,
   ensureOnMainWorkBranch,
   handleDirtyWorkingDir,
 } from '../../../src/utils/validate-branch.js';
-import { confirmAction } from '../../../src/utils/formatter.js';
-
 const mockedCheckBranchExists = vi.mocked(checkBranchExists);
 const mockedCreateBranch = vi.mocked(createBranch);
 const mockedDeleteBranch = vi.mocked(deleteBranch);
@@ -88,7 +84,6 @@ const mockedGetCurrentBranch = vi.mocked(getCurrentBranch);
 const mockedGitCheckout = vi.mocked(gitCheckout);
 const mockedGitResetHard = vi.mocked(gitResetHard);
 const mockedGitCleanForce = vi.mocked(gitCleanForce);
-const mockedConfirmAction = vi.mocked(confirmAction);
 const mockedIsWorkingDirClean = vi.mocked(isWorkingDirClean);
 const mockedGitAddAll = vi.mocked(gitAddAll);
 const mockedGitStashPush = vi.mocked(gitStashPush);
@@ -101,7 +96,6 @@ beforeEach(() => {
   mockedGitCheckout.mockReset();
   mockedGitResetHard.mockReset();
   mockedGitCleanForce.mockReset();
-  mockedConfirmAction.mockReset();
   mockedIsWorkingDirClean.mockReset().mockReturnValue(true);
   mockedGitAddAll.mockReset();
   mockedGitStashPush.mockReset();
@@ -224,15 +218,15 @@ describe('handleDirtyWorkingDir', () => {
 describe('ensureOnMainWorkBranch', () => {
   it('当前在主工作分支上时直接返回', async () => {
     mockedGetCurrentBranch.mockReturnValue('main');
-    await ensureOnMainWorkBranch('main', true);
+    await ensureOnMainWorkBranch();
     expect(mockedGitCheckout).not.toHaveBeenCalled();
   });
 
   it('当前在验证分支上且工作区干净时自动切回主工作分支', async () => {
     mockedGetCurrentBranch.mockReturnValue('clawt-validate-feature');
     mockedIsWorkingDirClean.mockReturnValue(true);
-    await ensureOnMainWorkBranch('main', true);
-    expect(mockedGitCheckout).toHaveBeenCalledWith('main');
+    await ensureOnMainWorkBranch();
+    expect(mockedGitCheckout).toHaveBeenCalledWith('main', undefined);
     // 工作区干净时不应调用 resetHard/cleanForce
     expect(mockedGitResetHard).not.toHaveBeenCalled();
     expect(mockedGitCleanForce).not.toHaveBeenCalled();
@@ -241,78 +235,38 @@ describe('ensureOnMainWorkBranch', () => {
   it('当前在验证分支上且工作区脏时先清理再切回', async () => {
     mockedGetCurrentBranch.mockReturnValue('clawt-validate-feature');
     mockedIsWorkingDirClean.mockReturnValue(false);
-    await ensureOnMainWorkBranch('main', true);
+    await ensureOnMainWorkBranch();
     // 验证分支上的修改直接丢弃
-    expect(mockedGitResetHard).toHaveBeenCalled();
-    expect(mockedGitCleanForce).toHaveBeenCalled();
-    expect(mockedGitCheckout).toHaveBeenCalledWith('main');
+    expect(mockedGitResetHard).toHaveBeenCalledWith(undefined);
+    expect(mockedGitCleanForce).toHaveBeenCalledWith(undefined);
+    expect(mockedGitCheckout).toHaveBeenCalledWith('main', undefined);
   });
 
-  it('warnOnCreate=false 且工作区干净时直接切换到主工作分支', async () => {
+  it('当前在其他分支上且工作区干净时直接切换到主工作分支', async () => {
     mockedGetCurrentBranch.mockReturnValue('feature');
     mockedIsWorkingDirClean.mockReturnValue(true);
-    await ensureOnMainWorkBranch('main', false);
-    expect(mockedGitCheckout).toHaveBeenCalledWith('main');
+    await ensureOnMainWorkBranch();
+    expect(mockedGitCheckout).toHaveBeenCalledWith('main', undefined);
   });
 
-  it('warnOnCreate=false 且工作区脏时先处理再切换', async () => {
+  it('当前在其他分支上且工作区脏时先处理再切换', async () => {
     mockedGetCurrentBranch.mockReturnValue('feature');
     // 第一次调用（ensureOnMainWorkBranch 检测）返回脏
     // 第二次调用（handleDirtyWorkingDir 末尾检查）返回干净
     mockedIsWorkingDirClean.mockReturnValueOnce(false).mockReturnValueOnce(true);
     mockSelectRun.mockResolvedValue('reset');
-    await ensureOnMainWorkBranch('main', false);
+    await ensureOnMainWorkBranch();
     expect(mockedGitResetHard).toHaveBeenCalled();
     expect(mockedGitCleanForce).toHaveBeenCalled();
-    expect(mockedGitCheckout).toHaveBeenCalledWith('main');
-  });
-
-  it('warnOnCreate=true 且用户确认后切换到主工作分支', async () => {
-    mockedGetCurrentBranch.mockReturnValue('feature');
-    mockedIsWorkingDirClean.mockReturnValue(true);
-    mockedConfirmAction.mockResolvedValue(true);
-    await ensureOnMainWorkBranch('main', true);
-    expect(mockedGitCheckout).toHaveBeenCalledWith('main');
-  });
-
-  it('warnOnCreate=true 且用户确认后工作区脏时先处理再切换', async () => {
-    mockedGetCurrentBranch.mockReturnValue('feature');
-    mockedConfirmAction.mockResolvedValue(true);
-    // 第一次调用（ensureOnMainWorkBranch 检测）返回脏
-    // 第二次调用（handleDirtyWorkingDir 末尾检查）返回干净
-    mockedIsWorkingDirClean.mockReturnValueOnce(false).mockReturnValueOnce(true);
-    mockSelectRun.mockResolvedValue('stash');
-    await ensureOnMainWorkBranch('main', true);
-    expect(mockedGitAddAll).toHaveBeenCalled();
-    expect(mockedGitStashPush).toHaveBeenCalledWith('clawt:auto-stash', undefined);
-    expect(mockedGitCheckout).toHaveBeenCalledWith('main');
-  });
-
-  it('warnOnCreate=true 且用户拒绝时抛出错误', async () => {
-    mockedGetCurrentBranch.mockReturnValue('feature');
-    mockedIsWorkingDirClean.mockReturnValue(true);
-    mockedConfirmAction.mockResolvedValue(false);
-    await expect(ensureOnMainWorkBranch('main', true)).rejects.toThrow('已取消操作');
-    expect(mockedGitCheckout).not.toHaveBeenCalled();
-  });
-});
-
-describe('switchBackIfOnValidateBranch', () => {
-  it('在验证分支上时切回主工作分支', () => {
-    mockedGetCurrentBranch.mockReturnValue('clawt-validate-feature');
-    switchBackIfOnValidateBranch();
     expect(mockedGitCheckout).toHaveBeenCalledWith('main', undefined);
   });
 
-  it('不在验证分支上时不操作', () => {
-    mockedGetCurrentBranch.mockReturnValue('main');
-    switchBackIfOnValidateBranch();
-    expect(mockedGitCheckout).not.toHaveBeenCalled();
-  });
-
-  it('在普通分支上时不操作', () => {
-    mockedGetCurrentBranch.mockReturnValue('feature');
-    switchBackIfOnValidateBranch();
-    expect(mockedGitCheckout).not.toHaveBeenCalled();
+  it('传入 cwd 参数时透传给 git 操作', async () => {
+    mockedGetCurrentBranch.mockReturnValue('clawt-validate-feature');
+    mockedIsWorkingDirClean.mockReturnValue(false);
+    await ensureOnMainWorkBranch('/some/path');
+    expect(mockedGitResetHard).toHaveBeenCalledWith('/some/path');
+    expect(mockedGitCleanForce).toHaveBeenCalledWith('/some/path');
+    expect(mockedGitCheckout).toHaveBeenCalledWith('main', '/some/path');
   });
 });

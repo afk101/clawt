@@ -97,7 +97,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
   getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
   gitCheckout: vi.fn(),
-  switchBackIfOnValidateBranch: vi.fn(),
+  ensureOnMainWorkBranch: vi.fn(),
+  handleDirtyWorkingDir: vi.fn(),
   checkBranchExists: vi.fn().mockReturnValue(true),
   getCurrentBranch: vi.fn().mockReturnValue('main'),
 }));
