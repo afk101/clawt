@@ -15,13 +15,13 @@ import {
 } from '../utils/index.js';
 
 /**
- * 注册 init 命令：初始化项目配置，设置主工作分支
+ * 注册 init 命令：初始化项目级配置，设置主工作分支
  * @param {Command} program - Commander 实例
  */
 export function registerInitCommand(program: Command): void {
   const initCmd = program
     .command('init')
-    .description('初始化项目配置，设置主工作分支')
+    .description('初始化项目级配置，设置主工作分支')
     .option('-b, --branch <branchName>', '指定主工作分支名（默认使用当前分支）')
     .action(async (options: InitOptions) => {
       await handleInit(options);

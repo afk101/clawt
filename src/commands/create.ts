@@ -14,13 +14,13 @@ import {
 } from '../utils/index.js';
 
 /**
- * 注册 create 命令：批量创建 worktree 及对应分支
+ * 注册 create 命令：批量创建 worktree 及对应分支（含验证分支）
  * @param {Command} program - Commander 实例
  */
 export function registerCreateCommand(program: Command): void {
   program
     .command('create')
-    .description('批量创建 worktree 及对应分支')
+    .description('批量创建 worktree 及对应分支（含验证分支）')
     .requiredOption('-b, --branch <branchName>', '分支名')
     .option('-n, --number <count>', '创建数量', '1')
     .action(async (options: CreateOptions) => {

@@ -42,7 +42,7 @@ const REMOVE_RESOLVE_MESSAGES: WorktreeMultiResolveMessages = {
 export function registerRemoveCommand(program: Command): void {
   program
     .command('remove')
-    .description('移除 worktree（支持单个/批量/全部）')
+    .description('移除 worktree（支持模糊匹配/多选/全部）')
     .option('--all', '移除当前项目下所有 worktree')
     .option('-b, --branch <branchName>', '指定分支名（支持模糊匹配，不传则列出所有分支）')
     .action(async (options: RemoveOptions) => {

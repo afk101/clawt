@@ -9,6 +9,8 @@
 
 - [1. 技术栈](#1-技术栈)
 - [2. 核心概念](#2-核心概念)
+  - [2.5 验证分支](#25-验证分支)
+  - [2.6 项目级配置](#26-项目级配置)
 - [3. 全局目录结构](#3-全局目录结构)
 - [4. 命令总览](#4-命令总览)
 - [5. 需求场景详细设计](#5-需求场景详细设计)
@@ -30,12 +32,14 @@
   - [5.16 Shell 自动补全](#516-clawt-completion-命令)
   - [5.17 自动更新检查](#517-自动更新检查)
   - [5.18 跨项目 Worktree 概览](#518-跨项目-worktree-概览)
-- [6. 错误处理规范](#6-错误处理规范)
-- [7. 非功能性需求](#7-非功能性需求)
-  - [7.1 性能](#71-性能)
-  - [7.2 兼容性](#72-兼容性)
-  - [7.3 测试](#73-测试)
-  - [7.4 安全性](#74-安全性)
+  - [5.19 初始化项目级配置](#519-初始化项目级配置)
+- [6. 验证架构规则](#6-验证架构规则)
+- [7. 错误处理规范](#7-错误处理规范)
+- [8. 非功能性需求](#8-非功能性需求)
+  - [8.1 性能](#81-性能)
+  - [8.2 兼容性](#82-兼容性)
+  - [8.3 测试](#83-测试)
+  - [8.4 安全性](#84-安全性)
 
 ---
 
@@ -141,6 +145,91 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 
 > 注意：当 `n > 1` 时，需要校验的是 `branchName-1`、`branchName-2`、……、`branchName-n` 这些分支名。只要有一个已存在，就报错并退出（在创建任何 worktree 之前完成全部校验）。
 
+### 2.5 验证分支
+
+validate 命令通过创建**验证分支**（validate branch）来杜绝 patch apply 冲突。每个目标 worktree 对应一个验证分支，validate 时在主 worktree 中切换到验证分支后再 apply patch，而不是在主工作分支上直接 apply。
+
+#### 命名规则
+
+验证分支命名格式：`clawt-validate-<原始分支名>`
+
+| 目标分支 | 验证分支 |
+| --- | --- |
+| `feat-login` | `clawt-validate-feat-login` |
+| `fix-bug-1` | `clawt-validate-fix-bug-1` |
+| `fix-bug-2` | `clawt-validate-fix-bug-2` |
+
+#### 创建时机
+
+与目标 worktree 分支同时创建。在 `git worktree add -b <branchName>` 之后，立即执行：
+
+```bash
+git branch clawt-validate-<branchName>
+```
+
+验证分支是一个普通的本地分支（不关联 worktree），指向创建时主 worktree 的 HEAD commit。
+
+#### 为什么能杜绝冲突
+
+验证分支在创建后不会被修改（不受主分支 HEAD 推进的影响），它与目标 worktree 的分支共享同一个创建基点。因此 `git diff HEAD...<branchName> --binary` 中的 HEAD（验证分支的 HEAD）永远与目标分支的分叉点一致，patch apply 永远不会冲突。
+
+#### 生命周期
+
+验证分支的生命周期与目标 worktree 的分支**完全一致**：
+
+| 事件 | 目标分支 | 验证分支 |
+| --- | --- | --- |
+| create / run | 创建 | 同步创建 |
+| remove（用户选择删除分支） | 删除 | 同步删除 |
+| remove（用户选择保留分支） | 保留 | 保留 |
+| merge 后清理（用户确认） | 删除 | 同步删除 |
+| merge 后清理（用户拒绝） | 保留 | 保留 |
+| sync | 不变 | 重建（删除后重新创建，基于当前主分支 HEAD） |
+
+#### 验证分支前缀常量
+
+在 `src/constants/branch.ts` 中新增：
+
+```typescript
+/** 验证分支名前缀 */
+export const VALIDATE_BRANCH_PREFIX = 'clawt-validate-';
+```
+
+### 2.6 项目级配置
+
+#### 存放位置
+
+```
+~/.clawt/projects/<projectName>/config.json
+```
+
+#### 配置内容
+
+```json
+{
+  "clawtMainWorkBranch": "main"
+}
+```
+
+| 配置项 | 类型 | 说明 |
+| --- | --- | --- |
+| `clawtMainWorkBranch` | `string` | 项目的主工作分支名，用于 create 时检测当前分支是否为主分支 |
+
+#### 设置方式
+
+通过 `clawt init` 命令设置（见 [5.19 初始化项目级配置](#519-初始化项目级配置)）。
+
+除 `clawt init` 以外的所有核心命令（create、run、validate、sync、remove、merge、reset），执行时都会校验项目级配置是否存在。如果未执行过 `clawt init`，命令会直接报错并提示用户先初始化。
+
+#### 路径常量
+
+在 `src/constants/paths.ts` 中新增：
+
+```typescript
+/** 项目级配置目录 ~/.clawt/projects/ */
+export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');
+```
+
 ---
 
 ## 3. 全局目录结构
@@ -155,8 +244,10 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 ├── validate-snapshots/                  # validate 快照目录
 │   └── <project-name>/                  # 以项目名分组
 │       ├── <branchName>.tree            # 每个分支一个 tree hash 快照文件（存储 git tree 对象的 hash）
-│       ├── <branchName>.head            # 每个分支一个 HEAD commit hash 快照文件（存储快照时主 worktree 的 HEAD commit hash）
+│       ├── <branchName>.head            # 每个分支一个 HEAD commit hash 快照文件（存储快照时验证分支的 HEAD commit hash）
 │       └── ...
+├── projects/<project-name>/             # 项目级配置目录
+│   └── config.json                      # 项目级配置（含 clawtMainWorkBranch）
 └── worktrees/                           # 所有 worktree 的统一存放目录
     └── <project-name>/                  # 以项目名分组
         ├── <branchName>/                # n=1 时直接使用分支名
@@ -173,9 +264,10 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 
 | 命令                  | 说明                                           | 对应场景 |
 | --------------------- | ---------------------------------------------- | -------- |
-| `clawt create`        | 批量创建 worktree 及对应分支                     | 5.1      |
+| `clawt init`          | 初始化项目级配置，设置主工作分支                     | 5.19     |
+| `clawt create`        | 批量创建 worktree 及对应分支（含验证分支）            | 5.1      |
 | `clawt run`           | 批量创建 worktree + 启动 Claude Code 执行任务（支持任务文件）    | 5.2      |
-| `clawt validate`      | 在主 worktree 验证某个 worktree 分支的变更        | 5.4      |
+| `clawt validate`      | 在主 worktree 验证某个 worktree 分支的变更（通过验证分支）| 5.4      |
 | `clawt merge`         | 合并某个已验证的 worktree 分支到主 worktree       | 5.6      |
 | `clawt remove`        | 移除 worktree（支持模糊匹配/多选/全部）             | 5.5      |
 | `clawt list`          | 列出当前项目所有 worktree（支持 `--json` 格式输出） | 5.8      |
@@ -184,7 +276,7 @@ git show-ref --verify refs/heads/<branchName> 2>/dev/null
 | `clawt config get`    | 获取单个配置项的值                                 | 5.10     |
 | `clawt config reset`  | 将配置恢复为默认值                                | 5.10     |
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复） | 5.11     |
-| `clawt sync`          | 将主分支最新代码同步到目标 worktree                  | 5.12     |
+| `clawt sync`          | 将主分支最新代码同步到目标 worktree（含验证分支重建）    | 5.12     |
 | `clawt reset`         | 重置主 worktree 工作区和暂存区                       | 5.13     |
 | `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出）          | 5.14     |
 | `clawt alias`         | 管理命令别名（列出 / 设置 / 移除）                       | 5.15     |
@@ -222,24 +314,59 @@ clawt create -b <branchName> [-n <count>]
 
 1. **主 worktree 校验** (2.1)
 2. **获取项目名** (2.2)
-3. **分支名合法性校验与转换** (2.3)
-4. **分支名存在性校验** (2.4)
+3. **主工作分支检测**：在创建 worktree 之前，检测当前 HEAD 所在分支是否为配置的主工作分支（`clawtMainWorkBranch`）。
+   - 读取项目级配置（如果配置不存在，由前置校验拦截，见 [第 6 章规则 2](#6-验证架构规则)）
+   - 如果当前分支**是** `clawtMainWorkBranch`，正常继续
+   - 如果当前在**验证分支**（`clawt-validate-` 前缀）上：
+     - 验证分支上的修改视为可丢弃的临时状态
+     - 如果工作区有未提交更改，自动执行 `git reset --hard HEAD && git clean -fd` 清理
+     - 然后自动切换到主工作分支，继续创建流程
+   - 如果当前在**其他普通分支**上：
+     - 如果全局配置 `warnBranchOnCreate` 为 `false`，跳过分支切换提醒
+     - 否则，黄色提醒并交互确认：
+       ```
+       ⚠ 当前不在主工作分支上，即将切换到主工作分支 main 来创建新的 worktree
+
+       ❯ yes (确认切换并创建)
+         no  (取消)
+       ```
+     - 用户选择 no → 退出
+     - 用户选择 yes 或 `warnBranchOnCreate` 为 `false` → 继续下一步
+   - 切换前**检测工作区脏状态**：如果当前分支有未提交的更改，提供交互式选择（避免将修改意外带到主工作分支上）：
+     ```
+     ⚠ 当前分支有未提交的更改，请选择处理方式：
+
+     ❯ reset (推荐) - 丢弃所有更改 (git reset --hard HEAD && git clean -fd)
+       stash        - 暂存更改 (git add . && git stash push -m "clawt:auto-stash")
+       exit         - 退出，手动处理
+     ```
+     - 选择 reset → 执行 `git reset --hard HEAD && git clean -fd`
+     - 选择 stash → 执行 `git add . && git stash push -m "clawt:auto-stash"`
+     - 选择 exit → 抛出错误退出
+     - 处理完成后再次校验工作区是否干净，不干净则报错退出
+   - 执行 `git checkout <clawtMainWorkBranch>`，然后继续创建流程
+4. **分支名合法性校验与转换** (2.3)
+5. **分支名存在性校验** (2.4)
    - 若 `n = 1`：校验 `branchName`
    - 若 `n > 1`：校验 `branchName-1` 到 `branchName-n`
    - 所有分支名在创建任何 worktree **之前**完成全部校验
-5. **批量创建 worktree**
+6. **批量创建 worktree + 验证分支**
    - 若 `n = 1`：
      ```bash
      git worktree add -b <branchName> ~/.clawt/worktrees/<project>/<branchName>
+     git branch clawt-validate-<branchName>
      ```
    - 若 `n > 1`：
      ```bash
      git worktree add -b <branchName>-1 ~/.clawt/worktrees/<project>/<branchName>-1
+     git branch clawt-validate-<branchName>-1
      git worktree add -b <branchName>-2 ~/.clawt/worktrees/<project>/<branchName>-2
+     git branch clawt-validate-<branchName>-2
      ...
      git worktree add -b <branchName>-n ~/.clawt/worktrees/<project>/<branchName>-n
+     git branch clawt-validate-<branchName>-n
      ```
-6. **输出创建日志**
+7. **输出创建日志**
 
 **输出格式：**
 
@@ -249,20 +376,25 @@ clawt create -b <branchName> [-n <count>]
 目录路径1：
   ~/.clawt/worktrees/main-project/feature-scheme-1
   分支名: feature-scheme-1
+  验证分支: clawt-validate-feature-scheme-1
 ────────────────────────────────────────
 目录路径2：
   ~/.clawt/worktrees/main-project/feature-scheme-2
   分支名: feature-scheme-2
+  验证分支: clawt-validate-feature-scheme-2
 ────────────────────────────────────────
 目录路径3：
   ~/.clawt/worktrees/main-project/feature-scheme-3
   分支名: feature-scheme-3
+  验证分支: clawt-validate-feature-scheme-3
 ────────────────────────────────────────
 ```
 
 ---
 
 ### 5.2 批量创建 Worktree + 执行 Claude Code 任务
+
+> **注意：** run 命令内部调用 `createWorktrees` 或 `createWorktreesByBranches`，因此验证分支的创建和主工作分支检测逻辑（包括工作区脏状态处理）**自动继承** create 命令的变更，无需额外修改 run 命令本身。
 
 **命令：**
 
@@ -531,9 +663,13 @@ clawt validate [--clean] [-r <command>]
 
 Git worktree 不会包含 `node_modules`、`.venv` 等依赖文件，每次安装依赖耗时较长。利用 `git diff HEAD...branch --binary`（三点 diff）可以获取目标分支自分叉点以来的全量变更（包含已提交和未提交的修改），将其作为 patch 应用到主 worktree 中进行测试，无需重新安装依赖。
 
+**验证分支机制：**
+
+validate 不再在主工作分支上直接 apply patch，而是先切换到目标分支对应的**验证分支**（`clawt-validate-<branchName>`），再 apply patch。验证分支的 HEAD 不会随主工作分支推进，因此 patch apply 永远不会冲突。详见 [2.5 验证分支](#25-验证分支)。
+
 **快照机制：**
 
-validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更通过 `git write-tree` 保存为 git tree 对象，并将 tree hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），同时将主 worktree 的 HEAD commit hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.head`），用于增量 validate 时对齐基准。当再次执行 validate 时，如果主分支 HEAD 未变化，通过 `git read-tree` 将上次快照的 tree 对象载入暂存区；如果主分支 HEAD 已变化（如合并了其他分支），则将旧变更 patch（旧 tree 相对于旧 HEAD 的差异）重放到当前 HEAD 暂存区上，避免新旧 tree 基准不同导致 diff 混入 HEAD 变化的内容。最终用户可通过 `git diff` 查看两次 validate 之间的增量差异。
+validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更通过 `git write-tree` 保存为 git tree 对象，并将 tree hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），同时将验证分支的 HEAD commit hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.head`），用于增量 validate 时对齐基准。当再次执行 validate 时，如果验证分支 HEAD 未变化（正常情况），通过 `git read-tree` 将上次快照的 tree 对象载入暂存区；如果验证分支 HEAD 已变化（sync 后重建了验证分支），则将旧变更 patch（旧 tree 相对于旧 HEAD 的差异）重放到当前 HEAD 暂存区上，避免新旧 tree 基准不同导致 diff 混入 HEAD 变化的内容。最终用户可通过 `git diff` 查看两次 validate 之间的增量差异。
 
 **运行流程：**
 
@@ -546,7 +682,11 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
 3. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
 4. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
 5. 删除对应分支的快照文件
-6. 输出清理成功提示
+6. **（新增）** 如果当前分支是验证分支（以 `clawt-validate-` 开头），切回主工作分支：
+   ```bash
+   git checkout <clawtMainWorkBranch>
+   ```
+7. 输出清理成功提示
 
 #### 首次 validate（无历史快照）
 
@@ -606,7 +746,20 @@ git log HEAD..<branchName> --oneline
 - **两者均无** → 输出提示 `该 worktree 的分支上没有任何更改，无需验证`，退出
 - **至少有一项** → 继续
 
-##### 步骤 3：通过 patch 迁移目标分支全量变更
+##### 步骤 3：切换到验证分支
+
+```bash
+cd <主 worktree 路径>
+git checkout clawt-validate-<branchName>
+```
+
+如果验证分支不存在，直接报错退出：
+
+```
+✗ 未找到验证分支 clawt-validate-<branchName>，请重新创建 worktree
+```
+
+##### 步骤 4：通过 patch 迁移目标分支全量变更
 
 使用三点 diff（`git diff HEAD...branchName --binary`）获取目标分支自分叉点以来的全量变更。如果目标 worktree 有未提交修改，先做临时 commit 以便 diff 能捕获全部变更，diff 完成后撤销临时 commit 恢复原状。
 
@@ -616,7 +769,7 @@ cd ~/.clawt/worktrees/<project>/<branchName>
 git add .
 git commit -m "clawt:temp-commit-for-validate"
 
-# 在主 worktree 中执行三点 diff
+# 在主 worktree（已切换到验证分支）中执行三点 diff
 cd <主 worktree 路径>
 git diff HEAD...<branchName> --binary | git apply
 
@@ -626,8 +779,9 @@ git reset --soft HEAD~1
 git restore --staged .
 ```
 
+> 由于验证分支的 HEAD 与目标分支的创建基点一致，patch apply **永远不会冲突**。
 > 此步骤结束后，目标 worktree 的代码保持原样，主 worktree 工作目录包含目标分支的全量变更。
-> 如果 patch apply 失败（目标分支与主分支差异过大），`migrateChangesViaPatch` 返回 `{ success: false }`，进入自动 sync 交互流程（见下文 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)）。
+> 如果 patch apply 失败（兜底场景），`migrateChangesViaPatch` 返回 `{ success: false }`，进入自动 sync 交互流程（见下文 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)）。
 
 ##### patch apply 失败后的自动 sync 流程
 
@@ -648,27 +802,28 @@ git restore --staged .
 - `handlePatchApplyFailure()` 为新增的异步函数（`src/commands/validate.ts`），负责 patch 失败后的交互逻辑
 - 消息常量：`MESSAGES.VALIDATE_CONFIRM_AUTO_SYNC`、`MESSAGES.VALIDATE_AUTO_SYNC_START`、`MESSAGES.VALIDATE_AUTO_SYNC_CONFLICT`、`MESSAGES.VALIDATE_AUTO_SYNC_DECLINED`（`src/constants/messages/validate.ts`）
 
-##### 步骤 4：保存快照为 git tree 对象
+##### 步骤 5：保存快照为 git tree 对象
 
-将主 worktree 工作目录的全量变更保存为 git tree 对象，同时记录当前 HEAD commit hash：
+将主 worktree 工作目录的全量变更保存为 git tree 对象，同时记录验证分支的 HEAD commit hash：
 
 ```bash
 git add .
 git write-tree  # → 返回 tree hash，写入 ~/.clawt/validate-snapshots/<project>/<branchName>.tree
-git rev-parse HEAD  # → 返回 HEAD commit hash，写入 ~/.clawt/validate-snapshots/<project>/<branchName>.head
+git rev-parse HEAD  # → 返回验证分支的 HEAD commit hash，写入 ~/.clawt/validate-snapshots/<project>/<branchName>.head
 git restore --staged .
 ```
 
+> 此处保存的 HEAD commit hash 是验证分支的 HEAD（即创建时的基点），而非主工作分支的 HEAD。
 > 结果：暂存区=空，工作目录=全量变更。
 
-##### 步骤 5：输出成功提示
+##### 步骤 6：输出成功提示
 
 ```
-✓ 已将分支 feature-scheme-1 的变更应用到主 worktree
+✓ 已将分支 feature-scheme-1 的变更应用到主 worktree（验证分支: clawt-validate-feature-scheme-1）
   可以开始验证了
 ```
 
-##### 步骤 6：执行 `--run` 命令（可选）
+##### 步骤 7：执行 `--run` 命令（可选）
 
 如果用户传入了 `-r, --run` 选项，在 validate 成功后自动在主 worktree 中执行指定命令：
 
@@ -783,19 +938,27 @@ clawt validate -b feature-scheme-1 -r "pnpm test & pnpm build"
 
 如果主 worktree 有残留状态，让用户选择处理方式（同首次 validate 步骤 1 的交互），做兜底清理。
 
-##### 步骤 3：从目标分支获取最新全量变更
+##### 步骤 3：切换到验证分支
 
-通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 3）。如果 patch apply 失败，同样进入自动 sync 交互流程（见首次 validate 的 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)），validate 流程提前结束。
+如果当前已在该验证分支上（上次 validate 后未切回），跳过。如果当前在另一个验证分支上（验证了分支 A，现在要验证分支 B），直接切换：
 
-##### 步骤 4：保存最新快照为 git tree 对象
+```bash
+git checkout clawt-validate-<branchName>
+```
 
-将最新全量变更保存为新的 tree 对象（覆盖旧快照），同时记录当前 HEAD commit hash（流程同首次 validate 的步骤 4）。
+##### 步骤 4：从目标分支获取最新全量变更
 
-##### 步骤 5：将旧变更状态载入暂存区
+通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 4）。如果 patch apply 失败，同样进入自动 sync 交互流程（见首次 validate 的 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)），validate 流程提前结束。
 
-根据主分支 HEAD 是否发生变化，选择不同的策略将旧变更载入暂存区：
+##### 步骤 5：保存最新快照为 git tree 对象
 
-**情况 A：HEAD 未变化（或旧版快照无 HEAD 信息）**
+将最新全量变更保存为新的 tree 对象（覆盖旧快照），同时记录验证分支的 HEAD commit hash（流程同首次 validate 的步骤 5）。
+
+##### 步骤 6：将旧变更状态载入暂存区
+
+由于验证分支的 HEAD 不会变化，`oldHeadCommitHash` 与 `currentHeadCommitHash` 始终一致（除非执行了 sync 重建验证分支），因此：
+
+**正常情况（HEAD 未变化）：**
 
 直接通过 `git read-tree` 将旧 tree 对象载入暂存区：
 
@@ -806,7 +969,9 @@ git read-tree <旧 tree hash>
 - **读取成功** → 结果：暂存区=上次快照，工作目录=最新全量变更（用户可通过 `git diff` 查看增量差异）
 - **读取失败**（tree 对象可能被 git gc 回收）→ 降级为全量模式，暂存区保持为空，等同于首次 validate 的结果
 
-**情况 B：HEAD 发生了变化（如主分支合并了其他分支）**
+> 这是最常见的路径。相比重构前，正常情况不再需要处理 HEAD 变化的复杂逻辑，代码路径更简单、更可靠。
+
+**sync 后（HEAD 变化，验证分支已重建）：**
 
 此时旧 tree 对象基于旧 HEAD，直接 read-tree 会导致 diff 混入 HEAD 变化的内容。需要将旧变更 patch（旧 tree 相对于旧 HEAD 的差异）重放到当前 HEAD 暂存区上：
 
@@ -825,10 +990,10 @@ git apply --cached < patch
 ```
 
 - **patch 为空**（旧变更为空）→ 暂存区保持干净
-- **无冲突** → apply --cached 到当前 HEAD 暂存区，结果与情况 A 一致
+- **无冲突** → apply --cached 到当前 HEAD 暂存区，结果与正常情况一致
 - **有冲突** → 降级为全量模式（暂存区保持为空），等同于首次 validate 的结果
 
-##### 步骤 6：输出成功提示
+##### 步骤 7：输出成功提示
 
 ```
 # 增量模式成功
@@ -840,9 +1005,9 @@ git apply --cached < patch
   可以开始验证了
 ```
 
-##### 步骤 7：执行 `--run` 命令（可选）
+##### 步骤 8：执行 `--run` 命令（可选）
 
-与首次 validate 的步骤 6 相同，增量 validate 成功后也会执行 `-r, --run` 指定的命令。
+与首次 validate 的步骤 7 相同，增量 validate 成功后也会执行 `-r, --run` 指定的命令。
 
 ---
 
@@ -892,21 +1057,25 @@ clawt remove
 ```
 即将移除以下 worktree 及本地分支：
 
-  1. ~/.clawt/worktrees/main-project/feature-scheme-1  →  分支: feature-scheme-1
-  2. ~/.clawt/worktrees/main-project/feature-scheme-2  →  分支: feature-scheme-2
-  3. ~/.clawt/worktrees/main-project/feature-scheme-3  →  分支: feature-scheme-3
+  1. ~/.clawt/worktrees/main-project/feature-scheme-1  →  分支: feature-scheme-1, 验证分支: clawt-validate-feature-scheme-1
+  2. ~/.clawt/worktrees/main-project/feature-scheme-2  →  分支: feature-scheme-2, 验证分支: clawt-validate-feature-scheme-2
+  3. ~/.clawt/worktrees/main-project/feature-scheme-3  →  分支: feature-scheme-3, 验证分支: clawt-validate-feature-scheme-3
 
-是否同时删除对应的本地分支？(y/N)
+是否同时删除对应的本地分支和验证分支？(y/N)
 ```
 
 5. 用户确认后（只需确认一次），依次执行：
 
 ```bash
+# 如果当前在即将删除的验证分支上，先切回主工作分支
+git checkout <clawtMainWorkBranch>
+
 # 移除 worktree
 git worktree remove -f <worktree路径>
 
 # 如果用户选择了删除分支
 git branch -D <branchName>
+git branch -D clawt-validate-<branchName>  # 同步删除验证分支
 
 # 清理该分支对应的 validate 快照
 ```
@@ -961,6 +1130,12 @@ clawt merge [-m <commitMessage>]
      - 如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），额外输出警告提示用户可先执行 `clawt validate -b <branchName> --clean` 清理
      - 提示 `主 worktree 有未提交的更改，请先处理`，退出
    - 无更改 → 继续
+   - **如果当前在验证分支上**（`clawt-validate-` 前缀），先清理并切回主工作分支：
+     ```bash
+     git reset --hard
+     git clean -fd
+     git checkout <clawtMainWorkBranch>
+     ```
 4. **Squash 检测与执行（auto-save 临时提交压缩）**
    - 通过 `git log HEAD..<branchName> --format=%s` 检查目标分支是否存在以 `AUTO_SAVE_COMMIT_MESSAGE`（`chore: auto-save before sync`）为前缀的 commit
    - **不存在** → 跳过，进入步骤 5
@@ -971,7 +1146,7 @@ clawt merge [-m <commitMessage>]
      ```
    - **用户选择不压缩** → 跳过，进入步骤 5
    - **用户选择压缩** →
-     1. 获取主分支名（`git rev-parse --abbrev-ref HEAD`）
+     1. 获取主分支名（从项目级配置 `clawtMainWorkBranch` 获取）
      2. 计算分叉点：`git merge-base <mainBranch> <branchName>`
      3. 在目标 worktree 中执行 `git reset --soft <merge-base>`，将所有 commit 撤销到暂存区
      4. 如果用户提供了 `-m` → 直接在目标 worktree 执行 `git commit -m '<commitMessage>'`，输出成功提示，继续步骤 5
@@ -1034,11 +1209,14 @@ clawt merge [-m <commitMessage>]
      git worktree remove -f <worktree路径>
      # 删除本地分支
      git branch -D <branchName>
+     # 同步删除验证分支
+     git branch -D clawt-validate-<branchName>
      # 修剪 worktree 引用
      git worktree prune
      # 如果项目 worktree 目录为空，则清理空目录
      ```
    - 输出清理成功提示：`✓ 已清理 worktree 和分支: <branchName>`
+   - 验证分支的删除时机与目标分支保持一致（见 [2.5 验证分支生命周期](#25-验证分支)）：用户确认清理 → 同步删除验证分支；用户拒绝清理 → 验证分支也保留
 
 11. **清理 validate 快照**
     - merge 成功后，如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.tree` 和 `<branchName>.head`），自动删除这些快照文件（merge 成功后快照已无意义）
@@ -1072,7 +1250,8 @@ clawt merge [-m <commitMessage>]
   "maxConcurrency": 0,
   "terminalApp": "auto",
   "aliases": {},
-  "autoUpdate": true
+  "autoUpdate": true,
+  "warnBranchOnCreate": true
 }
 ```
 
@@ -1088,6 +1267,7 @@ clawt merge [-m <commitMessage>]
 | `terminalApp` | `string` | `"auto"` | 批量 resume 使用的终端应用：`auto`（自动检测）、`iterm2`、`terminal`（macOS） |
 | `aliases` | `Record<string, string>` | `{}` | 命令别名映射，键为别名，值为目标内置命令名 |
 | `autoUpdate` | `boolean` | `true` | 是否启用自动更新检查（每 24 小时通过 npm registry 检查一次新版本） |
+| `warnBranchOnCreate` | `boolean` | `true` | create/run 时如果当前不在主工作分支上，是否提醒并确认切换。设为 `false` 则跳过提醒直接切换 |
 
 ---
 
@@ -1437,12 +1617,13 @@ clawt sync
 
 **使用场景：**
 
-当目标 worktree 的分支与主分支差异过大（例如主分支有了新的提交），导致 `clawt validate` 的 patch apply 失败时，可以通过 `clawt sync` 将主分支最新代码合并到目标 worktree，使其保持与主分支同步。
+当目标 worktree 的分支需要使用主分支的最新代码继续工作时，通过 `clawt sync` 将主分支最新代码合并到目标 worktree。在新架构下，sync 不再是为了解决 validate 冲突（因为不会冲突了），而是纯粹的「将主分支最新代码同步到目标 worktree」的操作。
 
 **运行流程：**
 
 1. **主 worktree 校验** (2.1)
-2. **解析目标 worktree**：根据 `-b` 参数解析目标 worktree，匹配策略如下：
+2. **确保在主工作分支上**：`handleSync` 在执行核心逻辑前，调用 `ensureOnMainWorkBranch()` 确保当前处于主工作分支上。sync 命令需要从主分支发起合并操作，因此必须保证当前分支状态正确。
+3. **解析目标 worktree**：根据 `-b` 参数解析目标 worktree，匹配策略如下：
    - **未传 `-b` 参数**：
      - 获取当前项目所有 worktree
      - 无可用 worktree → 报错退出
@@ -1474,7 +1655,7 @@ export interface SyncResult {
 
 **执行流程：**
 
-1. **获取主分支名**：通过 `git rev-parse --abbrev-ref HEAD` 获取主 worktree 当前分支名（不硬编码 main/master）
+1. **获取主分支名**：通过项目级配置 `clawtMainWorkBranch` 获取主工作分支名（不再通过 `getCurrentBranch` 动态获取，因为在新架构下主 worktree 可能处于验证分支上）
 2. **自动保存未提交变更**：检查目标 worktree 是否有未提交修改
    - 有修改 → 自动执行 `git add . && git commit -m "<AUTO_SAVE_COMMIT_MESSAGE>"` 保存变更（commit message 由常量 `AUTO_SAVE_COMMIT_MESSAGE` 定义，值为 `chore: auto-save before sync`，同时用于 merge 命令的 squash 检测）
    - 无修改 → 跳过
@@ -1494,10 +1675,39 @@ export interface SyncResult {
    - 返回 `{ success: false, hasConflict: true }`
    - **无冲突** → 继续
 5. **清除 validate 快照**：合并成功后，如果该分支存在 validate 快照（`.tree` 和 `.head` 文件），自动删除（代码基础已变化，旧快照无效）
-6. **输出成功提示**并返回 `{ success: true, hasConflict: false }`：
+6. **重建验证分支**（`rebuildValidateBranch`，async 函数）：sync 将主分支合并到目标 worktree 后，目标分支的代码基点发生变化。为保持验证分支与目标分支基点一致，需要重建验证分支。
+   - 确保在主工作分支上创建验证分支，处理三种情况：
+     - **已在主工作分支上** → 直接重建
+     - **在验证分支上** → 验证分支修改可丢弃，清理工作区后自动切回主工作分支
+     - **在其他普通分支上** → 检查工作区是否干净，干净则直接切回主工作分支；不干净则交互处理（`handleDirtyWorkingDir`：reset / stash / exit）后切回
+   ```bash
+   # 情况 1：已在主工作分支上，无需切换
+
+   # 情况 2：在验证分支上，先清理工作区再切回主分支
+   git reset --hard
+   git clean -fd
+   git checkout <clawtMainWorkBranch>
+
+   # 情况 3：在其他分支上
+   # 如果工作区不干净，交互式处理（reset/stash/exit）
+   # 然后切回主工作分支
+   git checkout <clawtMainWorkBranch>
+
+   # 删除旧验证分支
+   git branch -D clawt-validate-<branchName>
+
+   # 基于当前主分支 HEAD 重新创建验证分支
+   git branch clawt-validate-<branchName>
+   ```
+7. **输出成功提示**并返回 `{ success: true, hasConflict: false }`：
    ```
    ✓ 已将 <mainBranch> 的最新代码同步到 <branchName>
+     验证分支 clawt-validate-<branchName> 已重建
    ```
+
+#### validate 中自动 sync 的联动
+
+当 validate 的 patch apply 失败（兜底场景）并触发自动 sync 时，sync 内部会自动重建验证分支，validate 流程结束后用户重新执行 validate 即可。
 
 ---
 
@@ -1513,12 +1723,15 @@ clawt reset
 
 **使用场景：**
 
-当用户通过 `clawt validate` 将分支变更迁移到主 worktree 后，希望快速清除工作区和暂存区的所有修改，恢复到干净状态。与 `clawt validate --clean` 的区别在于：`reset` 仅重置工作区和暂存区，**不删除** validate 快照文件，适用于只想清空变更而保留快照以便后续增量 validate 的场景。
+当用户通过 `clawt validate` 将分支变更迁移到主 worktree 后，希望快速清除工作区和暂存区的所有修改，恢复到干净状态。与 `clawt validate --clean` 的区别在于：`reset` 仅重置工作区和暂存区，**不删除** validate 快照文件，也**不切换分支**，适用于只想清空变更而保留快照以便后续增量 validate 的场景。
+
+> **设计原因**：reset 的职责是「重置工作区状态」，分支切换属于 validate --clean 和 remove 等命令的职责。将分支切换耦合到 reset 会违反单一职责原则。
 
 **运行流程：**
 
 1. **主 worktree 校验** (2.1)
-2. **检测工作区状态**：通过 `git status --porcelain` 检测主 worktree 是否有未提交的更改
+2. **项目级配置校验**（`requireProjectConfig()`，因 reset 不调用 `ensureOnMainWorkBranch`，需自行校验）
+3. **检测工作区状态**：通过 `git status --porcelain` 检测主 worktree 是否有未提交的更改
    - **工作区干净** → 输出提示 `主 worktree 工作区和暂存区已是干净状态，无需重置`，退出
    - **工作区不干净** → 继续
 3. **确认破坏性操作**：如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
@@ -2083,9 +2296,90 @@ clawt projects [name] [--json]
 
 ---
 
-## 6. 错误处理规范
+### 5.19 初始化项目级配置
 
-### 6.1 通用错误处理
+**命令：**
+
+```bash
+# 设置主工作分支（使用当前分支）
+clawt init
+
+# 设置主工作分支（指定分支名）
+clawt init -b <branchName>
+
+# 查看当前项目的 init 配置
+clawt init show
+```
+
+**参数：**
+
+| 参数/子命令 | 必填 | 说明 |
+| --- | --- | --- |
+| `-b` | 否 | 指定主工作分支名。不传则使用当前分支 |
+| `show` | 否 | 查看当前项目的 init 配置 |
+
+**功能说明：**
+
+初始化项目级配置，将指定分支记录为该项目的主工作分支（`clawtMainWorkBranch`）。该配置用于 `create` / `run` 时检测当前分支是否为主工作分支，并在偏离时提醒用户。详见 [2.6 项目级配置](#26-项目级配置)。
+
+**运行流程（设置模式）：**
+
+1. **主 worktree 校验** (2.1)
+2. **确定主工作分支名**：
+   - 传了 `-b` → 使用指定的分支名
+   - 未传 `-b` → 使用当前分支名（`git rev-parse --abbrev-ref HEAD`）
+3. **写入项目级配置**：将 `clawtMainWorkBranch` 写入 `~/.clawt/projects/<projectName>/config.json`
+   - 配置文件不存在 → 创建
+   - 配置文件已存在 → 覆盖 `clawtMainWorkBranch` 字段
+4. **输出成功提示**
+
+**运行流程（show 模式）：**
+
+1. **主 worktree 校验** (2.1)
+2. **读取项目级配置**：读取 `~/.clawt/projects/<projectName>/config.json`
+   - 配置不存在 → 输出提示 `该项目尚未初始化，请执行 clawt init 进行初始化`
+   - 配置存在 → 输出配置内容
+
+**输出格式：**
+
+```
+# 首次初始化
+✓ 已将 main 设为该项目的主工作分支
+
+# 更新已有配置
+✓ 已将主工作分支从 develop 更新为 main
+
+# show 查看配置
+当前项目: my-project
+  主工作分支: main
+
+# show 未初始化
+该项目尚未初始化，请执行 clawt init 进行初始化
+```
+
+**重复执行：** 支持重复执行，后一次覆盖前一次的配置。
+
+---
+
+## 6. 验证架构规则
+
+以下规则适用于验证分支架构的所有实现工作：
+
+1. **不兼容旧版本**：本次重构不考虑旧版本数据、旧版本创建的 worktree 或旧版本配置的兼容性。所有命令均假定验证分支和项目级配置已按新架构存在。用户需删除旧 worktree 后重新创建。
+2. **项目级配置前置校验**：仅对 create、run、validate、sync、remove、merge、reset 这 7 个核心命令添加检测，执行时必须先检查项目级配置（`~/.clawt/projects/<projectName>/config.json`）是否存在且包含 `clawtMainWorkBranch`。如果不存在，直接报错退出并提示用户先执行 `clawt init`：
+   ```
+   ✗ 该项目尚未初始化，请先执行 clawt init -b<branchName>设置主工作分支
+   ```
+   其他命令（list、resume、config、status、alias、projects、completion）不受影响，无需添加该校验。
+   > **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` → `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、sync、remove、merge）**无需再显式调用 `requireProjectConfig()`**，避免重复校验。仅 reset 命令因不调用 `ensureOnMainWorkBranch`，需要自行调用 `requireProjectConfig()`。
+3. **主分支名统一从项目级配置获取**：所有需要获取主分支名的场景（sync 中合并主分支、merge 中计算 merge-base、切回主分支等），统一使用项目级配置中的 `clawtMainWorkBranch`，不再通过 `getCurrentBranch(mainWorktreePath)` 动态获取。因为在新架构下，主 worktree 可能处于验证分支上，`getCurrentBranch` 会返回验证分支名而非真正的主工作分支名。
+4. **测试文件全量更新**：本次重构涉及的所有命令（init、create、run、validate、sync、remove、merge、reset），其对应的测试文件必须同步更新，确保覆盖新增的验证分支逻辑、项目级配置逻辑和变更后的流程。
+
+---
+
+## 7. 错误处理规范
+
+### 7.1 通用错误处理
 
 | 错误场景                          | 处理方式                                                   |
 | --------------------------------- | ---------------------------------------------------------- |
@@ -2097,7 +2391,7 @@ clawt projects [name] [--json]
 | Git 命令执行失败                  | 捕获 stderr，记录日志，输出错误提示，退出 (exit code 1)      |
 | 目标 worktree 不存在              | 输出错误提示（列出可用 worktree），退出 (exit code 1)        |
 
-### 6.2 退出码
+### 7.2 退出码
 
 | 退出码 | 说明           |
 | ------ | -------------- |
@@ -2107,21 +2401,21 @@ clawt projects [name] [--json]
 
 ---
 
-## 7. 非功能性需求
+## 8. 非功能性需求
 
-### 7.1 性能
+### 8.1 性能
 
 - Worktree 创建为串行执行（Git worktree 不支持并行写入）
 - Claude Code 任务为并行执行（各自独立进程）
 - 任务完成检测：监听子进程 `close` 事件，事件驱动
 
-### 7.2 兼容性
+### 8.2 兼容性
 
 - 支持 macOS 和 Linux
 - Node.js >= 18
 - Git >= 2.15（worktree 功能稳定版本）
 
-### 7.3 测试
+### 8.3 测试
 
 - 测试框架：Vitest，配置文件为 `vitest.config.ts`
 - 覆盖率工具：@vitest/coverage-v8，覆盖率报告格式为 text、lcov、html
@@ -2141,7 +2435,7 @@ clawt projects [name] [--json]
   - `testTimeout: 10000`：单个测试超时 10 秒
   - `environment: 'node'`：使用 Node.js 测试环境
 
-### 7.4 安全性
+### 8.4 安全性
 
 - 不在日志中记录 Claude Code API 密钥等敏感信息
 - `--permission-mode bypassPermissions` 仅在 worktree 隔离环境中使用

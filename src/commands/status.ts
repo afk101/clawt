@@ -30,7 +30,7 @@ import {
 export function registerStatusCommand(program: Command): void {
   program
     .command('status')
-    .description('显示项目全局状态总览')
+    .description('显示项目全局状态总览（支持 --json 格式输出）')
     .option('--json', '以 JSON 格式输出')
     .action((options: StatusOptions) => {
       handleStatus(options);

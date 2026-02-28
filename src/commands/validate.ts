@@ -61,13 +61,13 @@ const VALIDATE_RESOLVE_MESSAGES: WorktreeResolveMessages = {
 };
 
 /**
- * 注册 validate 命令：在主 worktree 验证其他分支的变更
+ * 注册 validate 命令：在主 worktree 验证其他分支的变更（通过验证分支）
  * @param {Command} program - Commander 实例
  */
 export function registerValidateCommand(program: Command): void {
   program
     .command('validate')
-    .description('在主 worktree 验证某个 worktree 分支的变更')
+    .description('在主 worktree 验证某个 worktree 分支的变更（通过验证分支）')
     .option('-b, --branch <branchName>', '要验证的分支名（支持模糊匹配，不传则列出所有分支）')
     .option('--clean', '清理 validate 状态（重置主 worktree 并删除快照）')
     .option('-r, --run <command>', 'validate 成功后在主 worktree 中执行的命令')

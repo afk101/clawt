@@ -23,18 +23,18 @@ import {
 } from '../utils/index.js';
 
 /**
- * 注册 run 命令：批量创建 worktree 并执行 Claude Code 任务
+ * 注册 run 命令：批量创建 worktree + 启动 Claude Code 执行任务（支持任务文件）
  * @param {Command} program - Commander 实例
  */
 export function registerRunCommand(program: Command): void {
   program
     .command('run')
-    .description('批量创建 worktree 并启动 Claude Code 执行任务')
+    .description('批量创建 worktree + 启动 Claude Code 执行任务（支持任务文件）')
     .option('-b, --branch <branchName>', '分支名')
     .option('--tasks <task...>', '任务列表（可多次指定），不传则在 worktree 中打开 Claude Code 交互式界面')
     .option('-c, --concurrency <n>', '最大并发数，0 表示不限制')
     .option('-f, --file <path>', '从任务文件读取任务列表（与 --tasks 互斥）')
-    .option('-d, --dry-run', '预览模式，仅展示任务计划不实际执行')
+    .option('--dry-run', '预览模式，仅展示任务计划不实际执行')
     .action(async (options: RunOptions) => {
       await handleRun(options);
     });

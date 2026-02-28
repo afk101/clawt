@@ -3,7 +3,7 @@
  */
 export const COMPLETION_MESSAGES = {
   /** completion 命令的主描述 */
-  COMPLETION_COMMAND_DESC: '生成和安装 shell 自动补全脚本',
+  COMPLETION_COMMAND_DESC: '为终端提供 shell 自动补全功能（bash/zsh）',
   /** bash 子命令描述 */
   COMPLETION_BASH_DESC: '输出 bash 自动补全脚本',
   /** zsh 子命令描述 */

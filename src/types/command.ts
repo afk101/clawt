@@ -34,7 +34,7 @@ export interface ValidateOptions {
 export interface MergeOptions {
   /** 要合并的分支名（可选，支持模糊匹配，不传则列出所有分支供选择） */
   branch?: string;
-  /** 提交信息（工作区有修改时必填） */
+  /** 提交信息（目标 worktree 工作区有修改时必填） */
   message?: string;
 }
 

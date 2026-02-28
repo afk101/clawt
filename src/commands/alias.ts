@@ -104,7 +104,7 @@ function handleAliasRemove(alias: string): void {
 export function registerAliasCommand(program: Command): void {
   const aliasCmd = program
     .command('alias')
-    .description('管理命令别名')
+    .description('管理命令别名（列出 / 设置 / 移除）')
     .action(() => {
       handleAliasList();
     });

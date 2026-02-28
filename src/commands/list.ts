@@ -21,7 +21,7 @@ import {
 export function registerListCommand(program: Command): void {
   program
     .command('list')
-    .description('列出当前项目所有 worktree')
+    .description('列出当前项目所有 worktree（支持 --json 格式输出）')
     .option('--json', '以 JSON 格式输出')
     .action((options: ListOptions) => {
       handleList(options);

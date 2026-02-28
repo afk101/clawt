@@ -33,7 +33,7 @@ const RESUME_RESOLVE_MESSAGES: WorktreeMultiResolveMessages = {
 export function registerResumeCommand(program: Command): void {
   program
     .command('resume')
-    .description('在已有 worktree 中恢复 Claude Code 交互式会话')
+    .description('在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复）')
     .option('-b, --branch <branchName>', '要恢复的分支名（支持模糊匹配，不传则列出所有分支）')
     .action(async (options: ResumeOptions) => {
       await handleResume(options);

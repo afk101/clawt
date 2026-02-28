@@ -44,8 +44,8 @@ export function registerMergeCommand(program: Command): void {
   program
     .command('merge')
     .description('合并某个已验证的 worktree 分支到主 worktree')
-    .option('-b, --branch <branchName>', '要合并的分支名（支持模糊匹配，不传则列出所有分支）')
-    .option('-m, --message <message>', '提交信息（工作区有修改时必填）')
+    .option('-b, --branch <branchName>', '要合并的分支名（支持模糊匹配，不传则列出所有分支供选择）')
+    .option('-m, --message <commitMessage>', '提交信息（目标 worktree 工作区有修改时必填）')
     .action(async (options: MergeOptions) => {
       await handleMerge(options);
     });

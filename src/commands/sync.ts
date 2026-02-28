@@ -28,7 +28,7 @@ import {
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
 /**
- * 注册 sync 命令：将主分支最新代码同步到目标 worktree
+ * 注册 sync 命令：将主分支最新代码同步到目标 worktree（含验证分支重建）
  * @param {Command} program - Commander 实例
  */
 export function registerSyncCommand(program: Command): void {
