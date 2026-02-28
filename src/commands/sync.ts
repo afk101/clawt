@@ -13,13 +13,17 @@ import {
   gitCommit,
   gitMerge,
   hasMergeConflict,
-  getCurrentBranch,
   hasSnapshot,
   removeSnapshot,
   printSuccess,
   printInfo,
   printWarning,
   resolveTargetWorktree,
+  requireProjectConfig,
+  getMainWorkBranch,
+  rebuildValidateBranch,
+  getValidateBranchName,
+  ensureOnMainWorkBranch,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -92,10 +96,10 @@ export interface SyncResult {
  * @param {string} branch - 分支名
  * @returns {SyncResult} sync 执行结果
  */
-export function executeSyncForBranch(targetWorktreePath: string, branch: string): SyncResult {
-  // 获取主分支名（不硬编码 main/master）
+export async function executeSyncForBranch(targetWorktreePath: string, branch: string): Promise<SyncResult> {
+  // 从项目配置获取主工作分支名
   const mainWorktreePath = getGitTopLevel();
-  const mainBranch = getCurrentBranch(mainWorktreePath);
+  const mainBranch = getMainWorkBranch();
 
   // 检查目标 worktree 是否有未提交变更，有则自动保存
   if (!isWorkingDirClean(targetWorktreePath)) {
@@ -119,6 +123,12 @@ export function executeSyncForBranch(targetWorktreePath: string, branch: string)
   }
 
   printSuccess(MESSAGES.SYNC_SUCCESS(branch, mainBranch));
+
+  // 合并成功后重建验证分支（基于最新的主分支 HEAD）
+  await rebuildValidateBranch(branch, mainWorktreePath);
+  const validateBranchName = getValidateBranchName(branch);
+  printInfo(MESSAGES.SYNC_VALIDATE_BRANCH_REBUILT(validateBranchName));
+
   return { success: true, hasConflict: false };
 }
 
@@ -129,6 +139,8 @@ export function executeSyncForBranch(targetWorktreePath: string, branch: string)
  */
 async function handleSync(options: SyncOptions): Promise<void> {
   validateMainWorktree();
+  requireProjectConfig();
+  await ensureOnMainWorkBranch();
 
   logger.info(`sync 命令执行，分支: ${options.branch ?? '(未指定)'}`);
 
@@ -137,5 +149,5 @@ async function handleSync(options: SyncOptions): Promise<void> {
   const worktree = await resolveTargetWorktree(worktrees, SYNC_RESOLVE_MESSAGES, options.branch);
   const { path: targetWorktreePath, branch } = worktree;
 
-  executeSyncForBranch(targetWorktreePath, branch);
+  await executeSyncForBranch(targetWorktreePath, branch);
 }

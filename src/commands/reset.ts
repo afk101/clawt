@@ -11,6 +11,7 @@ import {
   confirmDestructiveAction,
   printSuccess,
   printInfo,
+  requireProjectConfig,
 } from '../utils/index.js';
 
 /**
@@ -31,6 +32,8 @@ export function registerResetCommand(program: Command): void {
  */
 async function handleReset(): Promise<void> {
   validateMainWorktree();
+  requireProjectConfig();
+
   const mainWorktreePath = getGitTopLevel();
   logger.info('reset 命令执行');
 

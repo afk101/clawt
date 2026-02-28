@@ -13,6 +13,7 @@ import { ALIAS_MESSAGES } from './alias.js';
 import { PROJECTS_MESSAGES } from './projects.js';
 import { COMPLETION_MESSAGES } from './completion.js';
 import { UPDATE_MESSAGES, UPDATE_COMMANDS } from './update.js';
+import { INIT_MESSAGES } from './init.js';
 
 export { CONFIG_ALIAS_DISABLED_HINT };
 export { UPDATE_MESSAGES, UPDATE_COMMANDS };
@@ -36,4 +37,5 @@ export const MESSAGES = {
   ...ALIAS_MESSAGES,
   ...PROJECTS_MESSAGES,
   ...COMPLETION_MESSAGES,
+  ...INIT_MESSAGES,
 } as const;

@@ -90,9 +90,9 @@ describe('writeConfig', () => {
 });
 
 describe('ensureClawtDirs', () => {
-  it('确保三个全局目录存在', () => {
+  it('确保四个全局目录存在', () => {
     ensureClawtDirs();
-    expect(mockedEnsureDir).toHaveBeenCalledTimes(3);
+    expect(mockedEnsureDir).toHaveBeenCalledTimes(4);
   });
 });
 

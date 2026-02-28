@@ -46,6 +46,8 @@ export {
   gitDiffTree,
   gitApplyCachedCheck,
   getBranchCreatedAt,
+  gitCheckout,
+  createBranch,
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled } from './validation.js';
@@ -68,4 +70,7 @@ export { truncateTaskDesc, printDryRunPreview } from './dry-run.js';
 export { applyAliases } from './alias.js';
 export { isValidConfigKey, getValidConfigKeys, parseConfigValue, promptConfigValue, formatConfigValue } from './config-strategy.js';
 export { checkForUpdates } from './update-checker.js';
+export { getProjectConfigPath, loadProjectConfig, saveProjectConfig, requireProjectConfig, getMainWorkBranch } from './project-config.js';
+export { getValidateBranchName, createValidateBranch, deleteValidateBranch, rebuildValidateBranch, ensureOnMainWorkBranch, handleDirtyWorkingDir } from './validate-branch.js';
+export { safeStringify } from './json.js';
 

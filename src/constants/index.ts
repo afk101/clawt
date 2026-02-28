@@ -1,5 +1,5 @@
-export { CLAWT_HOME, CONFIG_PATH, LOGS_DIR, WORKTREES_DIR, VALIDATE_SNAPSHOTS_DIR, CLAUDE_PROJECTS_DIR, UPDATE_CHECK_PATH } from './paths.js';
-export { INVALID_BRANCH_CHARS } from './branch.js';
+export { CLAWT_HOME, CONFIG_PATH, LOGS_DIR, WORKTREES_DIR, VALIDATE_SNAPSHOTS_DIR, CLAUDE_PROJECTS_DIR, UPDATE_CHECK_PATH, PROJECTS_CONFIG_DIR } from './paths.js';
+export { INVALID_BRANCH_CHARS, VALIDATE_BRANCH_PREFIX } from './branch.js';
 export { MESSAGES } from './messages/index.js';
 export { CONFIG_ALIAS_DISABLED_HINT } from './messages/index.js';
 export { UPDATE_MESSAGES, UPDATE_COMMANDS } from './messages/update.js';

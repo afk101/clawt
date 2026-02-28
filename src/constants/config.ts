@@ -1,7 +1,7 @@
 import type { ClawtConfig, ConfigDefinitions } from '../types/index.js';
 import { VALID_TERMINAL_APPS } from './terminal.js';
 
-/** Claude Code 系统约束提示，禁止代码执行完成后构建项目验证 */
+/** Claude Code 系统约束提示 */
 export const APPEND_SYSTEM_PROMPT =
   'After the code execution is completed, it is prohibited to build the project for verification.';
 

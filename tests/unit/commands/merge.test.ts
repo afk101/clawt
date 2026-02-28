@@ -64,7 +64,13 @@ vi.mock('../../../src/utils/index.js', () => ({
   gitMergeBase: vi.fn(),
   gitResetSoftTo: vi.fn(),
   getCurrentBranch: vi.fn(),
+  gitResetHard: vi.fn(),
+  gitCleanForce: vi.fn(),
+  gitCheckout: vi.fn(),
   resolveTargetWorktree: vi.fn(),
+  requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
+  getMainWorkBranch: vi.fn().mockReturnValue('main'),
+  switchBackIfOnValidateBranch: vi.fn(),
 }));
 
 import { registerMergeCommand } from '../../../src/commands/merge.js';
@@ -175,7 +181,8 @@ describe('handleMerge', () => {
 
   it('目标 worktree 有未提交修改且提供 -m 时先提交再合并', async () => {
     mockedIsWorkingDirClean
-      .mockReturnValueOnce(true)   // 主 worktree 干净
+      .mockReturnValueOnce(true)   // 前置检查：验证分支切回后主 worktree 干净
+      .mockReturnValueOnce(true)   // 主 worktree 状态检测：干净
       .mockReturnValueOnce(false); // 目标 worktree 不干净
     mockedConfirmAction.mockResolvedValue(false); // 不清理
 

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { CONFIG_PATH, CLAWT_HOME, LOGS_DIR, WORKTREES_DIR, DEFAULT_CONFIG, MESSAGES } from '../constants/index.js';
+import { CONFIG_PATH, CLAWT_HOME, LOGS_DIR, WORKTREES_DIR, DEFAULT_CONFIG, MESSAGES, PROJECTS_CONFIG_DIR } from '../constants/index.js';
 import { ClawtError } from '../errors/index.js';
 import { ensureDir } from './fs.js';
 import { logger } from '../logger/index.js';
@@ -65,6 +65,7 @@ export function ensureClawtDirs(): void {
   ensureDir(CLAWT_HOME);
   ensureDir(LOGS_DIR);
   ensureDir(WORKTREES_DIR);
+  ensureDir(PROJECTS_CONFIG_DIR);
 }
 
 /**

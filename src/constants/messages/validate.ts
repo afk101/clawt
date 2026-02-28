@@ -62,4 +62,10 @@ export const VALIDATE_MESSAGES = {
   /** 用户拒绝自动 sync */
   VALIDATE_AUTO_SYNC_DECLINED: (branch: string) =>
     `请手动执行 clawt sync -b ${branch} 同步主分支后重试`,
+  /** 验证分支不存在 */
+  VALIDATE_BRANCH_NOT_FOUND: (validateBranch: string, branch: string) =>
+    `验证分支 ${validateBranch} 不存在，请先执行 clawt create 或 clawt run 创建分支 ${branch}`,
+  /** validate 成功（含验证分支信息） */
+  VALIDATE_SUCCESS_WITH_BRANCH: (branch: string, validateBranch: string) =>
+    `✓ 已切换到验证分支 ${validateBranch} 并应用分支 ${branch} 的变更\n  可以开始验证了`,
 } as const;

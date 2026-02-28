@@ -501,3 +501,21 @@ export function getBranchCreatedAt(branchName: string, cwd?: string): string | n
     return null;
   }
 }
+
+/**
+ * 切换到指定分支
+ * @param {string} branchName - 目标分支名
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitCheckout(branchName: string, cwd?: string): void {
+  execCommand(`git checkout ${branchName}`, { cwd });
+}
+
+/**
+ * 创建本地分支（不切换）
+ * @param {string} branchName - 新分支名
+ * @param {string} [cwd] - 工作目录
+ */
+export function createBranch(branchName: string, cwd?: string): void {
+  execCommand(`git branch ${branchName}`, { cwd });
+}

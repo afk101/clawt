@@ -1,5 +1,4 @@
 import type { Command } from 'commander';
-import Enquirer from 'enquirer';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
@@ -14,7 +13,6 @@ import {
   isWorkingDirClean,
   gitAddAll,
   gitCommit,
-  gitStashPush,
   gitRestoreStaged,
   gitResetHard,
   gitCleanForce,
@@ -44,6 +42,13 @@ import {
   runCommandInherited,
   parseParallelCommands,
   runParallelCommands,
+  requireProjectConfig,
+  getValidateBranchName,
+  gitCheckout,
+  ensureOnMainWorkBranch,
+  checkBranchExists,
+  getCurrentBranch,
+  handleDirtyWorkingDir,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages, ParallelCommandResult } from '../utils/index.js';
 
@@ -73,47 +78,11 @@ export function registerValidateCommand(program: Command): void {
 
 /**
  * 处理主 worktree 工作区有未提交更改的情况（首次 validate 时使用）
+ * 委托给通用的 handleDirtyWorkingDir 函数处理
  * @param {string} mainWorktreePath - 主 worktree 路径
  */
 async function handleDirtyMainWorktree(mainWorktreePath: string): Promise<void> {
-  printWarning('主 worktree 当前分支有未提交的更改，请选择处理方式：\n');
-
-  // @ts-expect-error enquirer 类型声明未导出 Select 类，但运行时存在
-  const choice = await new Enquirer.Select({
-    message: '选择处理方式',
-    choices: [
-      {
-        name: 'reset',
-        message: 'reset (推荐) - 丢弃所有更改 (git reset --hard HEAD && git clean -fd)',
-      },
-      {
-        name: 'stash',
-        message: 'stash        - 暂存更改 (git add . && git stash)',
-      },
-      {
-        name: 'exit',
-        message: 'exit         - 退出，手动处理',
-      },
-    ],
-    initial: 0,
-  }).run();
-
-  if (choice === 'exit') {
-    throw new ClawtError('用户选择退出');
-  }
-
-  if (choice === 'reset') {
-    gitResetHard(mainWorktreePath);
-    gitCleanForce(mainWorktreePath);
-  } else if (choice === 'stash') {
-    gitAddAll(mainWorktreePath);
-    gitStashPush('clawt:auto-stash', mainWorktreePath);
-  }
-
-  // 再次检查是否干净
-  if (!isWorkingDirClean(mainWorktreePath)) {
-    throw new ClawtError('工作区仍然不干净，请手动处理');
-  }
+  await handleDirtyWorkingDir(mainWorktreePath);
 }
 
 /**
@@ -186,7 +155,7 @@ async function handlePatchApplyFailure(targetWorktreePath: string, branchName: s
 
   // 用户确认，执行 sync
   printInfo(MESSAGES.VALIDATE_AUTO_SYNC_START(branchName));
-  const syncResult = executeSyncForBranch(targetWorktreePath, branchName);
+  const syncResult = await executeSyncForBranch(targetWorktreePath, branchName);
 
   // sync 冲突提示已在 executeSyncForBranch 内部输出（SYNC_CONFLICT），此处无需重复提示
 }
@@ -215,6 +184,8 @@ function saveCurrentSnapshotTree(mainWorktreePath: string, projectName: string, 
  */
 async function handleValidateClean(options: ValidateOptions): Promise<void> {
   validateMainWorktree();
+  // 显式前置校验：确保项目已初始化
+  requireProjectConfig();
 
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();
@@ -244,6 +215,9 @@ async function handleValidateClean(options: ValidateOptions): Promise<void> {
     gitCleanForce(mainWorktreePath);
   }
 
+  // 确保当前在主工作分支上
+  await ensureOnMainWorkBranch(mainWorktreePath);
+
   // 删除对应的快照文件
   removeSnapshot(projectName, branchName);
 
@@ -259,11 +233,19 @@ async function handleValidateClean(options: ValidateOptions): Promise<void> {
  * @param {boolean} hasUncommitted - 目标 worktree 是否有未提交修改
  */
 async function handleFirstValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string, hasUncommitted: boolean): Promise<void> {
+  // 切换主 worktree 到验证分支
+  const validateBranchName = getValidateBranchName(branchName);
+  if (!checkBranchExists(validateBranchName)) {
+    throw new ClawtError(MESSAGES.VALIDATE_BRANCH_NOT_FOUND(validateBranchName, branchName));
+  }
+  gitCheckout(validateBranchName, mainWorktreePath);
+
   // 通过 patch 迁移目标分支全量变更到主 worktree
   const result = migrateChangesViaPatch(targetWorktreePath, mainWorktreePath, branchName, hasUncommitted);
 
   if (!result.success) {
-    // patch 失败，询问用户是否自动 sync
+    // patch 失败，确保在主工作分支上后询问用户是否自动 sync
+    await ensureOnMainWorkBranch(mainWorktreePath);
     await handlePatchApplyFailure(targetWorktreePath, branchName);
     return;
   }
@@ -272,7 +254,7 @@ async function handleFirstValidate(targetWorktreePath: string, mainWorktreePath:
   saveCurrentSnapshotTree(mainWorktreePath, projectName, branchName);
 
   // 结果：暂存区=空，工作目录=全量变更
-  printSuccess(MESSAGES.VALIDATE_SUCCESS(branchName));
+  printSuccess(MESSAGES.VALIDATE_SUCCESS_WITH_BRANCH(branchName, validateBranchName));
 }
 
 /**
@@ -294,24 +276,35 @@ async function handleIncrementalValidate(targetWorktreePath: string, mainWorktre
     gitCleanForce(mainWorktreePath);
   }
 
-  // 步骤 3：通过 patch 从目标分支获取最新全量变更
+  // 步骤 3：切换到验证分支（如果已在该分支上则跳过）
+  const validateBranchName = getValidateBranchName(branchName);
+  if (!checkBranchExists(validateBranchName)) {
+    throw new ClawtError(MESSAGES.VALIDATE_BRANCH_NOT_FOUND(validateBranchName, branchName));
+  }
+  const currentBranch = getCurrentBranch(mainWorktreePath);
+  if (currentBranch !== validateBranchName) {
+    gitCheckout(validateBranchName, mainWorktreePath);
+  }
+
+  // 步骤 4：通过 patch 从目标分支获取最新全量变更
   const result = migrateChangesViaPatch(targetWorktreePath, mainWorktreePath, branchName, hasUncommitted);
 
   if (!result.success) {
-    // patch 失败，询问用户是否自动 sync
+    // patch 失败，确保在主工作分支上后询问用户是否自动 sync
+    await ensureOnMainWorkBranch(mainWorktreePath);
     await handlePatchApplyFailure(targetWorktreePath, branchName);
     return;
   }
 
-  // 步骤 4：保存最新快照为 git tree 对象（同时记录当前 HEAD）
+  // 步骤 5：保存最新快照为 git tree 对象（同时记录当前 HEAD）
   saveCurrentSnapshotTree(mainWorktreePath, projectName, branchName);
 
-  // 步骤 5：将旧变更状态载入暂存区
+  // 步骤 6：将旧变更状态载入暂存区
   try {
     const currentHeadCommitHash = getHeadCommitHash(mainWorktreePath);
 
     if (oldHeadCommitHash && oldHeadCommitHash !== currentHeadCommitHash) {
-      // HEAD 发生了变化（如主分支合并了其他分支）：
+      // HEAD 发生了变化：
       // 将旧变更 patch（旧 tree 相对于旧 HEAD 的差异）重放到当前 HEAD 暂存区上，
       // 避免新旧 tree 基准不同导致 diff 混入 HEAD 变化的内容
       const oldHeadTreeHash = getCommitTreeHash(oldHeadCommitHash, mainWorktreePath);
@@ -324,7 +317,7 @@ async function handleIncrementalValidate(targetWorktreePath: string, mainWorktre
         // 有冲突：降级为全量模式（暂存区保持为空）
         logger.warn('旧变更 patch 与当前 HEAD 冲突，降级为全量模式');
         printWarning(MESSAGES.INCREMENTAL_VALIDATE_FALLBACK);
-        printSuccess(MESSAGES.VALIDATE_SUCCESS(branchName));
+        printSuccess(MESSAGES.VALIDATE_SUCCESS_WITH_BRANCH(branchName, validateBranchName));
         return;
       }
       // oldChangePatch 为空表示旧变更为空，暂存区保持干净即可
@@ -337,7 +330,7 @@ async function handleIncrementalValidate(targetWorktreePath: string, mainWorktre
     logger.warn(`增量 read-tree 失败: ${error}`);
     printWarning(MESSAGES.INCREMENTAL_VALIDATE_FALLBACK);
     // 降级后暂存区保持为空，工作目录为最新全量变更，与首次 validate 一致
-    printSuccess(MESSAGES.VALIDATE_SUCCESS(branchName));
+    printSuccess(MESSAGES.VALIDATE_SUCCESS_WITH_BRANCH(branchName, validateBranchName));
     return;
   }
 
@@ -451,6 +444,7 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
   }
 
   validateMainWorktree();
+  requireProjectConfig();
 
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();

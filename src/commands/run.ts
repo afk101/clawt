@@ -19,6 +19,7 @@ import {
   parseTasksFromOptions,
   executeBatchTasks,
   printDryRunPreview,
+  ensureOnMainWorkBranch,
 } from '../utils/index.js';
 
 /**
@@ -119,6 +120,11 @@ function handleDryRunFromFile(options: RunOptions): void {
  */
 async function handleRun(options: RunOptions): Promise<void> {
   validateMainWorktree();
+
+  // dry-run 模式跳过项目配置前置校验
+  if (!options.dryRun) {
+    await ensureOnMainWorkBranch();
+  }
 
   // 互斥校验：--file 和 --tasks 不能同时使用
   if (options.file && options.tasks) {

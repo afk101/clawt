@@ -21,4 +21,7 @@ export const SYNC_MESSAGES = {
   SYNC_SELECT_BRANCH: '请选择要同步的分支',
   /** sync 模糊匹配到多个结果提示 */
   SYNC_MULTIPLE_MATCHES: (name: string) => `"${name}" 匹配到多个分支，请选择：`,
+  /** sync 后验证分支已重建提示 */
+  SYNC_VALIDATE_BRANCH_REBUILT: (validateBranch: string) =>
+    `验证分支 ${validateBranch} 已重建`,
 } as const;

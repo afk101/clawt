@@ -71,6 +71,8 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
     parseTasksFromOptions: vi.fn(),
     createWorktreesByBranches: vi.fn(),
     printDryRunPreview: vi.fn(),
+    requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
+    ensureOnMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   };
 });
 

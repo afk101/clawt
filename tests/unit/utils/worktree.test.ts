@@ -48,6 +48,12 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// mock validate-branch
+vi.mock('../../../src/utils/validate-branch.js', () => ({
+  createValidateBranch: vi.fn(),
+  deleteValidateBranch: vi.fn(),
+}));
+
 import { existsSync, readdirSync } from 'node:fs';
 import {
   getProjectName,

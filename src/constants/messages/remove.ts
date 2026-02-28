@@ -14,4 +14,6 @@ export const REMOVE_MESSAGES = {
     `以下 worktree 移除失败：\n${failures.map((f) => `  ✗ ${f.path}: ${f.error}`).join('\n')}`,
   /** 用户选择保留本地分支 */
   REMOVE_BRANCHES_KEPT: '已保留本地分支，可稍后使用 git branch -D <分支名> 手动删除',
+  /** 确认删除本地分支和验证分支 */
+  REMOVE_CONFIRM_DELETE_BRANCHES: '是否同时删除对应的本地分支和验证分支？',
 } as const;

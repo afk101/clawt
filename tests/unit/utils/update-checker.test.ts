@@ -19,13 +19,34 @@ vi.mock('node:https', () => ({
 }));
 
 // mock chalk（测试环境已通过 FORCE_COLOR=0 禁用颜色，但仍需确保不产生转义码）
-vi.mock('chalk', () => ({
-  default: {
-    red: (s: string) => s,
-    green: (s: string) => s,
-    cyan: (s: string) => s,
-  },
-}));
+// 使用 Proxy 实现链式调用，支持 chalk.bold.hex('#color')('text') 等任意嵌套
+vi.mock('chalk', () => {
+  /**
+   * 创建可链式调用的 chalk Proxy
+   * - 属性访问（如 .bold、.red）返回新 Proxy
+   * - 函数调用返回新 Proxy，但记录最后传入的字符串参数
+   * - toString / Symbol.toPrimitive 返回最后记录的字符串，支持模板字符串插值
+   * @param {string} [value] - 内部记录的字符串值
+   * @returns {unknown} 链式 Proxy 对象
+   */
+  const createChainProxy = (value = ''): unknown => {
+    const fn = (..._args: unknown[]) => {};
+    return new Proxy(fn, {
+      get: (_target, prop) => {
+        if (prop === '__esModule') return true;
+        if (prop === Symbol.toPrimitive || prop === 'toString') return () => value;
+        if (prop === 'length') return 0;
+        return createChainProxy(value);
+      },
+      apply: (_target, _thisArg, args) => {
+        // 记录最后传入的字符串参数作为输出值
+        const newValue = typeof args[0] === 'string' ? args[0] : value;
+        return createChainProxy(newValue);
+      },
+    });
+  };
+  return { default: createChainProxy(), __esModule: true };
+});
 
 // mock string-width（纯 ASCII 场景下直接返回字符串长度即可）
 vi.mock('string-width', () => ({

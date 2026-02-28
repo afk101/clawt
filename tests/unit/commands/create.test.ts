@@ -26,6 +26,10 @@ vi.mock('../../../src/constants/index.js', () => ({
 vi.mock('../../../src/utils/index.js', () => ({
   validateMainWorktree: vi.fn(),
   createWorktrees: vi.fn(),
+  getConfigValue: vi.fn().mockReturnValue(true),
+  requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
+  ensureOnMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+  getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
   printSuccess: vi.fn(),
   printInfo: vi.fn(),
   printSeparator: vi.fn(),
@@ -54,7 +58,7 @@ describe('registerCreateCommand', () => {
 });
 
 describe('handleCreate', () => {
-  it('成功创建 worktree', () => {
+  it('成功创建 worktree', async () => {
     mockedCreateWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -62,14 +66,14 @@ describe('handleCreate', () => {
     const program = new Command();
     program.exitOverride();
     registerCreateCommand(program);
-    program.parse(['create', '-b', 'feature'], { from: 'user' });
+    await program.parseAsync(['create', '-b', 'feature'], { from: 'user' });
 
     expect(mockedValidateMainWorktree).toHaveBeenCalled();
     expect(mockedCreateWorktrees).toHaveBeenCalledWith('feature', 1);
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
-  it('支持 -n 指定创建数量', () => {
+  it('支持 -n 指定创建数量', async () => {
     mockedCreateWorktrees.mockReturnValue([
       { path: '/path/feature-1', branch: 'feature-1' },
       { path: '/path/feature-2', branch: 'feature-2' },
@@ -78,38 +82,38 @@ describe('handleCreate', () => {
     const program = new Command();
     program.exitOverride();
     registerCreateCommand(program);
-    program.parse(['create', '-b', 'feature', '-n', '2'], { from: 'user' });
+    await program.parseAsync(['create', '-b', 'feature', '-n', '2'], { from: 'user' });
 
     expect(mockedCreateWorktrees).toHaveBeenCalledWith('feature', 2);
   });
 
-  it('无效数量抛出 ClawtError', () => {
+  it('无效数量抛出 ClawtError', async () => {
     const program = new Command();
     program.exitOverride();
     registerCreateCommand(program);
 
-    expect(() => {
-      program.parse(['create', '-b', 'feature', '-n', 'abc'], { from: 'user' });
-    }).toThrow();
+    await expect(
+      program.parseAsync(['create', '-b', 'feature', '-n', 'abc'], { from: 'user' }),
+    ).rejects.toThrow();
   });
 
-  it('数量为 0 时抛出 ClawtError', () => {
+  it('数量为 0 时抛出 ClawtError', async () => {
     const program = new Command();
     program.exitOverride();
     registerCreateCommand(program);
 
-    expect(() => {
-      program.parse(['create', '-b', 'feature', '-n', '0'], { from: 'user' });
-    }).toThrow();
+    await expect(
+      program.parseAsync(['create', '-b', 'feature', '-n', '0'], { from: 'user' }),
+    ).rejects.toThrow();
   });
 
-  it('负数数量抛出 ClawtError', () => {
+  it('负数数量抛出 ClawtError', async () => {
     const program = new Command();
     program.exitOverride();
     registerCreateCommand(program);
 
-    expect(() => {
-      program.parse(['create', '-b', 'feature', '-n', '-1'], { from: 'user' });
-    }).toThrow();
+    await expect(
+      program.parseAsync(['create', '-b', 'feature', '-n', '-1'], { from: 'user' }),
+    ).rejects.toThrow();
   });
 });

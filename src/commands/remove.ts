@@ -21,6 +21,9 @@ import {
   removeSnapshot,
   removeProjectSnapshots,
   resolveTargetWorktrees,
+  getValidateBranchName,
+  deleteValidateBranch,
+  ensureOnMainWorkBranch,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
 
@@ -76,7 +79,7 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   // 列出即将移除的 worktree
   printInfo('即将移除以下 worktree 及本地分支：\n');
   worktreesToRemove.forEach((wt, index) => {
-    printInfo(`  ${index + 1}. ${wt.path}  →  分支: ${wt.branch}`);
+    printInfo(`  ${index + 1}. ${wt.path}  →  分支: ${wt.branch}  验证分支: ${getValidateBranchName(wt.branch)}`);
   });
   printInfo('');
 
@@ -85,7 +88,7 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   let shouldDeleteBranch = autoDelete;
 
   if (!autoDelete) {
-    shouldDeleteBranch = await confirmAction('是否同时删除对应的本地分支？');
+    shouldDeleteBranch = await confirmAction(MESSAGES.REMOVE_CONFIRM_DELETE_BRANCHES);
     if (!shouldDeleteBranch) {
       printHint(MESSAGES.REMOVE_BRANCHES_KEPT);
     }
@@ -95,10 +98,14 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   const failures: Array<{ path: string; error: string }> = [];
   for (const wt of worktreesToRemove) {
     try {
+      // 确保当前在主工作分支上
+      await ensureOnMainWorkBranch();
       removeWorktreeByPath(wt.path);
       if (shouldDeleteBranch) {
         deleteBranch(wt.branch);
       }
+      // 删除对应的验证分支
+      deleteValidateBranch(wt.branch);
       // 清理该分支对应的 validate 快照
       removeSnapshot(projectName, wt.branch);
       printSuccess(MESSAGES.WORKTREE_REMOVED(wt.path));

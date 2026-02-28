@@ -77,3 +77,9 @@ export interface ProjectsOptions {
   /** 以 JSON 格式输出 */
   json?: boolean;
 }
+
+/** init 命令选项 */
+export interface InitOptions {
+  /** 指定主工作分支名（可选，默认使用当前分支） */
+  branch?: string;
+}

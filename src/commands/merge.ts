@@ -27,8 +27,12 @@ import {
   hasCommitWithMessage,
   gitMergeBase,
   gitResetSoftTo,
-  getCurrentBranch,
+  gitResetHard,
+  gitCleanForce,
+  gitCheckout,
   resolveTargetWorktree,
+  getMainWorkBranch,
+  ensureOnMainWorkBranch,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -82,7 +86,7 @@ async function handleSquashIfNeeded(
   }
 
   // 获取当前主分支名并计算分叉点
-  const mainBranch = getCurrentBranch(mainWorktreePath);
+  const mainBranch = getMainWorkBranch();
   const mergeBase = gitMergeBase(mainBranch, branchName, mainWorktreePath);
   logger.info(`squash: merge-base = ${mergeBase}, 分支 = ${branchName}`);
 
@@ -134,6 +138,9 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   validateMainWorktree();
 
   const mainWorktreePath = getGitTopLevel();
+
+  // 确保当前在主工作分支上
+  await ensureOnMainWorkBranch(mainWorktreePath);
 
   logger.info(`merge 命令执行，分支: ${options.branch ?? '(未指定)'}，提交信息: ${options.message ?? '(未提供)'}`);
 

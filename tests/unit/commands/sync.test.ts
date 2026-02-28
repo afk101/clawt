@@ -25,6 +25,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     SYNC_MERGING: (branch: string, mainBranch: string) => `正在将 ${mainBranch} 合并到 ${branch}...`,
     SYNC_CONFLICT: (path: string) => `合并冲突，请手动解决: ${path}`,
     SYNC_SUCCESS: (branch: string, mainBranch: string) => `✓ 已将 ${mainBranch} 同步到 ${branch}`,
+    SYNC_VALIDATE_BRANCH_REBUILT: (validateBranch: string) => `验证分支 ${validateBranch} 已重建`,
   },
   AUTO_SAVE_COMMIT_MESSAGE: 'clawt:auto-save',
 }));
@@ -46,6 +47,10 @@ vi.mock('../../../src/utils/index.js', () => ({
   printInfo: vi.fn(),
   printWarning: vi.fn(),
   resolveTargetWorktree: vi.fn(),
+  requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
+  getMainWorkBranch: vi.fn().mockReturnValue('main'),
+  rebuildValidateBranch: vi.fn(),
+  getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
 }));
 
 import { registerSyncCommand } from '../../../src/commands/sync.js';

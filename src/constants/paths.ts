@@ -21,3 +21,6 @@ export const CLAUDE_PROJECTS_DIR = join(homedir(), '.claude', 'projects');
 
 /** 更新检查缓存文件路径 ~/.clawt/update-check.json */
 export const UPDATE_CHECK_PATH = join(CLAWT_HOME, 'update-check.json');
+
+/** 项目配置目录 ~/.clawt/projects/ */
+export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');

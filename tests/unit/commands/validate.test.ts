@@ -40,6 +40,11 @@ vi.mock('../../../src/constants/index.js', () => ({
     VALIDATE_PARALLEL_CMD_FAILED: (cmd: string, code: number) => `  ✗ ${cmd}（退出码: ${code}）`,
     VALIDATE_PARALLEL_CMD_ERROR: (cmd: string, msg: string) => `  ✗ ${cmd}（错误: ${msg}）`,
     SEPARATOR: '────',
+    VALIDATE_BRANCH_NOT_FOUND: (validateBranch: string, branch: string) => `验证分支 ${validateBranch} 不存在`,
+    VALIDATE_SUCCESS_WITH_BRANCH: (branch: string, validateBranch: string) => `✓ 已切换到验证分支 ${validateBranch} 并验证 ${branch}`,
+    VALIDATE_CONFIRM_AUTO_SYNC: (branch: string) => `是否自动 sync ${branch}`,
+    VALIDATE_AUTO_SYNC_DECLINED: (branch: string) => `已跳过 ${branch} 的自动 sync`,
+    VALIDATE_AUTO_SYNC_START: (branch: string) => `正在自动 sync ${branch}`,
   },
 }));
 
@@ -79,6 +84,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   writeSnapshot: vi.fn(),
   removeSnapshot: vi.fn(),
   confirmDestructiveAction: vi.fn(),
+  confirmAction: vi.fn(),
   printSuccess: vi.fn(),
   printWarning: vi.fn(),
   printInfo: vi.fn(),
@@ -88,6 +94,12 @@ vi.mock('../../../src/utils/index.js', () => ({
   printSeparator: vi.fn(),
   parseParallelCommands: vi.fn(),
   runParallelCommands: vi.fn(),
+  requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
+  getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
+  gitCheckout: vi.fn(),
+  switchBackIfOnValidateBranch: vi.fn(),
+  checkBranchExists: vi.fn().mockReturnValue(true),
+  getCurrentBranch: vi.fn().mockReturnValue('main'),
 }));
 
 import { registerValidateCommand } from '../../../src/commands/validate.js';
