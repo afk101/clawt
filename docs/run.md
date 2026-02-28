@@ -5,8 +5,8 @@
 **命令：**
 
 ```bash
-# 方式一：通过 --tasks 参数直接指定任务（多任务并行）
-clawt run -b <branchName> --tasks <task1> --tasks <task2> --tasks <task3>
+# 方式一：通过 --tasks 参数直接指定任务（多任务并行，支持 variadic 语法）
+clawt run -b <branchName> --tasks <task1> <task2> <task3>
 
 # 方式二：通过 -f 从任务文件读取任务列表
 clawt run -f <path>
@@ -64,7 +64,7 @@ clawt run -b <branchName>
 4. **块外内容忽略**：标签外的任何文本都不会被解析
 5. **必填校验**：每个块必须包含任务描述；分支名默认必填，但使用 `-b` 参数时分支名为可选（会被忽略，用 `-b` 值自动编号）
 
-**解析实现：** `src/utils/task-file.ts` 中的 `parseTaskFile()` 和 `loadTaskFile()` 函数，类型定义为 `TaskFileEntry`（`src/types/taskFile.ts`）。
+**解析实现：** `src/utils/task-file.ts` 中的 `parseTaskFile()`、`loadTaskFile()` 和 `parseTasksFromOptions()` 函数，类型定义为 `TaskFileEntry`（`src/types/taskFile.ts`）。
 
 #### 任务文件模式运行流程
 
@@ -134,13 +134,13 @@ clawt run -b <branchName>
    - 正常分支：行首绿色 `✓` + 序号 + 青色分支名
    - 冲突分支：行首黄色 `⚠` + 序号 + 黄色分支名 + 灰色 `—` + 黄色警告文本（如 `分支 xxx 已存在`），警告合并在序号行
 4. **路径/任务行**：2 空格缩进，灰色标签前缀（`路径:` / `任务:`）
-5. **任务描述截断**：超过 70 字符时末尾加 `...`，多行合并为单行
+5. **任务描述截断**：超过 80 字符时末尾加 `...`，多行合并为单行
 6. **结尾**：双线分隔符后根据冲突情况输出结论——无冲突时绿色 `✓` 提示，有冲突时黄色 `⚠` 警告
 
 **实现要点：**
 
 - 常量定义在 `src/constants/messages/run.ts`（`DRY_RUN_*` 系列）
 - `DRY_RUN_WORKTREE_DIR` 前缀为 `Worktree:`（简短形式）
-- `truncateTaskDesc()` 负责截断任务描述（最大长度 70 字符）
+- `truncateTaskDesc()` 负责截断任务描述（最大长度 80 字符，定义在 `src/utils/dry-run.ts`）
 
 ---

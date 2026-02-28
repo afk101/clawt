@@ -32,31 +32,32 @@ clawt init show
    - 未传 `-b` → 使用当前分支名（`git rev-parse --abbrev-ref HEAD`）
 3. **写入项目级配置**：将 `clawtMainWorkBranch` 写入 `~/.clawt/projects/<projectName>/config.json`
    - 配置文件不存在 → 创建
-   - 配置文件已存在 → 覆盖 `clawtMainWorkBranch` 字段
+   - 配置文件已存在 → 覆盖整个配置文件内容
 4. **输出成功提示**
 
 **运行流程（show 模式）：**
 
 1. **主 worktree 校验** (2.1)
 2. **读取项目级配置**：读取 `~/.clawt/projects/<projectName>/config.json`
-   - 配置不存在 → 输出提示 `该项目尚未初始化，请执行 clawt init 进行初始化`
-   - 配置存在 → 输出配置内容
+   - 配置不存在 → 抛出错误 `项目尚未初始化，请先执行 clawt init 设置主工作分支`
+   - 配置存在 → 以 JSON 格式输出配置内容
 
 **输出格式：**
 
 ```
 # 首次初始化
-✓ 已将 main 设为该项目的主工作分支
+✓ 项目初始化成功，主工作分支设置为: main
 
 # 更新已有配置
 ✓ 已将主工作分支从 develop 更新为 main
 
-# show 查看配置
-当前项目: my-project
-  主工作分支: main
+# show 查看配置（JSON 格式输出）
+{
+  "clawtMainWorkBranch": "main"
+}
 
-# show 未初始化
-该项目尚未初始化，请执行 clawt init 进行初始化
+# show 未初始化（抛出错误）
+项目尚未初始化，请先执行 clawt init 设置主工作分支
 ```
 
 **重复执行：** 支持重复执行，后一次覆盖前一次的配置。

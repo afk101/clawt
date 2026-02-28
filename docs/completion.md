@@ -49,7 +49,7 @@ clawt completion install
 
 - 补全命令注册函数：`registerCompletionCommand()`（在 `src/commands/completion.ts`）
 - 消息常量：`COMPLETION_MESSAGES`（在 `src/constants/messages/completion.ts`）
-- 核心函数：`generateCompletions()` 解析当前输入上下文并输出候选项，`completeFilePath()` 处理文件路径补全
+- 核心函数：`generateCompletions()` 解析当前输入上下文并输出候选项，`completeFilePath()` 处理文件路径补全，`tryCompleteSpecialArg()` 处理特殊参数（分支名、文件路径、配置键）的动态补全，`completeFromCommandTree()` 基于命令树遍历生成子命令和选项候选项
 - shell 脚本生成：`getBashScript()`、`getZshScript()` 分别生成对应 shell 的补全脚本
 
 ---

@@ -18,9 +18,9 @@
 **日志格式：**
 
 ```
-[2025-02-06 14:30:22] [INFO]  创建 worktree: ~/.clawt/worktrees/main-project/feature-scheme-1
+[2025-02-06 14:30:22] [INFO ] 创建 worktree: ~/.clawt/worktrees/main-project/feature-scheme-1
 [2025-02-06 14:30:22] [DEBUG] 执行命令: git worktree add -b feature-scheme-1 ~/.clawt/worktrees/main-project/feature-scheme-1
-[2025-02-06 14:30:23] [WARN]  分支名已转换: feature/a.b → feature-a-b
+[2025-02-06 14:30:23] [WARN ] 分支名已转换: feature/a.b → feature-a-b
 [2025-02-06 14:30:25] [ERROR] 分支 feature-scheme-1 已存在，无法创建
 ```
 
@@ -38,7 +38,6 @@
 - 在 Commander.js 的 `preAction` 钩子中检测 `--debug` 选项，按需调用 `enableConsoleTransport()` 函数
 - `enableConsoleTransport()` 动态向 winston 实例添加 `Console` transport（level 为 `debug`），该函数幂等，多次调用不会重复添加 transport
 - 相关常量定义在 `src/constants/logger.ts`：
-  - `DEBUG_LOG_PREFIX`：控制台调试输出的日志前缀标识
   - `DEBUG_TIMESTAMP_FORMAT`：时间戳格式（`HH:mm:ss.SSS`，精简，不含日期）
 
 **控制台日志格式：**

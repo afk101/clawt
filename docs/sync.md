@@ -23,8 +23,9 @@ clawt sync
 **运行流程：**
 
 1. **主 worktree 校验** (2.1)
-2. **确保在主工作分支上**：`handleSync` 在执行核心逻辑前，调用 `ensureOnMainWorkBranch()` 确保当前处于主工作分支上。sync 命令需要从主分支发起合并操作，因此必须保证当前分支状态正确。
-3. **解析目标 worktree**：根据 `-b` 参数解析目标 worktree，匹配策略如下：
+2. **项目配置校验**：调用 `requireProjectConfig()` 确保项目已初始化（存在 `clawtMainWorkBranch` 配置）
+3. **确保在主工作分支上**：`handleSync` 在执行核心逻辑前，调用 `ensureOnMainWorkBranch()` 确保当前处于主工作分支上。sync 命令需要从主分支发起合并操作，因此必须保证当前分支状态正确。
+4. **解析目标 worktree**：根据 `-b` 参数解析目标 worktree，匹配策略如下：
    - **未传 `-b` 参数**：
      - 获取当前项目所有 worktree
      - 无可用 worktree → 报错退出
@@ -36,11 +37,11 @@ clawt sync
         - 唯一匹配 → 直接使用
         - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
      3. **无匹配** → 报错退出，并列出所有可用分支名
-3. 调用 `executeSyncForBranch(targetWorktreePath, branch)` 执行核心同步逻辑
+5. 调用 `executeSyncForBranch(targetWorktreePath, branch)` 执行核心同步逻辑
 
 #### `executeSyncForBranch` — sync 核心操作函数
 
-`executeSyncForBranch(targetWorktreePath: string, branch: string): SyncResult` 是从 `handleSync` 中抽取的核心同步逻辑，不包含 worktree 解析交互，供 validate 等命令复用。
+`executeSyncForBranch(targetWorktreePath: string, branch: string): Promise<SyncResult>` 是从 `handleSync` 中抽取的核心同步逻辑（async 函数），不包含 worktree 解析交互，供 validate 等命令复用。
 
 **接口定义：**
 
@@ -100,7 +101,7 @@ export interface SyncResult {
    # 基于当前主分支 HEAD 重新创建验证分支
    git branch clawt-validate-<branchName>
    ```
-7. **输出成功提示**并返回 `{ success: true, hasConflict: false }`：
+7. **输出成功提示**，然后执行 `rebuildValidateBranch` 重建验证分支，再输出验证分支重建提示，最后返回 `{ success: true, hasConflict: false }`：
    ```
    ✓ 已将 <mainBranch> 的最新代码同步到 <branchName>
      验证分支 clawt-validate-<branchName> 已重建

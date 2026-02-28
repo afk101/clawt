@@ -36,16 +36,13 @@ Claude Code CLI 以 `--output-format stream-json --verbose` 运行时，stdout �
 
 1. 为每个 Claude Code 子进程维护状态（运行中 / 已完成 / 已失败）
 2. 监听每个子进程的 `close` 事件（基于 Node.js `ChildProcess` 的事件驱动机制）
-3. 当某个子进程触发 `close` 事件时，解析流式输出中最后的 `result` 事件
-4. 在主 worktree 的 clawt 终端实时输出通知。TTY 环境下使用进度面板，进度面板每个任务行第二列显示 worktree 路径（终端可点击跳转），运行中显示实时活动描述，完成/失败后显示结果预览：
+3. 在流式传输过程中实时解析每一行事件，当遇到 `type=result` 时保存到 `finalResult`；子进程触发 `close` 事件时，flush 行缓冲器并组装最终结果
+4. 在主 worktree 的 clawt 终端实时输出通知。TTY 环境下使用进度面板，进度面板每个任务行第二列显示 worktree 路径（终端可点击跳转），运行中显示实时活动描述，完成/失败后显示结果预览。任务行格式示例：
 
 ```
-✓ [完成] worktree: ~/.clawt/worktrees/main-project/feature-scheme-1
-  分支: feature-scheme-1
-  耗时: 182.8s
-  花费: $0.05
-  结果: success
-────────────────────────────────────────
+[1/3] /path/to/worktree  ⠹ 运行中 1m23s  Read index.ts
+[2/3] /path/to/worktree  ✓ 完成   2m05s  $0.08  任务已成功完成
+[3/3] /path/to/worktree  ◦ 排队中
 ```
 
 5. 先完成的先通知，**不需要**失败重试机制
@@ -81,7 +78,7 @@ Claude Code CLI 以 `--output-format stream-json --verbose` 运行时，stdout �
 ```
 [1/3] /path/to/worktree  ⠹ 运行中 1m23s  Read index.ts
 [2/3] /path/to/worktree  ✓ 完成   2m05s  $0.08  任务已成功完成
-[3/3] /path/to/worktree  ● 排队中
+[3/3] /path/to/worktree  ◦ 排队中
 ```
 
 - 第二列为 worktree 路径（`path.padEnd(maxPathWidth)` 对齐）

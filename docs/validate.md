@@ -42,11 +42,8 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
 2. **解析目标 worktree**：通过模糊匹配解析目标分支（匹配策略同下文常规 validate 流程中的描述）
 3. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
 4. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
-5. 删除对应分支的快照文件
-6. **（新增）** 如果当前分支是验证分支（以 `clawt-validate-` 开头），切回主工作分支：
-   ```bash
-   git checkout <clawtMainWorkBranch>
-   ```
+5. **（新增）** 确保当前处于主工作分支上（`ensureOnMainWorkBranch`）：如果在验证分支上，清理后切回；如果在其他分支上，交互处理脏工作区后切回
+6. 删除对应分支的快照文件
 7. 输出清理成功提示
 
 #### 首次 validate（无历史快照）
@@ -67,30 +64,7 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
      - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
   3. **无匹配** → 报错退出，并列出所有可用分支名
 
-##### 步骤 1：检测主 worktree 工作区状态
-
-执行 `git status --porcelain`，判断主 worktree 是否有未提交的更改。
-
-- **无更改** → 进入步骤 2
-- **有更改** → 提示用户选择处理方式，使用交互式选择（方向键切换，回车确认）：
-
-```
-⚠ 主 worktree 当前分支有未提交的更改，请选择处理方式：
-
-❯ reset (推荐) - 丢弃所有更改 (git reset --hard HEAD && git clean -fd)
-  stash        - 暂存更改 (git add . && git stash)
-  exit         - 退出，手动处理
-```
-
-| 选项    | 执行命令                                  | 默认 |
-| ------- | ----------------------------------------- | ---- |
-| `reset` | `git reset --hard HEAD && git clean -fd`  | 是   |
-| `stash` | `git add . && git stash`                  | 否   |
-| `exit`  | 退出程序                                  | 否   |
-
-执行完毕后，通过 `git status --porcelain` 再次检测状态，确保工作区干净。如果仍然不干净，报错退出。
-
-##### 步骤 2：检测目标分支变更
+##### 步骤 1：检测目标分支变更
 
 统一检测目标 worktree 的未提交修改和已提交 commit：
 
@@ -107,6 +81,29 @@ git log HEAD..<branchName> --oneline
 - **两者均无** → 输出提示 `该 worktree 的分支上没有任何更改，无需验证`，退出
 - **至少有一项** → 继续
 
+##### 步骤 2：检测主 worktree 工作区状态
+
+执行 `git status --porcelain`，判断主 worktree 是否有未提交的更改。
+
+- **无更改** → 进入步骤 3
+- **有更改** → 提示用户选择处理方式，使用交互式选择（方向键切换，回车确认）：
+
+```
+⚠ 当前分支有未提交的更改，请选择处理方式：
+
+❯ reset        - 丢弃所有更改 (git reset --hard HEAD && git clean -fd)
+  stash        - 暂存更改 (git add . && git stash)
+  exit         - 退出，手动处理
+```
+
+| 选项    | 执行命令                                  | 默认 |
+| ------- | ----------------------------------------- | ---- |
+| `reset` | `git reset --hard HEAD && git clean -fd`  | 是   |
+| `stash` | `git add . && git stash push -m "clawt:auto-stash"` | 否   |
+| `exit`  | 退出程序                                  | 否   |
+
+执行完毕后，通过 `git status --porcelain` 再次检测状态，确保工作区干净。如果仍然不干净，报错退出。
+
 ##### 步骤 3：切换到验证分支
 
 ```bash
@@ -117,7 +114,7 @@ git checkout clawt-validate-<branchName>
 如果验证分支不存在，直接报错退出：
 
 ```
-✗ 未找到验证分支 clawt-validate-<branchName>，请重新创建 worktree
+验证分支 clawt-validate-<branchName> 不存在，请先执行 clawt create 或 clawt run 创建分支 <branchName>
 ```
 
 ##### 步骤 4：通过 patch 迁移目标分支全量变更
@@ -146,13 +143,11 @@ git restore --staged .
 
 ##### patch apply 失败后的自动 sync 流程
 
-当 patch apply 失败时，validate 不再直接退出，而是通过 `handlePatchApplyFailure()` 函数进入交互流程：
+当 patch apply 失败时，validate 不再直接退出，而是先通过 `ensureOnMainWorkBranch()` 确保主 worktree 切回主工作分支，然后通过 `handlePatchApplyFailure()` 函数进入交互流程：
 
 1. **询问用户**：提示 `是否立即执行 sync 同步主分支到 <branchName>？`
 2. **用户拒绝** → 输出提示 `请手动执行 clawt sync -b <branchName> 同步主分支后重试`，退出
-3. **用户确认** → 调用 `executeSyncForBranch(targetWorktreePath, branchName)` 自动执行 sync
-   - **sync 成功** → validate 流程结束（用户需重新执行 validate）
-   - **sync 存在冲突** → 输出提示 `同步存在冲突，请进入目标 worktree 手动解决冲突后重试`，退出
+3. **用户确认** → 调用 `executeSyncForBranch(targetWorktreePath, branchName)` 自动执行 sync，sync 的结果（成功/冲突）由 `executeSyncForBranch` 内部输出，`handlePatchApplyFailure` 不做额外判断，validate 流程结束（用户需重新执行 validate）
 
 > `executeSyncForBranch` 为 sync 命令抽取的核心操作函数（见 [5.12](#512-将主分支代码同步到目标-worktree)），供 validate 等命令复用。
 
@@ -161,7 +156,7 @@ git restore --staged .
 - `migrateChangesViaPatch()` 返回类型从 `void` 改为 `{ success: boolean }`，patch apply 失败时返回 `{ success: false }` 而非抛出异常
 - `handleFirstValidate()` 和 `handleIncrementalValidate()` 从同步函数改为 `async` 函数，以支持交互式确认
 - `handlePatchApplyFailure()` 为新增的异步函数（`src/commands/validate.ts`），负责 patch 失败后的交互逻辑
-- 消息常量：`MESSAGES.VALIDATE_CONFIRM_AUTO_SYNC`、`MESSAGES.VALIDATE_AUTO_SYNC_START`、`MESSAGES.VALIDATE_AUTO_SYNC_CONFLICT`、`MESSAGES.VALIDATE_AUTO_SYNC_DECLINED`（`src/constants/messages/validate.ts`）
+- 消息常量：`MESSAGES.VALIDATE_CONFIRM_AUTO_SYNC`、`MESSAGES.VALIDATE_AUTO_SYNC_START`、`MESSAGES.VALIDATE_AUTO_SYNC_DECLINED`（`src/constants/messages/validate.ts`）
 
 ##### 步骤 5：保存快照为 git tree 对象
 
@@ -180,7 +175,7 @@ git restore --staged .
 ##### 步骤 6：输出成功提示
 
 ```
-✓ 已将分支 feature-scheme-1 的变更应用到主 worktree（验证分支: clawt-validate-feature-scheme-1）
+✓ 已切换到验证分支 clawt-validate-feature-scheme-1 并应用分支 feature-scheme-1 的变更
   可以开始验证了
 ```
 
@@ -297,7 +292,7 @@ clawt validate -b feature-scheme-1 -r "pnpm test & pnpm build"
 
 ##### 步骤 2：确保主 worktree 干净
 
-如果主 worktree 有残留状态，让用户选择处理方式（同首次 validate 步骤 1 的交互），做兜底清理。
+如果主 worktree 有残留状态，直接执行 `git reset --hard` + `git clean -fd` 兜底清理（无交互，用户交互已在 `handleValidate` 主函数中通过 `handleDirtyMainWorktree` 完成）。
 
 ##### 步骤 3：切换到验证分支
 
@@ -362,7 +357,7 @@ git apply --cached < patch
   暂存区 = 上次快照，工作目录 = 最新变更
 
 # 增量降级为全量
-✓ 已将分支 feature-scheme-1 的变更应用到主 worktree
+✓ 已切换到验证分支 clawt-validate-feature-scheme-1 并应用分支 feature-scheme-1 的变更
   可以开始验证了
 ```
 

@@ -56,12 +56,16 @@ clawt status [--json]
   ◆ Worktree 列表 (2 个)
 
   ● feature-login   [已提交]
-    +120 -30   3 个本地提交   与主分支同步
+    +120 -30
+    3 个本地提交
+    与主分支同步
     创建于 3 天前
     上次验证: 2 小时前
 
   ● feature-signup   [未提交修改]
-    +45 -10   1 个本地提交   落后主分支 2 个提交
+    +45 -10
+    1 个本地提交
+    落后主分支 2 个提交
     创建于 1 天前
     ✗ 未验证
 
@@ -82,11 +86,11 @@ clawt status [--json]
 | `conflict`  | 合并冲突       | 红色   | 存在合并冲突                   |
 | `clean`     | 无变更         | 灰色   | 工作区干净且无本地提交          |
 
-**差异统计行展示规则：**
+**差异统计展示规则（每项独立一行）：**
 
-- 行数变更（`+N -N`）仅在有变更时展示
-- 本地提交数（`N 个本地提交`）仅在有提交时展示
-- 与主分支同步状态始终展示（落后时显示黄色，同步时显示绿色）
+- 行数变更（`+N -N`）：仅在有变更时展示，独立一行
+- 本地提交数（`N 个本地提交`）：仅在有提交时展示，独立一行（黄色）
+- 与主分支同步状态：始终展示，独立一行（落后时显示黄色，同步时显示绿色）
 
 **分支创建时间行：**
 
@@ -143,12 +147,9 @@ clawt status [--json]
   - `STATUS_CREATED_AT`：分支创建时间标签（如 `创建于 3 天前`）
   - `STATUS_SNAPSHOT_ORPHANED`：改为接受数量参数的函数（如 `其中 1 个快照对应的 worktree 已不存在`）
 - `getBranchCreatedAt()` 是新增的工具函数（在 `src/utils/git.ts`），通过 `git reflog show <branch> --format=%cI` 获取 reflog 最后一条记录的时间戳（即分支创建时间），返回 ISO 8601 格式字符串或 null
-- `getSnapshotModifiedTime()` 是新增的工具函数（在 `src/utils/validate-snapshot.ts`），通过 `fs.statSync` 获取快照文件的修改时间（mtime），返回 ISO 8601 格式字符串或 null
+- `getSnapshotModifiedTime()` 是新增的工具函数（在 `src/utils/validate-snapshot.ts`），通过 `fs.statSync` 获取快照文件的修改时间（mtime），返回 UTC 时区的 ISO 8601 格式字符串（`toISOString()` 格式）或 null
 - `formatRelativeTime()` 是新增的格式化函数（在 `src/utils/formatter.ts`），将 ISO 8601 日期字符串转换为中文相对时间描述（如"3 天前"、"2 小时前"、"刚刚"），无效日期时返回 null
 - `getCommitCountBehind()` 是新增的工具函数（在 `src/utils/git.ts`），通过 `git rev-list --count <branch>..HEAD` 计算落后提交数
 - `getProjectSnapshotBranches()` 是新增的工具函数（在 `src/utils/validate-snapshot.ts`），通过扫描快照目录下的 `.tree` 文件提取分支名列表
-- `formatDiskSize()` 是新增的格式化函数（在 `src/utils/formatter.ts`），将字节数格式化为带单位的磁盘大小字符串（如 `"1.5 GB"`、`"256.0 MB"`、`"10.2 KB"`、`"512 B"`）
-- `formatLocalISOString()` 是新增的格式化函数（在 `src/utils/formatter.ts`），将 Date 对象格式化为本机时区的 ISO 8601 字符串（输出格式: `YYYY-MM-DDTHH:mm:ss.sss+HH:MM`），替代 `Date.toISOString()` 的 UTC 时区输出
-- `calculateDirSize()` 是新增的文件系统工具函数（在 `src/utils/fs.ts`），递归计算目录占用的磁盘大小（字节），遇到无法访问的文件或目录时静默跳过
 
 ---

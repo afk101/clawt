@@ -27,7 +27,7 @@ clawt remove
 1. **主 worktree 校验** (2.1)
 2. **获取项目名** (2.2)
 3. **确定待移除的 worktree 列表**：
-   - **指定 `--all`** → 选中当前项目所有 worktree
+   - **指定 `--all`** → 选中当前项目所有 worktree（若当前项目无 worktree，则提示并退出）
    - **未指定 `--all`** → 通过 `resolveTargetWorktrees` 解析目标 worktree（多选版本），匹配策略如下：
      - **未传 `-b` 参数**：
        - 无可用 worktree → 报错退出
@@ -44,17 +44,17 @@ clawt remove
 ```
 即将移除以下 worktree 及本地分支：
 
-  1. ~/.clawt/worktrees/main-project/feature-scheme-1  →  分支: feature-scheme-1, 验证分支: clawt-validate-feature-scheme-1
-  2. ~/.clawt/worktrees/main-project/feature-scheme-2  →  分支: feature-scheme-2, 验证分支: clawt-validate-feature-scheme-2
-  3. ~/.clawt/worktrees/main-project/feature-scheme-3  →  分支: feature-scheme-3, 验证分支: clawt-validate-feature-scheme-3
+  1. ~/.clawt/worktrees/main-project/feature-scheme-1  →  分支: feature-scheme-1  验证分支: clawt-validate-feature-scheme-1
+  2. ~/.clawt/worktrees/main-project/feature-scheme-2  →  分支: feature-scheme-2  验证分支: clawt-validate-feature-scheme-2
+  3. ~/.clawt/worktrees/main-project/feature-scheme-3  →  分支: feature-scheme-3  验证分支: clawt-validate-feature-scheme-3
 
 是否同时删除对应的本地分支和验证分支？(y/N)
 ```
 
-5. 用户确认后（只需确认一次），依次执行：
+5. 用户确认后（只需确认一次），对每个 worktree 依次执行（单个失败不影响其他）：
 
 ```bash
-# 如果当前在即将删除的验证分支上，先切回主工作分支
+# 确保当前处于主工作分支上（若不在则自动切回）
 git checkout <clawtMainWorkBranch>
 
 # 移除 worktree
@@ -62,8 +62,9 @@ git worktree remove -f <worktree路径>
 
 # 如果用户选择了删除分支
 git branch -D <branchName>
-git branch -D clawt-validate-<branchName>  # 同步删除验证分支
 
+# 无条件删除验证分支和清理快照（不受用户确认控制）
+git branch -D clawt-validate-<branchName>
 # 清理该分支对应的 validate 快照
 ```
 
@@ -73,6 +74,6 @@ git branch -D clawt-validate-<branchName>  # 同步删除验证分支
 
 8. 移除完成后，清理空目录（如果 `~/.clawt/worktrees/<project>/` 下已无 worktree，则删除该项目目录）。
 
-9. 批量移除时，单个 worktree 移除失败不会中断整个流程，而是收集所有失败项，最后汇总报告。
+9. 批量移除时，单个 worktree 移除失败不会中断整个流程，而是收集所有失败项，最后汇总报告并以错误状态退出（抛出 ClawtError）。
 
 ---

@@ -24,8 +24,8 @@ clawt reset
 3. **确认破坏性操作**：如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
 4. **重置工作区和暂存区**：
    ```bash
-   git reset --hard
-   git clean -f
+   git reset --hard HEAD
+   git clean -fd
    ```
 5. **输出成功提示**：
    ```

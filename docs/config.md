@@ -26,7 +26,7 @@ clawt config reset
 2. 列出所有配置项供用户选择（`Enquirer.Select`），每项显示：
    - 配置项名称
    - 当前值（布尔值绿色/黄色，字符串青色）
-   - 配置项描述（灰色）
+   - 配置项描述（暗淡色 dim）
    - 对象类型配置项（如 `aliases`）标灰不可选，提示用户通过专用命令管理
 3. 用户选择某个配置项后，根据值类型自动选择提示策略：
    - **boolean 类型** → `Select`（true / false）
@@ -50,7 +50,7 @@ clawt config reset
 **运行流程：**
 
 1. 校验 `key` 是否为有效的配置项名称（基于 `DEFAULT_CONFIG` 的键列表），无效则输出错误及可用配置项列表
-2. 校验 `value` 是否缺失，缺失则提示用法：`clawt config set <key> <value>`
+2. 校验 `value` 是否缺失，缺失则提示：`缺少配置值，用法: clawt config set <key> <value>`
 3. 根据目标配置项的类型解析并校验值：
    - **boolean** → 仅接受 `true` 或 `false`
    - **number** → `Number()` 解析，`NaN` 报错
@@ -77,7 +77,7 @@ clawt config reset
 
 **运行流程：**
 
-1. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的操作和后果：当前配置将被覆盖为默认值），用户取消则退出
+1. 始终提示确认（显示即将执行的操作和后果：当前配置将被覆盖为默认值），不受 `confirmDestructiveOps` 配置控制。用户取消则退出
 2. 将默认配置写入 `~/.clawt/config.json`（覆盖现有配置文件）
 3. 输出成功提示：`✓ 配置已恢复为默认值`
 
@@ -86,6 +86,6 @@ clawt config reset
 - 配置项类型定义：`ConfigItemDefinition` 新增可选字段 `allowedValues`（`readonly string[]`），仅对 string 类型有效，用于枚举值校验和交互式 Select 提示
 - 值解析与提示策略：`src/utils/config-strategy.ts` 中的 `parseConfigValue()`（CLI 字符串解析）和 `promptConfigValue()`（交互式提示），基于类型和 `allowedValues` 自动分发
 - `saveConfig(config)`：`src/utils/config.ts` 中新增的通用配置写入函数，将完整配置对象持久化到文件
-- `formatConfigValue(value)`：支持 boolean、string、number、对象类型（如 `aliases`，按键值对逐行展示）的格式化显示
+- `formatConfigValue(value)`：支持 boolean（绿色/黄色）和 string/number（青色）的格式化显示。对象类型配置项（如 `aliases`）在交互式列表中通过 `JSON.stringify` 以暗淡色显示
 
 ---

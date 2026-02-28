@@ -23,8 +23,7 @@
   "maxConcurrency": 0,
   "terminalApp": "auto",
   "aliases": {},
-  "autoUpdate": true,
-  "warnBranchOnCreate": true
+  "autoUpdate": true
 }
 ```
 
@@ -35,11 +34,10 @@
 | `autoDeleteBranch` | `boolean` | `false`   | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支；run 任务被中断（Ctrl+C）后是否自动清理本次创建的 worktree 和分支 |
 | `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
-| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean、config reset）前是否提示确认 |
+| `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean）前是否提示确认 |
 | `maxConcurrency` | `number` | `0` | run 命令默认最大并发数，`0` 表示不限制 |
 | `terminalApp` | `string` | `"auto"` | 批量 resume 使用的终端应用：`auto`（自动检测）、`iterm2`、`terminal`（macOS） |
 | `aliases` | `Record<string, string>` | `{}` | 命令别名映射，键为别名，值为目标内置命令名 |
 | `autoUpdate` | `boolean` | `true` | 是否启用自动更新检查（每 24 小时通过 npm registry 检查一次新版本） |
-| `warnBranchOnCreate` | `boolean` | `true` | create/run 时如果当前不在主工作分支上，是否提醒并确认切换。设为 `false` 则跳过提醒直接切换 |
 
 ---

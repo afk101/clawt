@@ -73,7 +73,8 @@ clawt resume
 2. **构建选项列表**（`buildGroupedChoices`）：生成包含以下元素的 Enquirer MultiSelect choices 数组：
    - 顶部：全局全选选项 `[select-all]`
    - 每组：日期分隔线（显示日期和相对时间，如「2026-02-26（昨天）」）→ 组级全选选项 `[select-all: YYYY-MM-DD]` → 该组内各分支
-3. **三级联动选择**：通过继承 Enquirer MultiSelect 并覆写 `space()` 方法实现：
+2.5. **构建组成员映射**（`buildGroupMembershipMap`）：生成"组全选 name → 该组分支 name 列表"的 Map，供三级联动的 `space()` 方法快速查找某个组全选项对应的所有分支
+3. **三级联动选择**：通过继承 Enquirer MultiSelect 并覆写 `space()` 方法实现，同步逻辑由 `syncGlobalSelectAll` 和 `syncGroupSelectAll` 两个内部函数负责：
    - **全局全选**：toggle 所有 choices（含组全选）
    - **组级全选**：toggle 该组内所有分支，并同步全局全选状态
    - **普通分支**：toggle 该分支，同步所属组全选和全局全选状态
@@ -90,6 +91,8 @@ clawt resume
 | `GROUP_SEPARATOR_LABEL(dateLabel, relativeTime)` | 生成日期分隔线的显示文本（含 chalk 高亮） |
 | `UNKNOWN_DATE_GROUP` | 无法获取创建日期时的默认分组名称（`未知日期`） |
 | `UNKNOWN_DATE_SEPARATOR_LABEL` | 未知日期分组的分隔线显示文本 |
+| `SELECT_ALL_NAME` | 全局全选选项的标识名称（`__select_all__`） |
+| `SELECT_ALL_LABEL` | 全局全选选项的显示文本（`[select-all]`） |
 
 **会话自动续接：** 启动前会自动检测该 worktree 是否存在 Claude Code 历史会话（通过检查 `~/.claude/projects/<encoded-path>/` 下是否有 `.jsonl` 文件判断），如果存在则自动追加 `--continue` 参数继续上次对话，否则打开新对话。启动信息中会显示当前模式（"继续上次对话"或"新对话"）。路径编码规则：将绝对路径中所有非字母数字字符替换为 `-`（与 Claude Code 源码的编码逻辑一致）。
 

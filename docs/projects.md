@@ -23,7 +23,7 @@ clawt projects [name] [--json]
 
 #### 无参数模式（项目概览）
 
-1. 扫描 `~/.clawt/worktrees/` 目录，列出所有项目子目录
+1. 扫描 `~/.clawt/worktrees/` 目录，列出所有项目子目录（如果目录不存在或为空，输出 `(暂无项目，worktrees 目录为空)` 提示并结束）
 2. 对每个项目收集以下信息：
    - **项目名**（目录名即项目名）
    - **worktree 数量**（项目目录下的子目录数）
@@ -35,7 +35,7 @@ clawt projects [name] [--json]
 #### 指定项目模式（worktree 详情）
 
 1. 检查 `~/.clawt/worktrees/<name>/` 是否存在，不存在则报错退出
-2. 扫描项目目录，对每个 worktree 子目录收集：
+2. 扫描项目目录，对每个 worktree 子目录收集（如果项目目录下无 worktree 子目录，输出 `(该项目下无 worktree)` 提示并结束）：
    - **分支名**（目录名即分支名）
    - **worktree 路径**
    - **最后修改时间**（目录 mtime，通过 `formatLocalISOString()` 格式化）
@@ -108,11 +108,11 @@ clawt projects [name] [--json]
 ```json
 {
   "name": "my-project",
-  "projectDir": "~/.clawt/worktrees/my-project",
+  "projectDir": "/Users/<username>/.clawt/worktrees/my-project",
   "worktrees": [
     {
       "branch": "feature-login",
-      "path": "~/.clawt/worktrees/my-project/feature-login",
+      "path": "/Users/<username>/.clawt/worktrees/my-project/feature-login",
       "lastModifiedTime": "2025-06-15T18:30:00.000+08:00",
       "diskUsage": 838860800
     }
