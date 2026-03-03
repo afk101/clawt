@@ -278,7 +278,7 @@ export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复） | 5.11     |
 | `clawt sync`          | 将主分支最新代码同步到目标 worktree（含验证分支重建）    | 5.12     |
 | `clawt reset`         | 重置主 worktree 工作区和暂存区                       | 5.13     |
-| `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出）          | 5.14     |
+| `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出和 `-i` 交互式面板模式）| 5.14     |
 | `clawt alias`         | 管理命令别名（列出 / 设置 / 移除）                       | 5.15     |
 | `clawt completion`    | 为终端提供 shell 自动补全功能（bash/zsh）              | 5.16     |
 | `clawt projects`      | 展示所有项目的 worktree 概览，或查看指定项目的 worktree 详情 | 5.17     |

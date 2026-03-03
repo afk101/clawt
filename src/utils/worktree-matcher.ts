@@ -301,7 +301,7 @@ function formatLocalDate(date: Date): string {
  * @param {string} dirPath - worktree 目录路径
  * @returns {string | null} YYYY-MM-DD 格式的本地日期字符串，无法获取时返回 null
  */
-function getWorktreeCreatedDate(dirPath: string): string | null {
+export function getWorktreeCreatedDate(dirPath: string): string | null {
   try {
     const stat = statSync(dirPath);
     return formatLocalDate(stat.birthtime);
@@ -316,7 +316,7 @@ function getWorktreeCreatedDate(dirPath: string): string | null {
  * @param {string} dateStr - YYYY-MM-DD 格式的日期字符串
  * @returns {string} 中文相对日期描述，如"今天"、"昨天"、"3 天前"
  */
-function formatRelativeDate(dateStr: string): string {
+export function formatRelativeDate(dateStr: string): string {
   const today = formatLocalDate(new Date());
   const todayMs = new Date(today).getTime();
   const targetMs = new Date(dateStr).getTime();
