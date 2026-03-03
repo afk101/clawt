@@ -27,6 +27,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     VALIDATE_PATCH_APPLY_FAILED: (branch: string) => `patch 应用失败: ${branch}`,
     INCREMENTAL_VALIDATE_SUCCESS: (branch: string) => `✓ 增量验证 ${branch}`,
     INCREMENTAL_VALIDATE_FALLBACK: '降级为全量模式',
+    INCREMENTAL_VALIDATE_NO_CHANGES: (branch: string) => `${branch} 无新变更`,
     DESTRUCTIVE_OP_CANCELLED: '已取消操作',
     VALIDATE_RUN_START: (cmd: string) => `正在执行命令: ${cmd}`,
     VALIDATE_RUN_SUCCESS: (cmd: string) => `✓ 命令执行完成: ${cmd}`,
@@ -62,22 +63,10 @@ vi.mock('../../../src/utils/index.js', () => ({
   getProjectWorktrees: vi.fn(),
   getConfigValue: vi.fn(),
   isWorkingDirClean: vi.fn(),
-  gitAddAll: vi.fn(),
-  gitCommit: vi.fn(),
-  gitStashPush: vi.fn(),
-  gitRestoreStaged: vi.fn(),
+  gitReadTree: vi.fn(),
   gitResetHard: vi.fn(),
   gitCleanForce: vi.fn(),
-  gitDiffBinaryAgainstBranch: vi.fn(),
-  gitApplyFromStdin: vi.fn(),
-  gitApplyCachedFromStdin: vi.fn(),
-  gitResetSoft: vi.fn(),
-  gitWriteTree: vi.fn(),
-  gitReadTree: vi.fn(),
   getHeadCommitHash: vi.fn(),
-  getCommitTreeHash: vi.fn(),
-  gitDiffTree: vi.fn(),
-  gitApplyCachedCheck: vi.fn(),
   hasLocalCommits: vi.fn(),
   hasSnapshot: vi.fn(),
   readSnapshot: vi.fn(),
@@ -89,18 +78,17 @@ vi.mock('../../../src/utils/index.js', () => ({
   printWarning: vi.fn(),
   printInfo: vi.fn(),
   resolveTargetWorktree: vi.fn(),
-  runCommandInherited: vi.fn(),
-  printError: vi.fn(),
-  printSeparator: vi.fn(),
-  parseParallelCommands: vi.fn(),
-  runParallelCommands: vi.fn(),
   requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
-  getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
-  gitCheckout: vi.fn(),
   ensureOnMainWorkBranch: vi.fn(),
   handleDirtyWorkingDir: vi.fn(),
-  checkBranchExists: vi.fn().mockReturnValue(true),
-  getCurrentBranch: vi.fn().mockReturnValue('main'),
+  // validate-core.ts 抽离的函数
+  migrateChangesViaPatch: vi.fn().mockReturnValue({ success: true }),
+  computeCurrentTreeHash: vi.fn().mockReturnValue('treehash'),
+  saveCurrentSnapshotTree: vi.fn().mockReturnValue('treehash'),
+  loadOldSnapshotToStage: vi.fn().mockReturnValue({ success: true, stagedTreeHash: '' }),
+  switchToValidateBranch: vi.fn((name: string) => `clawt-validate-${name}`),
+  // validate-runner.ts 抽离的函数
+  executeRunCommand: vi.fn(),
 }));
 
 import { registerValidateCommand } from '../../../src/commands/validate.js';
@@ -110,15 +98,10 @@ import {
   getProjectWorktrees,
   getConfigValue,
   isWorkingDirClean,
-  gitAddAll,
-  gitCommit,
-  gitDiffBinaryAgainstBranch,
-  gitApplyFromStdin,
-  gitResetSoft,
-  gitWriteTree,
-  gitRestoreStaged,
-  getHeadCommitHash,
   gitReadTree,
+  gitResetHard,
+  gitCleanForce,
+  getHeadCommitHash,
   hasLocalCommits,
   hasSnapshot,
   readSnapshot,
@@ -127,19 +110,14 @@ import {
   confirmDestructiveAction,
   printSuccess,
   printInfo,
-  resolveTargetWorktree,
-  gitResetHard,
-  gitCleanForce,
-  getCommitTreeHash,
-  gitDiffTree,
-  gitApplyCachedCheck,
-  gitApplyCachedFromStdin,
   printWarning,
-  runCommandInherited,
-  printError,
-  printSeparator,
-  parseParallelCommands,
-  runParallelCommands,
+  resolveTargetWorktree,
+  migrateChangesViaPatch,
+  computeCurrentTreeHash,
+  saveCurrentSnapshotTree,
+  loadOldSnapshotToStage,
+  switchToValidateBranch,
+  executeRunCommand,
 } from '../../../src/utils/index.js';
 
 const mockedGetProjectName = vi.mocked(getProjectName);
@@ -147,13 +125,6 @@ const mockedGetGitTopLevel = vi.mocked(getGitTopLevel);
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
 const mockedGetConfigValue = vi.mocked(getConfigValue);
 const mockedIsWorkingDirClean = vi.mocked(isWorkingDirClean);
-const mockedGitAddAll = vi.mocked(gitAddAll);
-const mockedGitCommit = vi.mocked(gitCommit);
-const mockedGitDiffBinaryAgainstBranch = vi.mocked(gitDiffBinaryAgainstBranch);
-const mockedGitApplyFromStdin = vi.mocked(gitApplyFromStdin);
-const mockedGitResetSoft = vi.mocked(gitResetSoft);
-const mockedGitWriteTree = vi.mocked(gitWriteTree);
-const mockedGitRestoreStaged = vi.mocked(gitRestoreStaged);
 const mockedGetHeadCommitHash = vi.mocked(getHeadCommitHash);
 const mockedGitReadTree = vi.mocked(gitReadTree);
 const mockedHasLocalCommits = vi.mocked(hasLocalCommits);
@@ -164,19 +135,16 @@ const mockedRemoveSnapshot = vi.mocked(removeSnapshot);
 const mockedConfirmDestructiveAction = vi.mocked(confirmDestructiveAction);
 const mockedPrintSuccess = vi.mocked(printSuccess);
 const mockedPrintInfo = vi.mocked(printInfo);
+const mockedPrintWarning = vi.mocked(printWarning);
 const mockedResolveTargetWorktree = vi.mocked(resolveTargetWorktree);
 const mockedGitResetHard = vi.mocked(gitResetHard);
 const mockedGitCleanForce = vi.mocked(gitCleanForce);
-const mockedGetCommitTreeHash = vi.mocked(getCommitTreeHash);
-const mockedGitDiffTree = vi.mocked(gitDiffTree);
-const mockedGitApplyCachedCheck = vi.mocked(gitApplyCachedCheck);
-const mockedGitApplyCachedFromStdin = vi.mocked(gitApplyCachedFromStdin);
-const mockedPrintWarning = vi.mocked(printWarning);
-const mockedRunCommandInherited = vi.mocked(runCommandInherited);
-const mockedPrintError = vi.mocked(printError);
-const mockedPrintSeparator = vi.mocked(printSeparator);
-const mockedParseParallelCommands = vi.mocked(parseParallelCommands);
-const mockedRunParallelCommands = vi.mocked(runParallelCommands);
+const mockedMigrateChangesViaPatch = vi.mocked(migrateChangesViaPatch);
+const mockedComputeCurrentTreeHash = vi.mocked(computeCurrentTreeHash);
+const mockedSaveCurrentSnapshotTree = vi.mocked(saveCurrentSnapshotTree);
+const mockedLoadOldSnapshotToStage = vi.mocked(loadOldSnapshotToStage);
+const mockedSwitchToValidateBranch = vi.mocked(switchToValidateBranch);
+const mockedExecuteRunCommand = vi.mocked(executeRunCommand);
 
 const worktree = { path: '/path/feature', branch: 'feature' };
 
@@ -188,13 +156,6 @@ beforeEach(() => {
   mockedGetConfigValue.mockReturnValue(false);
   mockedHasSnapshot.mockReturnValue(false);
   mockedIsWorkingDirClean.mockReset();
-  mockedGitAddAll.mockReset();
-  mockedGitCommit.mockReset();
-  mockedGitDiffBinaryAgainstBranch.mockReset();
-  mockedGitApplyFromStdin.mockReset();
-  mockedGitResetSoft.mockReset();
-  mockedGitWriteTree.mockReset();
-  mockedGitRestoreStaged.mockReset();
   mockedGetHeadCommitHash.mockReset();
   mockedGitReadTree.mockReset();
   mockedHasLocalCommits.mockReset();
@@ -204,20 +165,15 @@ beforeEach(() => {
   mockedConfirmDestructiveAction.mockReset();
   mockedPrintSuccess.mockReset();
   mockedPrintInfo.mockReset();
+  mockedPrintWarning.mockReset();
   mockedGitResetHard.mockReset();
   mockedGitCleanForce.mockReset();
-  mockedGetCommitTreeHash.mockReset();
-  mockedGitDiffTree.mockReset();
-  mockedGitApplyCachedCheck.mockReset();
-  mockedGitApplyCachedFromStdin.mockReset();
-  mockedPrintWarning.mockReset();
-  mockedRunCommandInherited.mockReset();
-  mockedPrintError.mockReset();
-  mockedPrintSeparator.mockReset();
-  mockedParseParallelCommands.mockReset();
-  mockedRunParallelCommands.mockReset();
-  // 默认让 parseParallelCommands 返回单命令数组，保持旧测试兼容
-  mockedParseParallelCommands.mockImplementation((cmd: string) => [cmd]);
+  mockedMigrateChangesViaPatch.mockReset().mockReturnValue({ success: true });
+  mockedComputeCurrentTreeHash.mockReset().mockReturnValue('treehash');
+  mockedSaveCurrentSnapshotTree.mockReset().mockReturnValue('treehash');
+  mockedLoadOldSnapshotToStage.mockReset().mockReturnValue({ success: true, stagedTreeHash: '' });
+  mockedSwitchToValidateBranch.mockReset().mockImplementation((name: string) => `clawt-validate-${name}`);
+  mockedExecuteRunCommand.mockReset();
 });
 
 describe('registerValidateCommand', () => {
@@ -240,7 +196,7 @@ describe('handleValidate', () => {
     await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
 
     expect(mockedPrintInfo).toHaveBeenCalled();
-    expect(mockedGitDiffBinaryAgainstBranch).not.toHaveBeenCalled();
+    expect(mockedMigrateChangesViaPatch).not.toHaveBeenCalled();
   });
 
   it('首次 validate：有已提交 commit 且主 worktree 干净', async () => {
@@ -248,57 +204,34 @@ describe('handleValidate', () => {
     mockedIsWorkingDirClean.mockReturnValue(true); // 所有调用都返回 true
     mockedHasLocalCommits.mockReturnValue(true);
     mockedHasSnapshot.mockReturnValue(false);
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('treehash123');
-    mockedGetHeadCommitHash.mockReturnValue('headhash456');
 
     const program = new Command();
     program.exitOverride();
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
 
-    expect(mockedGitDiffBinaryAgainstBranch).toHaveBeenCalledWith('feature', '/repo');
-    expect(mockedGitApplyFromStdin).toHaveBeenCalled();
-    expect(mockedWriteSnapshot).toHaveBeenCalledWith('test-project', 'feature', 'treehash123', 'headhash456', '');
+    expect(mockedSwitchToValidateBranch).toHaveBeenCalledWith('feature', '/repo');
+    expect(mockedMigrateChangesViaPatch).toHaveBeenCalledWith('/path/feature', '/repo', 'feature', false);
+    expect(mockedSaveCurrentSnapshotTree).toHaveBeenCalledWith('/repo', 'test-project', 'feature');
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
-  it('首次 validate：有未提交修改时做临时 commit 后撤销', async () => {
+  it('首次 validate：有未提交修改时传入 hasUncommitted=true', async () => {
     // 主 worktree 干净，目标 worktree 有未提交修改
-    mockedIsWorkingDirClean
-      .mockReturnValueOnce(true)    // 主 worktree 调用（collectStatus 或 handleValidate 首次检查目标）
-      .mockReturnValueOnce(false);  // 目标 worktree 检查
-    mockedHasLocalCommits.mockReturnValue(false); // 无已提交 commit，但有未提交修改
-    mockedHasSnapshot.mockReturnValue(false);
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('treehash');
-    mockedGetHeadCommitHash.mockReturnValue('headhash');
-
-    // 注意：hasUncommitted 来自 !isWorkingDirClean(targetWorktreePath)
-    // 这里的 mock 链：
-    // 第 1 次调用 isWorkingDirClean: 检查 targetWorktreePath => false（有未提交修改）
-    // 但是代码中先检查 isWorkingDirClean(mainWorktreePath)
-    // 需要更精确的 mock
-    mockedIsWorkingDirClean.mockReset();
     mockedIsWorkingDirClean.mockImplementation((cwd?: string) => {
       if (cwd === '/path/feature') return false;  // 目标 worktree 不干净
       return true;  // 主 worktree 干净
     });
-    // 因为 hasUncommitted 依赖 !isWorkingDirClean(targetWorktreePath)，
-    // 且 !hasUncommitted && !hasCommitted 需要检查 hasLocalCommits
     mockedHasLocalCommits.mockReturnValue(true); // 让它不走"无变更"路径
+    mockedHasSnapshot.mockReturnValue(false);
 
     const program = new Command();
     program.exitOverride();
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
 
-    // 临时 commit
-    expect(mockedGitAddAll).toHaveBeenCalledWith('/path/feature');
-    expect(mockedGitCommit).toHaveBeenCalledWith('clawt:temp-commit-for-validate', '/path/feature');
-    // 撤销临时 commit
-    expect(mockedGitResetSoft).toHaveBeenCalledWith(1, '/path/feature');
-    expect(mockedGitRestoreStaged).toHaveBeenCalledWith('/path/feature');
+    // migrateChangesViaPatch 应接收 hasUncommitted=true
+    expect(mockedMigrateChangesViaPatch).toHaveBeenCalledWith('/path/feature', '/repo', 'feature', true);
   });
 });
 
@@ -353,51 +286,48 @@ describe('增量 validate', () => {
     mockedHasSnapshot.mockReturnValue(true);
     mockedReadSnapshot.mockReturnValue({ treeHash: 'oldtree', headCommitHash: 'headhash' });
     mockedGetHeadCommitHash.mockReturnValue('headhash'); // HEAD 未变化
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('newtree');
+    mockedComputeCurrentTreeHash.mockReturnValue('newtree');
 
     const program = new Command();
     program.exitOverride();
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
 
-    expect(mockedGitReadTree).toHaveBeenCalledWith('oldtree', '/repo');
+    expect(mockedSwitchToValidateBranch).toHaveBeenCalledWith('feature', '/repo');
+    expect(mockedMigrateChangesViaPatch).toHaveBeenCalled();
+    expect(mockedComputeCurrentTreeHash).toHaveBeenCalledWith('/repo');
+    // 有新变更（newtree !== oldtree），调用 loadOldSnapshotToStage
+    expect(mockedLoadOldSnapshotToStage).toHaveBeenCalledWith('oldtree', 'headhash', 'headhash', '/repo');
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
-  it('HEAD 变化时通过 patch 重放旧变更到暂存区', async () => {
+  it('HEAD 变化时调用 loadOldSnapshotToStage', async () => {
     mockedIsWorkingDirClean.mockReturnValue(true);
     mockedHasLocalCommits.mockReturnValue(true);
     mockedHasSnapshot.mockReturnValue(true);
     mockedReadSnapshot.mockReturnValue({ treeHash: 'oldtree', headCommitHash: 'oldhead' });
     mockedGetHeadCommitHash.mockReturnValue('newhead'); // HEAD 已变化
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('newtree');
-    mockedGetCommitTreeHash.mockReturnValue('oldheadtree');
-    mockedGitDiffTree.mockReturnValue(Buffer.from('old change patch'));
-    mockedGitApplyCachedCheck.mockReturnValue(true);
+    mockedComputeCurrentTreeHash.mockReturnValue('newtree');
+    mockedLoadOldSnapshotToStage.mockReturnValue({ success: true, stagedTreeHash: 'staged123' });
 
     const program = new Command();
     program.exitOverride();
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
 
-    expect(mockedGetCommitTreeHash).toHaveBeenCalledWith('oldhead', '/repo');
-    expect(mockedGitDiffTree).toHaveBeenCalledWith('oldheadtree', 'oldtree', '/repo');
-    expect(mockedGitApplyCachedFromStdin).toHaveBeenCalled();
+    expect(mockedLoadOldSnapshotToStage).toHaveBeenCalledWith('oldtree', 'oldhead', 'newhead', '/repo');
+    expect(mockedWriteSnapshot).toHaveBeenCalledWith('test-project', 'feature', 'newtree', 'newhead', 'staged123');
+    expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
-  it('旧变更 patch 有冲突时降级为全量模式', async () => {
+  it('loadOldSnapshotToStage 失败时降级为全量模式', async () => {
     mockedIsWorkingDirClean.mockReturnValue(true);
     mockedHasLocalCommits.mockReturnValue(true);
     mockedHasSnapshot.mockReturnValue(true);
     mockedReadSnapshot.mockReturnValue({ treeHash: 'oldtree', headCommitHash: 'oldhead' });
     mockedGetHeadCommitHash.mockReturnValue('newhead');
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('newtree');
-    mockedGetCommitTreeHash.mockReturnValue('oldheadtree');
-    mockedGitDiffTree.mockReturnValue(Buffer.from('conflicting patch'));
-    mockedGitApplyCachedCheck.mockReturnValue(false); // 有冲突
+    mockedComputeCurrentTreeHash.mockReturnValue('newtree');
+    mockedLoadOldSnapshotToStage.mockReturnValue({ success: false, stagedTreeHash: '' });
 
     const program = new Command();
     program.exitOverride();
@@ -405,25 +335,27 @@ describe('增量 validate', () => {
     await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
 
     expect(mockedPrintWarning).toHaveBeenCalled();
-    expect(mockedGitApplyCachedFromStdin).not.toHaveBeenCalled();
+    expect(mockedWriteSnapshot).toHaveBeenCalledWith('test-project', 'feature', 'newtree', 'newhead', '');
+    expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
-  it('read-tree 失败时降级为全量模式', async () => {
+  it('无新变更时恢复旧暂存区状态', async () => {
     mockedIsWorkingDirClean.mockReturnValue(true);
     mockedHasLocalCommits.mockReturnValue(true);
     mockedHasSnapshot.mockReturnValue(true);
-    mockedReadSnapshot.mockReturnValue({ treeHash: 'oldtree', headCommitHash: 'headhash' });
+    mockedReadSnapshot.mockReturnValue({ treeHash: 'oldtree', headCommitHash: 'headhash', stagedTreeHash: 'staged456' });
     mockedGetHeadCommitHash.mockReturnValue('headhash');
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('newtree');
-    mockedGitReadTree.mockImplementation(() => { throw new Error('gc reclaimed'); });
+    // tree hash 相同且 HEAD 未变化 → 无新变更
+    mockedComputeCurrentTreeHash.mockReturnValue('oldtree');
 
     const program = new Command();
     program.exitOverride();
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
 
-    expect(mockedPrintWarning).toHaveBeenCalled();
+    expect(mockedGitReadTree).toHaveBeenCalledWith('staged456', '/repo');
+    expect(mockedLoadOldSnapshotToStage).not.toHaveBeenCalled();
+    expect(mockedPrintInfo).toHaveBeenCalled();
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 });
@@ -434,62 +366,17 @@ describe('--run 选项', () => {
     mockedIsWorkingDirClean.mockReturnValue(true);
     mockedHasLocalCommits.mockReturnValue(true);
     mockedHasSnapshot.mockReturnValue(false);
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('treehash');
-    mockedGetHeadCommitHash.mockReturnValue('headhash');
-  }
-
-  /** 构造 spawnSync 返回值的辅助函数 */
-  function createSpawnResult(overrides: { status?: number | null; error?: Error }) {
-    return {
-      pid: 0,
-      output: [],
-      stdout: Buffer.alloc(0),
-      stderr: Buffer.alloc(0),
-      status: overrides.status ?? null,
-      signal: null,
-      error: overrides.error,
-    };
   }
 
   it('validate 成功后执行 --run 指定的命令', async () => {
     setupSuccessfulFirstValidate();
-    mockedRunCommandInherited.mockReturnValue(createSpawnResult({ status: 0 }));
 
     const program = new Command();
     program.exitOverride();
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature', '-r', 'npm test'], { from: 'user' });
 
-    expect(mockedRunCommandInherited).toHaveBeenCalledWith('npm test', { cwd: '/repo' });
-    expect(mockedPrintSuccess).toHaveBeenCalledTimes(2);
-  });
-
-  it('--run 命令失败时输出错误信息但不抛异常', async () => {
-    setupSuccessfulFirstValidate();
-    mockedRunCommandInherited.mockReturnValue(createSpawnResult({ status: 1 }));
-
-    const program = new Command();
-    program.exitOverride();
-    registerValidateCommand(program);
-    await program.parseAsync(['validate', '-b', 'feature', '--run', 'npm test'], { from: 'user' });
-
-    expect(mockedRunCommandInherited).toHaveBeenCalledWith('npm test', { cwd: '/repo' });
-    expect(mockedPrintError).toHaveBeenCalled();
-  });
-
-  it('--run 命令进程启动失败时输出错误信息', async () => {
-    setupSuccessfulFirstValidate();
-    mockedRunCommandInherited.mockReturnValue(createSpawnResult({ error: new Error('spawn ENOENT') }));
-
-    const program = new Command();
-    program.exitOverride();
-    registerValidateCommand(program);
-    await program.parseAsync(['validate', '-b', 'feature', '-r', 'nonexistent'], { from: 'user' });
-
-    expect(mockedPrintError).toHaveBeenCalled();
-    // validate 成功 + run 出错，printSuccess 只被调用 1 次（validate 成功）
-    expect(mockedPrintSuccess).toHaveBeenCalledTimes(1);
+    expect(mockedExecuteRunCommand).toHaveBeenCalledWith('npm test', '/repo');
   });
 
   it('未传 --run 时不执行任何命令', async () => {
@@ -500,7 +387,7 @@ describe('--run 选项', () => {
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
 
-    expect(mockedRunCommandInherited).not.toHaveBeenCalled();
+    expect(mockedExecuteRunCommand).not.toHaveBeenCalled();
   });
 
   it('--clean 与 --run 同时传入时只执行 clean 不执行 run', async () => {
@@ -513,7 +400,7 @@ describe('--run 选项', () => {
     await program.parseAsync(['validate', '--clean', '-b', 'feature', '-r', 'npm test'], { from: 'user' });
 
     expect(mockedRemoveSnapshot).toHaveBeenCalled();
-    expect(mockedRunCommandInherited).not.toHaveBeenCalled();
+    expect(mockedExecuteRunCommand).not.toHaveBeenCalled();
   });
 
   it('增量 validate 成功后也执行 --run 命令', async () => {
@@ -522,16 +409,14 @@ describe('--run 选项', () => {
     mockedHasSnapshot.mockReturnValue(true);
     mockedReadSnapshot.mockReturnValue({ treeHash: 'oldtree', headCommitHash: 'headhash' });
     mockedGetHeadCommitHash.mockReturnValue('headhash');
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('newtree');
-    mockedRunCommandInherited.mockReturnValue(createSpawnResult({ status: 0 }));
+    mockedComputeCurrentTreeHash.mockReturnValue('newtree');
 
     const program = new Command();
     program.exitOverride();
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature', '-r', 'npm test'], { from: 'user' });
 
-    expect(mockedRunCommandInherited).toHaveBeenCalledWith('npm test', { cwd: '/repo' });
+    expect(mockedExecuteRunCommand).toHaveBeenCalledWith('npm test', '/repo');
   });
 
   it('目标分支无变更时不执行 --run', async () => {
@@ -543,92 +428,6 @@ describe('--run 选项', () => {
     registerValidateCommand(program);
     await program.parseAsync(['validate', '-b', 'feature', '-r', 'npm test'], { from: 'user' });
 
-    expect(mockedRunCommandInherited).not.toHaveBeenCalled();
-  });
-});
-
-describe('--run 并行命令', () => {
-  /** 设置首次 validate 成功的公共 mock */
-  function setupSuccessfulFirstValidate(): void {
-    mockedIsWorkingDirClean.mockReturnValue(true);
-    mockedHasLocalCommits.mockReturnValue(true);
-    mockedHasSnapshot.mockReturnValue(false);
-    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
-    mockedGitWriteTree.mockReturnValue('treehash');
-    mockedGetHeadCommitHash.mockReturnValue('headhash');
-  }
-
-  it('& 分隔的命令触发并行执行', async () => {
-    setupSuccessfulFirstValidate();
-    mockedParseParallelCommands.mockReturnValue(['pnpm test', 'pnpm build']);
-    mockedRunParallelCommands.mockResolvedValue([
-      { command: 'pnpm test', exitCode: 0 },
-      { command: 'pnpm build', exitCode: 0 },
-    ]);
-
-    const program = new Command();
-    program.exitOverride();
-    registerValidateCommand(program);
-    await program.parseAsync(['validate', '-b', 'feature', '-r', 'pnpm test & pnpm build'], { from: 'user' });
-
-    // 应该调用并行执行而非同步执行
-    expect(mockedRunParallelCommands).toHaveBeenCalledWith(['pnpm test', 'pnpm build'], { cwd: '/repo' });
-    expect(mockedRunCommandInherited).not.toHaveBeenCalled();
-    // 全部成功，printSuccess 被调用（validate 成功 + 各命令成功 + 汇总成功）
-    expect(mockedPrintSuccess).toHaveBeenCalled();
-  });
-
-  it('并行执行部分失败时输出错误汇总', async () => {
-    setupSuccessfulFirstValidate();
-    mockedParseParallelCommands.mockReturnValue(['pnpm test', 'pnpm build']);
-    mockedRunParallelCommands.mockResolvedValue([
-      { command: 'pnpm test', exitCode: 1 },
-      { command: 'pnpm build', exitCode: 0 },
-    ]);
-
-    const program = new Command();
-    program.exitOverride();
-    registerValidateCommand(program);
-    await program.parseAsync(['validate', '-b', 'feature', '-r', 'pnpm test & pnpm build'], { from: 'user' });
-
-    expect(mockedRunParallelCommands).toHaveBeenCalled();
-    // 部分失败，应有错误输出
-    expect(mockedPrintError).toHaveBeenCalled();
-  });
-
-  it('单命令走原有同步路径不触发并行', async () => {
-    setupSuccessfulFirstValidate();
-    mockedParseParallelCommands.mockReturnValue(['npm test']);
-    mockedRunCommandInherited.mockReturnValue({
-      pid: 0, output: [], stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
-      status: 0, signal: null, error: undefined,
-    });
-
-    const program = new Command();
-    program.exitOverride();
-    registerValidateCommand(program);
-    await program.parseAsync(['validate', '-b', 'feature', '-r', 'npm test'], { from: 'user' });
-
-    // 单命令应该走同步路径
-    expect(mockedRunCommandInherited).toHaveBeenCalledWith('npm test', { cwd: '/repo' });
-    expect(mockedRunParallelCommands).not.toHaveBeenCalled();
-  });
-
-  it('&& 命令不触发并行执行', async () => {
-    setupSuccessfulFirstValidate();
-    mockedParseParallelCommands.mockReturnValue(['pnpm lint && pnpm test']);
-    mockedRunCommandInherited.mockReturnValue({
-      pid: 0, output: [], stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
-      status: 0, signal: null, error: undefined,
-    });
-
-    const program = new Command();
-    program.exitOverride();
-    registerValidateCommand(program);
-    await program.parseAsync(['validate', '-b', 'feature', '-r', 'pnpm lint && pnpm test'], { from: 'user' });
-
-    // && 不拆分，走同步路径
-    expect(mockedRunCommandInherited).toHaveBeenCalledWith('pnpm lint && pnpm test', { cwd: '/repo' });
-    expect(mockedRunParallelCommands).not.toHaveBeenCalled();
+    expect(mockedExecuteRunCommand).not.toHaveBeenCalled();
   });
 });
