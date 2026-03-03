@@ -10,7 +10,7 @@
 - [1. 技术栈](#1-技术栈)
 - [2. 核心概念](#2-核心概念)
   - [2.5 验证分支](#25-验证分支)
-  - [2.6 项目级配置](#26-项目级配置)
+  - [2.6 项目级配置](#26-项目级配置)（详见 [project-config.md](./project-config.md)）
   - [2.7 通用交互式配置编辑器](#27-通用交互式配置编辑器)
 - [3. 全局目录结构](#3-全局目录结构)
 - [4. 命令总览](#4-命令总览)
@@ -198,40 +198,9 @@ export const VALIDATE_BRANCH_PREFIX = 'clawt-validate-';
 
 ### 2.6 项目级配置
 
-#### 存放位置
+每个 Git 项目独立的 clawt 配置，存放在 `~/.clawt/projects/<projectName>/config.json`。包含项目的主工作分支名（`clawtMainWorkBranch`）、validate 自动运行命令（`validateRunCommand`）等配置项。通过 `clawt init` 命令设置，核心命令执行前会校验该配置是否存在。
 
-```
-~/.clawt/projects/<projectName>/config.json
-```
-
-#### 配置内容
-
-```json
-{
-  "clawtMainWorkBranch": "main",
-  "validateRunCommand": "npm test"
-}
-```
-
-| 配置项 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| `clawtMainWorkBranch` | `string` | 是 | 项目的主工作分支名，用于 create 时检测当前分支是否为主分支 |
-| `validateRunCommand` | `string` | 否 | validate 成功后自动执行的命令（作为 `-r` 选项的默认值） |
-
-#### 配置项定义数据源
-
-项目级配置项的完整定义集中在 `src/constants/project-config.ts` 中的 `PROJECT_CONFIG_DEFINITIONS` 常量，作为单一数据源（Single Source of Truth）。新增项目配置项只需在此处维护，`PROJECT_DEFAULT_CONFIG` 和 `PROJECT_CONFIG_DESCRIPTIONS` 会自动从中派生。
-
-相关类型定义（`src/types/projectConfig.ts`）：
-- `ProjectConfig`：项目级配置接口
-- `ProjectConfigItemDefinition<T>`：单个配置项定义（含 `defaultValue`、`description`、可选 `allowedValues`）
-- `ProjectConfigDefinitions`：所有配置项的完整定义映射
-
-#### 设置方式
-
-通过 `clawt init` 命令设置（见 [5.19 初始化项目级配置](#519-初始化项目级配置)）。通过 `clawt init show` 子命令可以交互式查看和修改所有项目配置项。
-
-除 `clawt init` 以外的所有核心命令（create、run、validate、sync、remove、merge、reset），执行时都会校验项目级配置是否存在。如果未执行过 `clawt init`，命令会直接报错并提示用户先初始化。
+详细的配置项列表、类型定义、工具函数和设置方式见 [项目级配置文档](./project-config.md)。
 
 ### 2.7 通用交互式配置编辑器
 
@@ -269,15 +238,6 @@ async function interactiveConfigEditor<T extends object>(
 - `init show`：传入 `requireProjectConfig()` + `PROJECT_CONFIG_DEFINITIONS` + `selectPrompt`
 
 同时，`promptConfigValue` 和 `formatConfigValue` 的类型签名已从 `ClawtConfig` 专用类型放宽为通用类型（`string` / `unknown`），以支持不同配置体系复用。`formatConfigValue` 新增了 `undefined` / `null` 值的处理，显示为暗淡色的 `(未设置)`。
-
-#### 路径常量
-
-在 `src/constants/paths.ts` 中新增：
-
-```typescript
-/** 项目级配置目录 ~/.clawt/projects/ */
-export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');
-```
 
 ---
 
