@@ -16,7 +16,7 @@ clawt validate [--clean] [-r <command>]
 | ------------- | ---- | ------------------------------------------------------------------------ |
 | `-b`          | 否   | 要验证的 worktree 分支名（支持模糊匹配，不传则列出所有分支供选择）           |
 | `--clean`     | 否   | 清理 validate 状态（重置主 worktree 并删除快照）                            |
-| `-r, --run`   | 否   | validate 成功后在主 worktree 中执行的命令（如测试、构建等）                  |
+| `-r, --run`   | 否   | validate 成功后在主 worktree 中执行的命令（如测试、构建等）。不传时自动从项目配置的 `validateRunCommand` 读取 |
 
 > **限制：** 单次只能验证一个分支，不支持批量验证。
 
@@ -181,7 +181,7 @@ git restore --staged .
 
 ##### 步骤 7：执行 `--run` 命令（可选）
 
-如果用户传入了 `-r, --run` 选项，在 validate 成功后自动在主 worktree 中执行指定命令：
+如果用户传入了 `-r, --run` 选项，在 validate 成功后自动在主 worktree 中执行指定命令。**如果未传 `-r`，则自动从项目配置的 `validateRunCommand` 字段读取默认命令**（通过 `resolveRunCommand` 解析优先级：`-r` 参数 > 项目配置 > 不执行）。
 
 ```bash
 # 示例：单命令
@@ -281,6 +281,7 @@ clawt validate -b feature-scheme-1 -r "pnpm test & pnpm build"
 - 并行执行：`runParallelCommands()`（`src/utils/shell.ts`），返回 `ParallelCommandResult[]`
 - 结果汇总：`reportParallelResults()`（`src/commands/validate.ts`）
 - 消息常量：`MESSAGES.VALIDATE_PARALLEL_*` 系列（`src/constants/messages/validate.ts`）
+- 命令解析优先级：`resolveRunCommand()`（`src/commands/validate.ts`）负责解析最终要执行的命令，优先使用 `-r` 参数，否则从项目配置读取 `validateRunCommand`（通过 `getValidateRunCommand()`，`src/utils/project-config.ts`）
 
 #### 增量 validate（存在历史快照）
 
@@ -363,6 +364,6 @@ git apply --cached < patch
 
 ##### 步骤 8：执行 `--run` 命令（可选）
 
-与首次 validate 的步骤 7 相同，增量 validate 成功后也会执行 `-r, --run` 指定的命令。
+与首次 validate 的步骤 7 相同，增量 validate 成功后也会执行 `-r, --run` 指定的命令（或从项目配置 `validateRunCommand` 读取的默认命令）。
 
 ---

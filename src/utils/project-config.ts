@@ -75,3 +75,12 @@ export function getMainWorkBranch(): string {
   const config = requireProjectConfig();
   return config.clawtMainWorkBranch;
 }
+
+/**
+ * 从项目配置中获取 validate 成功后自动执行的命令
+ * @returns {string | undefined} 配置的命令字符串，未配置时返回 undefined
+ */
+export function getValidateRunCommand(): string | undefined {
+  const config = loadProjectConfig();
+  return config?.validateRunCommand || undefined;
+}

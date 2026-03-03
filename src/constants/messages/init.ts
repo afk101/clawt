@@ -15,4 +15,8 @@ export const INIT_MESSAGES = {
   PROJECT_NOT_INITIALIZED: '项目尚未初始化，请先执行 clawt init 设置主工作分支',
   /** 项目配置缺少 clawtMainWorkBranch 字段 */
   PROJECT_CONFIG_MISSING_BRANCH: '项目配置缺少主工作分支信息，请重新执行 clawt init 设置主工作分支',
+  /** init show 交互式面板选择配置项提示 */
+  INIT_SELECT_PROMPT: '选择要修改的项目配置项',
+  /** init show 交互式面板配置项修改成功 */
+  INIT_SET_SUCCESS: (key: string, value: string) => `✓ 项目配置 ${key} 已设置为 ${value}`,
 } as const;

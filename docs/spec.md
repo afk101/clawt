@@ -11,6 +11,7 @@
 - [2. 核心概念](#2-核心概念)
   - [2.5 验证分支](#25-验证分支)
   - [2.6 项目级配置](#26-项目级配置)
+  - [2.7 通用交互式配置编辑器](#27-通用交互式配置编辑器)
 - [3. 全局目录结构](#3-全局目录结构)
 - [4. 命令总览](#4-命令总览)
 - [5. 需求场景详细设计](#5-需求场景详细设计)
@@ -207,19 +208,67 @@ export const VALIDATE_BRANCH_PREFIX = 'clawt-validate-';
 
 ```json
 {
-  "clawtMainWorkBranch": "main"
+  "clawtMainWorkBranch": "main",
+  "validateRunCommand": "npm test"
 }
 ```
 
-| 配置项 | 类型 | 说明 |
-| --- | --- | --- |
-| `clawtMainWorkBranch` | `string` | 项目的主工作分支名，用于 create 时检测当前分支是否为主分支 |
+| 配置项 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `clawtMainWorkBranch` | `string` | 是 | 项目的主工作分支名，用于 create 时检测当前分支是否为主分支 |
+| `validateRunCommand` | `string` | 否 | validate 成功后自动执行的命令（作为 `-r` 选项的默认值） |
+
+#### 配置项定义数据源
+
+项目级配置项的完整定义集中在 `src/constants/project-config.ts` 中的 `PROJECT_CONFIG_DEFINITIONS` 常量，作为单一数据源（Single Source of Truth）。新增项目配置项只需在此处维护，`PROJECT_DEFAULT_CONFIG` 和 `PROJECT_CONFIG_DESCRIPTIONS` 会自动从中派生。
+
+相关类型定义（`src/types/projectConfig.ts`）：
+- `ProjectConfig`：项目级配置接口
+- `ProjectConfigItemDefinition<T>`：单个配置项定义（含 `defaultValue`、`description`、可选 `allowedValues`）
+- `ProjectConfigDefinitions`：所有配置项的完整定义映射
 
 #### 设置方式
 
-通过 `clawt init` 命令设置（见 [5.19 初始化项目级配置](#519-初始化项目级配置)）。
+通过 `clawt init` 命令设置（见 [5.19 初始化项目级配置](#519-初始化项目级配置)）。通过 `clawt init show` 子命令可以交互式查看和修改所有项目配置项。
 
 除 `clawt init` 以外的所有核心命令（create、run、validate、sync、remove、merge、reset），执行时都会校验项目级配置是否存在。如果未执行过 `clawt init`，命令会直接报错并提示用户先初始化。
+
+### 2.7 通用交互式配置编辑器
+
+`interactiveConfigEditor`（`src/utils/config-strategy.ts`）是一个通用的交互式配置编辑函数，供全局配置（`config` 命令）和项目级配置（`init show` 子命令）复用。
+
+**函数签名：**
+
+```typescript
+async function interactiveConfigEditor<T extends object>(
+  config: T,
+  definitions: Record<string, { description: string; allowedValues?: readonly string[] }>,
+  options?: { selectPrompt?: string; disabledKeys?: Record<string, string> },
+): Promise<{ key: keyof T; newValue: unknown }>
+```
+
+**参数说明：**
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `config` | `T` | 当前配置对象 |
+| `definitions` | `Record<string, { description; allowedValues? }>` | 配置项定义映射（含描述和可选枚举值） |
+| `options.selectPrompt` | `string` | 可选，选择配置项的提示语（默认使用全局配置的提示语） |
+| `options.disabledKeys` | `Record<string, string>` | 可选，不可编辑的键及其禁用提示文本 |
+
+**行为：**
+
+1. 根据 `definitions` 构建选择列表，显示配置项名称、当前值（通过 `formatConfigValue` 格式化）和描述
+2. `disabledKeys` 中的配置项标灰不可选，显示禁用提示
+3. 用户选择配置项后，根据值类型自动选择输入方式（布尔 → Select、数字 → Input、字符串+枚举 → Select、字符串 → Input）
+4. 返回用户修改的 key 和新值，由调用方负责持久化
+
+**调用场景：**
+
+- `config` 命令：传入 `loadConfig()` + `CONFIG_DEFINITIONS` + `disabledKeys`（对象类型配置项禁用）
+- `init show`：传入 `requireProjectConfig()` + `PROJECT_CONFIG_DEFINITIONS` + `selectPrompt`
+
+同时，`promptConfigValue` 和 `formatConfigValue` 的类型签名已从 `ClawtConfig` 专用类型放宽为通用类型（`string` / `unknown`），以支持不同配置体系复用。`formatConfigValue` 新增了 `undefined` / `null` 值的处理，显示为暗淡色的 `(未设置)`。
 
 #### 路径常量
 

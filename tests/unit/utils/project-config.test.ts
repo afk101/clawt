@@ -49,6 +49,7 @@ import {
   saveProjectConfig,
   requireProjectConfig,
   getMainWorkBranch,
+  getValidateRunCommand,
 } from '../../../src/utils/project-config.js';
 
 const mockedExistsSync = vi.mocked(existsSync);
@@ -132,5 +133,36 @@ describe('getMainWorkBranch', () => {
     mockedExistsSync.mockReturnValue(true);
     mockedReadFileSync.mockReturnValue(JSON.stringify({ clawtMainWorkBranch: 'develop' }));
     expect(getMainWorkBranch()).toBe('develop');
+  });
+});
+
+describe('getValidateRunCommand', () => {
+  it('配置中有 validateRunCommand 时返回对应值', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(JSON.stringify({
+      clawtMainWorkBranch: 'main',
+      validateRunCommand: 'npm test',
+    }));
+    expect(getValidateRunCommand()).toBe('npm test');
+  });
+
+  it('配置中无 validateRunCommand 时返回 undefined', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(JSON.stringify({ clawtMainWorkBranch: 'main' }));
+    expect(getValidateRunCommand()).toBeUndefined();
+  });
+
+  it('配置文件不存在时返回 undefined', () => {
+    mockedExistsSync.mockReturnValue(false);
+    expect(getValidateRunCommand()).toBeUndefined();
+  });
+
+  it('validateRunCommand 为空字符串时返回 undefined', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(JSON.stringify({
+      clawtMainWorkBranch: 'main',
+      validateRunCommand: '',
+    }));
+    expect(getValidateRunCommand()).toBeUndefined();
   });
 });

@@ -101,6 +101,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   handleDirtyWorkingDir: vi.fn(),
   checkBranchExists: vi.fn().mockReturnValue(true),
   getCurrentBranch: vi.fn().mockReturnValue('main'),
+  getValidateRunCommand: vi.fn(),
 }));
 
 import { registerValidateCommand } from '../../../src/commands/validate.js';
@@ -140,6 +141,7 @@ import {
   printSeparator,
   parseParallelCommands,
   runParallelCommands,
+  getValidateRunCommand,
 } from '../../../src/utils/index.js';
 
 const mockedGetProjectName = vi.mocked(getProjectName);
@@ -177,6 +179,7 @@ const mockedPrintError = vi.mocked(printError);
 const mockedPrintSeparator = vi.mocked(printSeparator);
 const mockedParseParallelCommands = vi.mocked(parseParallelCommands);
 const mockedRunParallelCommands = vi.mocked(runParallelCommands);
+const mockedGetValidateRunCommand = vi.mocked(getValidateRunCommand);
 
 const worktree = { path: '/path/feature', branch: 'feature' };
 
@@ -216,6 +219,7 @@ beforeEach(() => {
   mockedPrintSeparator.mockReset();
   mockedParseParallelCommands.mockReset();
   mockedRunParallelCommands.mockReset();
+  mockedGetValidateRunCommand.mockReset();
   // 默认让 parseParallelCommands 返回单命令数组，保持旧测试兼容
   mockedParseParallelCommands.mockImplementation((cmd: string) => [cmd]);
 });
@@ -630,5 +634,64 @@ describe('--run 并行命令', () => {
     // && 不拆分，走同步路径
     expect(mockedRunCommandInherited).toHaveBeenCalledWith('pnpm lint && pnpm test', { cwd: '/repo' });
     expect(mockedRunParallelCommands).not.toHaveBeenCalled();
+  });
+});
+
+describe('配置读取 fallback（resolveRunCommand）', () => {
+  /** 设置首次 validate 成功的公共 mock */
+  function setupSuccessfulFirstValidate(): void {
+    mockedIsWorkingDirClean.mockReturnValue(true);
+    mockedHasLocalCommits.mockReturnValue(true);
+    mockedHasSnapshot.mockReturnValue(false);
+    mockedGitDiffBinaryAgainstBranch.mockReturnValue(Buffer.from('diff'));
+    mockedGitWriteTree.mockReturnValue('treehash');
+    mockedGetHeadCommitHash.mockReturnValue('headhash');
+  }
+
+  it('未传 -r 但项目配置有 validateRunCommand 时从配置读取执行', async () => {
+    setupSuccessfulFirstValidate();
+    mockedGetValidateRunCommand.mockReturnValue('pnpm test');
+    mockedRunCommandInherited.mockReturnValue({
+      pid: 0, output: [], stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
+      status: 0, signal: null, error: undefined,
+    });
+
+    const program = new Command();
+    program.exitOverride();
+    registerValidateCommand(program);
+    await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
+
+    // 应该从配置读取命令并执行
+    expect(mockedRunCommandInherited).toHaveBeenCalledWith('pnpm test', { cwd: '/repo' });
+  });
+
+  it('传了 -r 时以用户参数为准，忽略项目配置', async () => {
+    setupSuccessfulFirstValidate();
+    mockedGetValidateRunCommand.mockReturnValue('pnpm test');
+    mockedRunCommandInherited.mockReturnValue({
+      pid: 0, output: [], stdout: Buffer.alloc(0), stderr: Buffer.alloc(0),
+      status: 0, signal: null, error: undefined,
+    });
+
+    const program = new Command();
+    program.exitOverride();
+    registerValidateCommand(program);
+    await program.parseAsync(['validate', '-b', 'feature', '-r', 'pnpm build'], { from: 'user' });
+
+    // 应该使用用户传入的命令，而非配置中的
+    expect(mockedRunCommandInherited).toHaveBeenCalledWith('pnpm build', { cwd: '/repo' });
+  });
+
+  it('未传 -r 且项目配置无 validateRunCommand 时不执行命令', async () => {
+    setupSuccessfulFirstValidate();
+    mockedGetValidateRunCommand.mockReturnValue(undefined);
+
+    const program = new Command();
+    program.exitOverride();
+    registerValidateCommand(program);
+    await program.parseAsync(['validate', '-b', 'feature'], { from: 'user' });
+
+    // 没有命令可执行
+    expect(mockedRunCommandInherited).not.toHaveBeenCalled();
   });
 });

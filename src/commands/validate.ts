@@ -49,6 +49,7 @@ import {
   checkBranchExists,
   getCurrentBranch,
   handleDirtyWorkingDir,
+  getValidateRunCommand,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages, ParallelCommandResult } from '../utils/index.js';
 
@@ -433,6 +434,18 @@ async function executeRunCommand(command: string, mainWorktreePath: string): Pro
 }
 
 /**
+ * 解析最终要执行的 run 命令：优先使用 -r 参数，否则从项目配置读取
+ * @param {string} [optionRun] - 用户通过 -r 传入的命令
+ * @returns {string | undefined} 最终要执行的命令，无配置时返回 undefined
+ */
+function resolveRunCommand(optionRun?: string): string | undefined {
+  if (optionRun) {
+    return optionRun;
+  }
+  return getValidateRunCommand();
+}
+
+/**
  * 执行 validate 命令的核心逻辑
  * @param {ValidateOptions} options - 命令选项
  */
@@ -484,8 +497,9 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
     await handleFirstValidate(targetWorktreePath, mainWorktreePath, projectName, branchName, hasUncommitted);
   }
 
-  // validate 成功后执行用户指定的命令
-  if (options.run) {
-    await executeRunCommand(options.run, mainWorktreePath);
+  // validate 成功后执行用户指定的命令（优先 -r 参数，否则从项目配置读取）
+  const runCommand = resolveRunCommand(options.run);
+  if (runCommand) {
+    await executeRunCommand(runCommand, mainWorktreePath);
   }
 }
