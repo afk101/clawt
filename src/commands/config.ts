@@ -1,7 +1,5 @@
 import type { Command } from 'commander';
-import chalk from 'chalk';
-import Enquirer from 'enquirer';
-import { DEFAULT_CONFIG, CONFIG_DESCRIPTIONS, MESSAGES, CONFIG_ALIAS_DISABLED_HINT } from '../constants/index.js';
+import { DEFAULT_CONFIG, CONFIG_DEFINITIONS, MESSAGES, CONFIG_ALIAS_DISABLED_HINT } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import {
   loadConfig,
@@ -14,10 +12,8 @@ import {
   isValidConfigKey,
   getValidConfigKeys,
   parseConfigValue,
-  promptConfigValue,
-  formatConfigValue,
+  interactiveConfigEditor,
 } from '../utils/index.js';
-import type { ClawtConfig } from '../types/index.js';
 
 /**
  * 注册 config 命令组：查看和管理全局配置
@@ -118,36 +114,26 @@ async function handleConfigSet(key?: string, value?: string): Promise<void> {
  */
 async function handleInteractiveConfigSet(): Promise<void> {
   const config = loadConfig();
-  const keys = Object.keys(DEFAULT_CONFIG) as Array<keyof ClawtConfig>;
 
   logger.info('config set 命令执行，进入交互式配置');
 
-  // 构建选择列表，显示配置项名称、当前值和描述
-  // 对象类型配置项（如 aliases）标灰不可选，提示用户通过专用命令管理
-  const choices = keys.map((k) => {
-    const isObject = typeof DEFAULT_CONFIG[k] === 'object';
-    return {
-      name: k,
-      message: `${k}: ${isObject ? chalk.dim(JSON.stringify(config[k])) : formatConfigValue(config[k])}  ${chalk.dim(`— ${CONFIG_DESCRIPTIONS[k]}`)}`,
-      ...(isObject && { disabled: CONFIG_ALIAS_DISABLED_HINT }),
-    };
+  // 构建对象类型配置项的禁用映射（如 aliases 需通过专用命令管理）
+  const disabledKeys: Record<string, string> = {};
+  for (const k of Object.keys(DEFAULT_CONFIG)) {
+    if (typeof DEFAULT_CONFIG[k as keyof typeof DEFAULT_CONFIG] === 'object') {
+      disabledKeys[k] = CONFIG_ALIAS_DISABLED_HINT;
+    }
+  }
+
+  const { key, newValue } = await interactiveConfigEditor(config, CONFIG_DEFINITIONS, {
+    disabledKeys,
   });
 
-  // @ts-expect-error enquirer 类型声明未导出 Select 类，但运行时存在
-  const selectedKey: keyof ClawtConfig = await new Enquirer.Select({
-    message: MESSAGES.CONFIG_SELECT_PROMPT,
-    choices,
-  }).run();
-
-  // 根据类型和 allowedValues 自动选择提示策略
-  const currentValue = config[selectedKey];
-  const newValue = await promptConfigValue(selectedKey, currentValue);
-
   // 持久化并提示成功
-  (config as unknown as Record<string, unknown>)[selectedKey] = newValue;
+  (config as unknown as Record<string, unknown>)[key as string] = newValue;
   saveConfig(config);
 
-  printSuccess(MESSAGES.CONFIG_SET_SUCCESS(selectedKey, String(newValue)));
+  printSuccess(MESSAGES.CONFIG_SET_SUCCESS(key as string, String(newValue)));
 }
 
 /**

@@ -12,6 +12,12 @@ vi.mock('../../../src/constants/index.js', () => ({
     INIT_SHOW: (configJson: string) => `当前项目配置:\n${configJson}`,
     PROJECT_NOT_INITIALIZED: '项目尚未初始化，请先执行 clawt init 设置主工作分支',
     PROJECT_CONFIG_MISSING_BRANCH: '项目配置缺少主工作分支信息，请重新执行 clawt init 设置主工作分支',
+    INIT_SELECT_PROMPT: '选择要修改的项目配置项',
+    INIT_SET_SUCCESS: (key: string, value: string) => `✓ 项目配置 ${key} 已设置为 ${value}`,
+  },
+  PROJECT_CONFIG_DEFINITIONS: {
+    clawtMainWorkBranch: { defaultValue: '', description: '主 worktree 的工作分支名' },
+    validateRunCommand: { defaultValue: undefined, description: 'validate 成功后自动执行的命令' },
   },
 }));
 
@@ -24,6 +30,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   printSuccess: vi.fn(),
   printInfo: vi.fn(),
   safeStringify: vi.fn((value: unknown, indent: number = 2) => JSON.stringify(value, null, indent)),
+  interactiveConfigEditor: vi.fn(),
 }));
 
 import { registerInitCommand } from '../../../src/commands/init.js';
@@ -32,16 +39,16 @@ import {
   saveProjectConfig,
   requireProjectConfig,
   printSuccess,
-  printInfo,
   getCurrentBranch,
+  interactiveConfigEditor,
 } from '../../../src/utils/index.js';
 
 const mockedLoadProjectConfig = vi.mocked(loadProjectConfig);
 const mockedSaveProjectConfig = vi.mocked(saveProjectConfig);
 const mockedRequireProjectConfig = vi.mocked(requireProjectConfig);
 const mockedPrintSuccess = vi.mocked(printSuccess);
-const mockedPrintInfo = vi.mocked(printInfo);
 const mockedGetCurrentBranch = vi.mocked(getCurrentBranch);
+const mockedInteractiveConfigEditor = vi.mocked(interactiveConfigEditor);
 
 beforeEach(() => {
   mockedLoadProjectConfig.mockReset();
@@ -49,8 +56,8 @@ beforeEach(() => {
   mockedRequireProjectConfig.mockReset();
   mockedRequireProjectConfig.mockReturnValue({ clawtMainWorkBranch: 'main' });
   mockedPrintSuccess.mockReset();
-  mockedPrintInfo.mockReset();
   mockedGetCurrentBranch.mockReturnValue('main');
+  mockedInteractiveConfigEditor.mockReset();
 });
 
 describe('registerInitCommand', () => {
@@ -132,15 +139,43 @@ describe('handleInit', () => {
 });
 
 describe('handleInitShow (show 子命令)', () => {
-  it('clawt init show 展示当前配置', async () => {
+  it('clawt init show 进入交互式面板并保存修改', async () => {
     mockedRequireProjectConfig.mockReturnValue({ clawtMainWorkBranch: 'develop' });
+    mockedInteractiveConfigEditor.mockResolvedValue({ key: 'validateRunCommand', newValue: 'npm test' });
 
     const program = new Command();
     program.exitOverride();
     registerInitCommand(program);
     await program.parseAsync(['init', 'show'], { from: 'user' });
 
-    expect(mockedPrintInfo).toHaveBeenCalled();
-    expect(mockedSaveProjectConfig).not.toHaveBeenCalled();
+    // 验证调用了交互式配置编辑器
+    expect(mockedInteractiveConfigEditor).toHaveBeenCalled();
+    // 验证保存了合并后的配置
+    expect(mockedSaveProjectConfig).toHaveBeenCalledWith({
+      clawtMainWorkBranch: 'develop',
+      validateRunCommand: 'npm test',
+    });
+    // 验证输出了成功消息
+    expect(mockedPrintSuccess).toHaveBeenCalledWith(
+      expect.stringContaining('validateRunCommand'),
+    );
+  });
+
+  it('clawt init show 修改已有配置项', async () => {
+    mockedRequireProjectConfig.mockReturnValue({
+      clawtMainWorkBranch: 'main',
+      validateRunCommand: 'npm test',
+    });
+    mockedInteractiveConfigEditor.mockResolvedValue({ key: 'clawtMainWorkBranch', newValue: 'develop' });
+
+    const program = new Command();
+    program.exitOverride();
+    registerInitCommand(program);
+    await program.parseAsync(['init', 'show'], { from: 'user' });
+
+    expect(mockedSaveProjectConfig).toHaveBeenCalledWith({
+      clawtMainWorkBranch: 'develop',
+      validateRunCommand: 'npm test',
+    });
   });
 });

@@ -1,8 +1,8 @@
 import type { Command } from 'commander';
 import { Command as Cmd } from 'commander';
 import { logger } from '../logger/index.js';
-import { MESSAGES } from '../constants/index.js';
-import type { InitOptions } from '../types/index.js';
+import { MESSAGES, PROJECT_CONFIG_DEFINITIONS } from '../constants/index.js';
+import type { InitOptions, ProjectConfig } from '../types/index.js';
 import {
   validateMainWorktree,
   getCurrentBranch,
@@ -10,8 +10,7 @@ import {
   saveProjectConfig,
   requireProjectConfig,
   printSuccess,
-  printInfo,
-  safeStringify,
+  interactiveConfigEditor,
 } from '../utils/index.js';
 
 /**
@@ -27,24 +26,36 @@ export function registerInitCommand(program: Command): void {
       await handleInit(options);
     });
 
-  // 注册 show 子命令：展示当前项目配置
+  // 注册 show 子命令：交互式查看和修改项目配置
   initCmd.addCommand(
     new Cmd('show')
-      .description('展示当前项目的 init 配置')
-      .action(() => {
-        handleInitShow();
+      .description('交互式查看和修改项目配置')
+      .action(async () => {
+        await handleInitShow();
       }),
   );
 }
 
 /**
- * 处理 init show 子命令：以 JSON 格式展示当前项目完整配置
+ * 处理 init show 子命令：交互式面板展示和修改项目配置
  */
-function handleInitShow(): void {
+async function handleInitShow(): Promise<void> {
   validateMainWorktree();
   const config = requireProjectConfig();
-  const configJson = safeStringify(config);
-  printInfo(MESSAGES.INIT_SHOW(configJson));
+
+  logger.info('init show 命令执行，进入交互式项目配置');
+
+  const { key, newValue } = await interactiveConfigEditor(
+    config as Required<ProjectConfig>,
+    PROJECT_CONFIG_DEFINITIONS,
+    { selectPrompt: MESSAGES.INIT_SELECT_PROMPT },
+  );
+
+  // 合并修改后的值并持久化
+  const updatedConfig: ProjectConfig = { ...config, [key]: newValue };
+  saveProjectConfig(updatedConfig);
+
+  printSuccess(MESSAGES.INIT_SET_SUCCESS(key as string, String(newValue)));
 }
 
 /**

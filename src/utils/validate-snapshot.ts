@@ -25,6 +25,16 @@ function getSnapshotHeadPath(projectName: string, branchName: string): string {
 }
 
 /**
+ * 获取指定项目和分支的 validate 快照 staged tree 文件路径
+ * @param {string} projectName - 项目名
+ * @param {string} branchName - 分支名
+ * @returns {string} staged tree hash 文件的绝对路径
+ */
+function getSnapshotStagedPath(projectName: string, branchName: string): string {
+  return join(VALIDATE_SNAPSHOTS_DIR, projectName, `${branchName}.staged`);
+}
+
+/**
  * 判断指定项目和分支是否存在 validate 快照
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
@@ -58,49 +68,55 @@ export function readSnapshotTreeHash(projectName: string, branchName: string): s
 }
 
 /**
- * 读取指定项目和分支的 validate 快照（tree hash + HEAD commit hash）
- * tree hash 从 .tree 文件读取，HEAD commit hash 从 .head 文件读取
+ * 读取指定项目和分支的 validate 快照（tree hash + HEAD commit hash + staged tree hash）
+ * tree hash 从 .tree 文件读取，HEAD commit hash 从 .head 文件读取，staged tree hash 从 .staged 文件读取
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
- * @returns {{ treeHash: string; headCommitHash: string }} 快照数据
+ * @returns {{ treeHash: string; headCommitHash: string; stagedTreeHash: string }} 快照数据
  */
-export function readSnapshot(projectName: string, branchName: string): { treeHash: string; headCommitHash: string } {
+export function readSnapshot(projectName: string, branchName: string): { treeHash: string; headCommitHash: string; stagedTreeHash: string } {
   const snapshotPath = getSnapshotPath(projectName, branchName);
   const headPath = getSnapshotHeadPath(projectName, branchName);
+  const stagedPath = getSnapshotStagedPath(projectName, branchName);
   logger.debug(`读取 validate 快照: ${snapshotPath}`);
 
   const treeHash = existsSync(snapshotPath) ? readFileSync(snapshotPath, 'utf-8').trim() : '';
   const headCommitHash = existsSync(headPath) ? readFileSync(headPath, 'utf-8').trim() : '';
+  const stagedTreeHash = existsSync(stagedPath) ? readFileSync(stagedPath, 'utf-8').trim() : '';
 
-  return { treeHash, headCommitHash };
+  return { treeHash, headCommitHash, stagedTreeHash };
 }
 
 /**
  * 写入 validate 快照内容（自动创建目录）
- * tree hash 写入 .tree 文件，HEAD commit hash 写入 .head 文件
+ * tree hash 写入 .tree 文件，HEAD commit hash 写入 .head 文件，staged tree hash 写入 .staged 文件
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
  * @param {string} treeHash - git tree 对象的 hash
  * @param {string} headCommitHash - 快照时主 worktree 的 HEAD commit hash
+ * @param {string} [stagedTreeHash=''] - validate 结束时暂存区对应的 tree hash
  */
-export function writeSnapshot(projectName: string, branchName: string, treeHash: string, headCommitHash: string): void {
+export function writeSnapshot(projectName: string, branchName: string, treeHash: string, headCommitHash: string, stagedTreeHash = ''): void {
   const snapshotPath = getSnapshotPath(projectName, branchName);
   const headPath = getSnapshotHeadPath(projectName, branchName);
+  const stagedPath = getSnapshotStagedPath(projectName, branchName);
   const snapshotDir = join(VALIDATE_SNAPSHOTS_DIR, projectName);
   ensureDir(snapshotDir);
   writeFileSync(snapshotPath, treeHash, 'utf-8');
   writeFileSync(headPath, headCommitHash, 'utf-8');
-  logger.info(`已保存 validate 快照: ${snapshotPath}, ${headPath}`);
+  writeFileSync(stagedPath, stagedTreeHash, 'utf-8');
+  logger.info(`已保存 validate 快照: ${snapshotPath}, ${headPath}, ${stagedPath}`);
 }
 
 /**
- * 删除指定项目和分支的 validate 快照（.tree + .head）
+ * 删除指定项目和分支的 validate 快照（.tree + .head + .staged）
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
  */
 export function removeSnapshot(projectName: string, branchName: string): void {
   const snapshotPath = getSnapshotPath(projectName, branchName);
   const headPath = getSnapshotHeadPath(projectName, branchName);
+  const stagedPath = getSnapshotStagedPath(projectName, branchName);
   if (existsSync(snapshotPath)) {
     unlinkSync(snapshotPath);
     logger.info(`已删除 validate 快照: ${snapshotPath}`);
@@ -108,6 +124,10 @@ export function removeSnapshot(projectName: string, branchName: string): void {
   if (existsSync(headPath)) {
     unlinkSync(headPath);
     logger.info(`已删除 validate 快照: ${headPath}`);
+  }
+  if (existsSync(stagedPath)) {
+    unlinkSync(stagedPath);
+    logger.info(`已删除 validate 快照: ${stagedPath}`);
   }
 }
 

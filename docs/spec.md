@@ -10,7 +10,8 @@
 - [1. 技术栈](#1-技术栈)
 - [2. 核心概念](#2-核心概念)
   - [2.5 验证分支](#25-验证分支)
-  - [2.6 项目级配置](#26-项目级配置)
+  - [2.6 项目级配置](#26-项目级配置)（详见 [project-config.md](./project-config.md)）
+  - [2.7 通用交互式配置编辑器](#27-通用交互式配置编辑器)
 - [3. 全局目录结构](#3-全局目录结构)
 - [4. 命令总览](#4-命令总览)
 - [5. 需求场景详细设计](#5-需求场景详细设计)
@@ -197,38 +198,46 @@ export const VALIDATE_BRANCH_PREFIX = 'clawt-validate-';
 
 ### 2.6 项目级配置
 
-#### 存放位置
+每个 Git 项目独立的 clawt 配置，存放在 `~/.clawt/projects/<projectName>/config.json`。包含项目的主工作分支名（`clawtMainWorkBranch`）、validate 自动运行命令（`validateRunCommand`）等配置项。通过 `clawt init` 命令设置，核心命令执行前会校验该配置是否存在。
 
-```
-~/.clawt/projects/<projectName>/config.json
-```
+详细的配置项列表、类型定义、工具函数和设置方式见 [项目级配置文档](./project-config.md)。
 
-#### 配置内容
+### 2.7 通用交互式配置编辑器
 
-```json
-{
-  "clawtMainWorkBranch": "main"
-}
-```
+`interactiveConfigEditor`（`src/utils/config-strategy.ts`）是一个通用的交互式配置编辑函数，供全局配置（`config` 命令）和项目级配置（`init show` 子命令）复用。
 
-| 配置项 | 类型 | 说明 |
-| --- | --- | --- |
-| `clawtMainWorkBranch` | `string` | 项目的主工作分支名，用于 create 时检测当前分支是否为主分支 |
-
-#### 设置方式
-
-通过 `clawt init` 命令设置（见 [5.19 初始化项目级配置](#519-初始化项目级配置)）。
-
-除 `clawt init` 以外的所有核心命令（create、run、validate、sync、remove、merge、reset），执行时都会校验项目级配置是否存在。如果未执行过 `clawt init`，命令会直接报错并提示用户先初始化。
-
-#### 路径常量
-
-在 `src/constants/paths.ts` 中新增：
+**函数签名：**
 
 ```typescript
-/** 项目级配置目录 ~/.clawt/projects/ */
-export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');
+async function interactiveConfigEditor<T extends object>(
+  config: T,
+  definitions: Record<string, { description: string; allowedValues?: readonly string[] }>,
+  options?: { selectPrompt?: string; disabledKeys?: Record<string, string> },
+): Promise<{ key: keyof T; newValue: unknown }>
 ```
+
+**参数说明：**
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `config` | `T` | 当前配置对象 |
+| `definitions` | `Record<string, { description; allowedValues? }>` | 配置项定义映射（含描述和可选枚举值） |
+| `options.selectPrompt` | `string` | 可选，选择配置项的提示语（默认使用全局配置的提示语） |
+| `options.disabledKeys` | `Record<string, string>` | 可选，不可编辑的键及其禁用提示文本 |
+
+**行为：**
+
+1. 根据 `definitions` 构建选择列表，显示配置项名称、当前值（通过 `formatConfigValue` 格式化）和描述
+2. `disabledKeys` 中的配置项标灰不可选，显示禁用提示
+3. 用户选择配置项后，根据值类型自动选择输入方式（布尔 → Select、数字 → Input、字符串+枚举 → Select、字符串 → Input）
+4. 返回用户修改的 key 和新值，由调用方负责持久化
+
+**调用场景：**
+
+- `config` 命令：传入 `loadConfig()` + `CONFIG_DEFINITIONS` + `disabledKeys`（对象类型配置项禁用）
+- `init show`：传入 `requireProjectConfig()` + `PROJECT_CONFIG_DEFINITIONS` + `selectPrompt`
+
+同时，`promptConfigValue` 和 `formatConfigValue` 的类型签名已从 `ClawtConfig` 专用类型放宽为通用类型（`string` / `unknown`），以支持不同配置体系复用。`formatConfigValue` 新增了 `undefined` / `null` 值的处理，显示为暗淡色的 `(未设置)`。
 
 ---
 
@@ -245,6 +254,7 @@ export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');
 │   └── <project-name>/                  # 以项目名分组
 │       ├── <branchName>.tree            # 每个分支一个 tree hash 快照文件（存储 git tree 对象的 hash）
 │       ├── <branchName>.head            # 每个分支一个 HEAD commit hash 快照文件（存储快照时验证分支的 HEAD commit hash）
+│       ├── <branchName>.staged          # 每个分支一个 staged tree hash 快照文件（存储 validate 结束时暂存区对应的 tree hash，用于无变更时恢复）
 │       └── ...
 ├── projects/<project-name>/             # 项目级配置目录
 │   └── config.json                      # 项目级配置（含 clawtMainWorkBranch）

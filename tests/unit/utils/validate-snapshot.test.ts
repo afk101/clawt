@@ -106,10 +106,10 @@ describe('readSnapshotTreeHash', () => {
 });
 
 describe('writeSnapshot', () => {
-  it('正确写入两个文件', () => {
+  it('正确写入三个文件', () => {
     writeSnapshot('proj', 'branch', 'tree123', 'head456');
     expect(mockedEnsureDir).toHaveBeenCalledWith('/tmp/test-snapshots/proj');
-    expect(mockedWriteFileSync).toHaveBeenCalledTimes(2);
+    expect(mockedWriteFileSync).toHaveBeenCalledTimes(3);
     expect(mockedWriteFileSync).toHaveBeenCalledWith(
       '/tmp/test-snapshots/proj/branch.tree',
       'tree123',
@@ -120,6 +120,11 @@ describe('writeSnapshot', () => {
       'head456',
       'utf-8',
     );
+    expect(mockedWriteFileSync).toHaveBeenCalledWith(
+      '/tmp/test-snapshots/proj/branch.staged',
+      '',
+      'utf-8',
+    );
   });
 });
 
@@ -127,7 +132,7 @@ describe('removeSnapshot', () => {
   it('删除存在的文件', () => {
     mockedExistsSync.mockReturnValue(true);
     removeSnapshot('proj', 'branch');
-    expect(mockedUnlinkSync).toHaveBeenCalledTimes(2);
+    expect(mockedUnlinkSync).toHaveBeenCalledTimes(3);
   });
 
   it('文件不存在时不抛错', () => {

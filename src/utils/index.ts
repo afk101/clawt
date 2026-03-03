@@ -68,11 +68,13 @@ export type { ParsedActivity, StreamEvent, LineBuffer } from './stream-parser.js
 export { detectTerminalApp, openCommandInNewTerminalTab } from './terminal.js';
 export { truncateTaskDesc, printDryRunPreview } from './dry-run.js';
 export { applyAliases } from './alias.js';
-export { isValidConfigKey, getValidConfigKeys, parseConfigValue, promptConfigValue, formatConfigValue } from './config-strategy.js';
+export { isValidConfigKey, getValidConfigKeys, parseConfigValue, promptConfigValue, formatConfigValue, interactiveConfigEditor } from './config-strategy.js';
 export { checkForUpdates } from './update-checker.js';
-export { getProjectConfigPath, loadProjectConfig, saveProjectConfig, requireProjectConfig, getMainWorkBranch } from './project-config.js';
+export { getProjectConfigPath, loadProjectConfig, saveProjectConfig, requireProjectConfig, getMainWorkBranch, getValidateRunCommand } from './project-config.js';
 export { getValidateBranchName, createValidateBranch, deleteValidateBranch, rebuildValidateBranch, ensureOnMainWorkBranch, handleDirtyWorkingDir } from './validate-branch.js';
 export { safeStringify } from './json.js';
+export { executeRunCommand } from './validate-runner.js';
+export { migrateChangesViaPatch, computeCurrentTreeHash, saveCurrentSnapshotTree, loadOldSnapshotToStage, switchToValidateBranch } from './validate-core.js';
 export { InteractivePanel } from './interactive-panel.js';
 export { buildPanelFrame, buildGroupedWorktreeLines, buildDisplayOrder, renderDateSeparator, renderWorktreeBlock, renderSnapshotSummary, renderFooter, calculateVisibleRows } from './interactive-panel-render.js';
 export type { PanelLine } from './interactive-panel-render.js';

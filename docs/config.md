@@ -85,7 +85,8 @@ clawt config reset
 
 - 配置项类型定义：`ConfigItemDefinition` 新增可选字段 `allowedValues`（`readonly string[]`），仅对 string 类型有效，用于枚举值校验和交互式 Select 提示
 - 值解析与提示策略：`src/utils/config-strategy.ts` 中的 `parseConfigValue()`（CLI 字符串解析）和 `promptConfigValue()`（交互式提示），基于类型和 `allowedValues` 自动分发
+- 交互式配置编辑：`handleInteractiveConfigSet` 调用通用的 `interactiveConfigEditor`（`src/utils/config-strategy.ts`），传入 `CONFIG_DEFINITIONS` 和 `disabledKeys`（对象类型配置项禁用映射），不再在 config 命令中直接构建选择列表和调用 `promptConfigValue`
 - `saveConfig(config)`：`src/utils/config.ts` 中新增的通用配置写入函数，将完整配置对象持久化到文件
-- `formatConfigValue(value)`：支持 boolean（绿色/黄色）和 string/number（青色）的格式化显示。对象类型配置项（如 `aliases`）在交互式列表中通过 `JSON.stringify` 以暗淡色显示
+- `formatConfigValue(value)`：支持 boolean（绿色/黄色）和 string/number（青色）的格式化显示。`undefined` / `null` 值显示为暗淡色的 `(未设置)`。对象类型配置项（如 `aliases`）在交互式列表中通过 `JSON.stringify` 以暗淡色显示
 
 ---
