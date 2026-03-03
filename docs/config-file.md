@@ -22,6 +22,7 @@
   "confirmDestructiveOps": true,
   "maxConcurrency": 0,
   "terminalApp": "auto",
+  "resumeInPlace": false,
   "aliases": {},
   "autoUpdate": true
 }
@@ -37,6 +38,7 @@
 | `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean）前是否提示确认 |
 | `maxConcurrency` | `number` | `0` | run 命令默认最大并发数，`0` 表示不限制 |
 | `terminalApp` | `string` | `"auto"` | 批量 resume 使用的终端应用：`auto`（自动检测）、`iterm2`、`terminal`（macOS） |
+| `resumeInPlace` | `boolean` | `false` | resume 单选时是否在当前终端就地打开，`false` 则通过 `terminalApp` 在新 Tab 中打开 |
 | `aliases` | `Record<string, string>` | `{}` | 命令别名映射，键为别名，值为目标内置命令名 |
 | `autoUpdate` | `boolean` | `true` | 是否启用自动更新检查（每 24 小时通过 npm registry 检查一次新版本） |
 

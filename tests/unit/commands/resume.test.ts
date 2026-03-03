@@ -11,6 +11,8 @@ vi.mock('../../../src/constants/index.js', () => ({
     RESUME_SELECT_BRANCH: '选择要恢复的分支',
     RESUME_MULTIPLE_MATCHES: (keyword: string) => `找到多个匹配 "${keyword}" 的分支`,
     RESUME_NO_MATCH: (keyword: string, branches: string[]) => `未找到匹配 "${keyword}" 的分支`,
+    RESUME_ALL_CONFIRM: (count: number) => `确认恢复 ${count} 个分支？`,
+    RESUME_ALL_SUCCESS: (count: number) => `已恢复 ${count} 个分支`,
   },
 }));
 
@@ -19,8 +21,14 @@ vi.mock('../../../src/utils/index.js', () => ({
   validateClaudeCodeInstalled: vi.fn(),
   getProjectWorktrees: vi.fn(),
   launchInteractiveClaude: vi.fn(),
+  launchInteractiveClaudeInNewTerminal: vi.fn(),
+  hasClaudeSessionHistory: vi.fn(),
   resolveTargetWorktrees: vi.fn(),
   promptGroupedMultiSelectBranches: vi.fn(),
+  printInfo: vi.fn(),
+  printSuccess: vi.fn(),
+  confirmAction: vi.fn(),
+  getConfigValue: vi.fn(),
 }));
 
 import { registerResumeCommand } from '../../../src/commands/resume.js';
@@ -29,24 +37,36 @@ import {
   validateClaudeCodeInstalled,
   getProjectWorktrees,
   launchInteractiveClaude,
+  launchInteractiveClaudeInNewTerminal,
+  hasClaudeSessionHistory,
   resolveTargetWorktrees,
   promptGroupedMultiSelectBranches,
+  confirmAction,
+  getConfigValue,
 } from '../../../src/utils/index.js';
 
 const mockedValidateMainWorktree = vi.mocked(validateMainWorktree);
 const mockedValidateClaudeCodeInstalled = vi.mocked(validateClaudeCodeInstalled);
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
 const mockedLaunchInteractiveClaude = vi.mocked(launchInteractiveClaude);
+const mockedLaunchInteractiveClaudeInNewTerminal = vi.mocked(launchInteractiveClaudeInNewTerminal);
+const mockedHasClaudeSessionHistory = vi.mocked(hasClaudeSessionHistory);
 const mockedResolveTargetWorktrees = vi.mocked(resolveTargetWorktrees);
 const mockedPromptGroupedMultiSelectBranches = vi.mocked(promptGroupedMultiSelectBranches);
+const mockedConfirmAction = vi.mocked(confirmAction);
+const mockedGetConfigValue = vi.mocked(getConfigValue);
 
 beforeEach(() => {
   mockedValidateMainWorktree.mockReset();
   mockedValidateClaudeCodeInstalled.mockReset();
   mockedGetProjectWorktrees.mockReset();
   mockedLaunchInteractiveClaude.mockReset();
+  mockedLaunchInteractiveClaudeInNewTerminal.mockReset();
+  mockedHasClaudeSessionHistory.mockReset();
   mockedResolveTargetWorktrees.mockReset();
   mockedPromptGroupedMultiSelectBranches.mockReset();
+  mockedConfirmAction.mockReset();
+  mockedGetConfigValue.mockReset();
 });
 
 describe('registerResumeCommand', () => {
@@ -63,6 +83,7 @@ describe('handleResume', () => {
     const worktree = { path: '/path/feature', branch: 'feature' };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
+    mockedGetConfigValue.mockReturnValue(true);
 
     const program = new Command();
     program.exitOverride();
@@ -83,6 +104,7 @@ describe('handleResume', () => {
     ];
     mockedGetProjectWorktrees.mockReturnValue(worktrees);
     mockedPromptGroupedMultiSelectBranches.mockResolvedValue([worktrees[0]]);
+    mockedGetConfigValue.mockReturnValue(true);
 
     const program = new Command();
     program.exitOverride();
@@ -100,6 +122,7 @@ describe('handleResume', () => {
     const worktree = { path: '/path/feature', branch: 'feature' };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
+    mockedGetConfigValue.mockReturnValue(true);
 
     const program = new Command();
     program.exitOverride();
@@ -108,5 +131,95 @@ describe('handleResume', () => {
 
     expect(mockedResolveTargetWorktrees).toHaveBeenCalled();
     expect(mockedPromptGroupedMultiSelectBranches).not.toHaveBeenCalled();
+  });
+});
+
+describe('handleResume — resumeInPlace 配置', () => {
+  it('resumeInPlace 为 true 时，单选在当前终端就地恢复', async () => {
+    const worktree = { path: '/path/feature', branch: 'feature' };
+    mockedGetProjectWorktrees.mockReturnValue([worktree]);
+    mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
+    mockedGetConfigValue.mockReturnValue(true);
+
+    const program = new Command();
+    program.exitOverride();
+    registerResumeCommand(program);
+    await program.parseAsync(['resume', '-b', 'feature'], { from: 'user' });
+
+    expect(mockedGetConfigValue).toHaveBeenCalledWith('resumeInPlace');
+    expect(mockedLaunchInteractiveClaude).toHaveBeenCalledWith(worktree, { autoContinue: true });
+    expect(mockedLaunchInteractiveClaudeInNewTerminal).not.toHaveBeenCalled();
+  });
+
+  it('resumeInPlace 为 false 时，单选在新终端 Tab 中恢复', async () => {
+    const worktree = { path: '/path/feature', branch: 'feature' };
+    mockedGetProjectWorktrees.mockReturnValue([worktree]);
+    mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
+    mockedGetConfigValue.mockReturnValue(false);
+    mockedHasClaudeSessionHistory.mockReturnValue(true);
+
+    const program = new Command();
+    program.exitOverride();
+    registerResumeCommand(program);
+    await program.parseAsync(['resume', '-b', 'feature'], { from: 'user' });
+
+    expect(mockedGetConfigValue).toHaveBeenCalledWith('resumeInPlace');
+    expect(mockedHasClaudeSessionHistory).toHaveBeenCalledWith(worktree.path);
+    expect(mockedLaunchInteractiveClaudeInNewTerminal).toHaveBeenCalledWith(worktree, true);
+    expect(mockedLaunchInteractiveClaude).not.toHaveBeenCalled();
+  });
+
+  it('resumeInPlace 为 false 且无历史会话时，传 false 给新终端启动', async () => {
+    const worktree = { path: '/path/feature', branch: 'feature' };
+    mockedGetProjectWorktrees.mockReturnValue([worktree]);
+    mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
+    mockedGetConfigValue.mockReturnValue(false);
+    mockedHasClaudeSessionHistory.mockReturnValue(false);
+
+    const program = new Command();
+    program.exitOverride();
+    registerResumeCommand(program);
+    await program.parseAsync(['resume', '-b', 'feature'], { from: 'user' });
+
+    expect(mockedLaunchInteractiveClaudeInNewTerminal).toHaveBeenCalledWith(worktree, false);
+  });
+
+  it('多选时不受 resumeInPlace 影响，始终在新 Tab 中打开', async () => {
+    const worktrees = [
+      { path: '/path/feature-a', branch: 'feature-a' },
+      { path: '/path/feature-b', branch: 'feature-b' },
+    ];
+    mockedGetProjectWorktrees.mockReturnValue(worktrees);
+    mockedPromptGroupedMultiSelectBranches.mockResolvedValue(worktrees);
+    mockedConfirmAction.mockResolvedValue(true);
+    mockedHasClaudeSessionHistory.mockReturnValue(false);
+    mockedGetConfigValue.mockReturnValue(true);
+
+    const program = new Command();
+    program.exitOverride();
+    registerResumeCommand(program);
+    await program.parseAsync(['resume'], { from: 'user' });
+
+    // 多选走 handleBatchResume，不读取 resumeInPlace
+    expect(mockedLaunchInteractiveClaude).not.toHaveBeenCalled();
+    expect(mockedLaunchInteractiveClaudeInNewTerminal).toHaveBeenCalledTimes(2);
+  });
+
+  it('用户未选择任何分支时直接退出', async () => {
+    const worktrees = [
+      { path: '/path/feature-a', branch: 'feature-a' },
+      { path: '/path/feature-b', branch: 'feature-b' },
+    ];
+    mockedGetProjectWorktrees.mockReturnValue(worktrees);
+    mockedPromptGroupedMultiSelectBranches.mockResolvedValue([]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerResumeCommand(program);
+    await program.parseAsync(['resume'], { from: 'user' });
+
+    expect(mockedLaunchInteractiveClaude).not.toHaveBeenCalled();
+    expect(mockedLaunchInteractiveClaudeInNewTerminal).not.toHaveBeenCalled();
+    expect(mockedGetConfigValue).not.toHaveBeenCalled();
   });
 });

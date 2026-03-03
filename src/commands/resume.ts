@@ -15,6 +15,7 @@ import {
   printInfo,
   printSuccess,
   confirmAction,
+  getConfigValue,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
 
@@ -66,10 +67,18 @@ async function handleResume(options: ResumeOptions): Promise<void> {
   }
 
   if (targetWorktrees.length === 1) {
-    // 选中 1 个 → 当前终端恢复（resume 自动续接历史会话）
-    launchInteractiveClaude(targetWorktrees[0], { autoContinue: true });
+    // 选中 1 个 → 根据 resumeInPlace 配置决定打开方式
+    const inPlace = getConfigValue('resumeInPlace');
+    if (inPlace) {
+      // 就地在当前终端恢复
+      launchInteractiveClaude(targetWorktrees[0], { autoContinue: true });
+    } else {
+      // 默认通过 terminalApp 在新 Tab 中恢复
+      const hasPreviousSession = hasClaudeSessionHistory(targetWorktrees[0].path);
+      launchInteractiveClaudeInNewTerminal(targetWorktrees[0], hasPreviousSession);
+    }
   } else {
-    // 选中多个 → 逐个在新终端 Tab 中启动
+    // 选中多个 → 逐个在新终端 Tab 中启动（不受 resumeInPlace 影响）
     await handleBatchResume(targetWorktrees);
   }
 }

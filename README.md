@@ -113,7 +113,7 @@ clawt resume -b <branch>   # 指定分支
 clawt resume                # 交互式多选（按创建日期分组）
 ```
 
-不传 `-b` 时，分支列表按创建日期分组显示，支持全局全选和按组全选。选 1 个在当前终端恢复，选多个自动在独立终端 Tab 中批量恢复（仅 macOS）。
+不传 `-b` 时，分支列表按创建日期分组显示，支持全局全选和按组全选。选 1 个默认在新终端 Tab 中恢复（设置 `resumeInPlace: true` 可改为在当前终端就地恢复），选多个自动在独立终端 Tab 中批量恢复（仅 macOS）。
 
 如果目标 worktree 存在历史会话，会自动继续上次对话（`--continue`）。
 
@@ -290,6 +290,7 @@ clawt alias remove l
 | `confirmDestructiveOps` | `true` | 破坏性操作前确认 |
 | `maxConcurrency` | `0` | run 命令最大并发数，`0` 为不限制 |
 | `terminalApp` | `"auto"` | 批量 resume 使用的终端：`auto` / `iterm2` / `terminal` |
+| `resumeInPlace` | `false` | resume 单选时在当前终端就地恢复，`false` 则在新 Tab 中打开 |
 | `aliases` | `{}` | 命令别名映射（如 `{"l": "list", "r": "run"}`） |
 | `autoUpdate` | `true` | 自动检查新版本（每 24 小时检查一次 npm registry） |
 
