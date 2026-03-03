@@ -8,6 +8,9 @@ export const VALIDATE_MESSAGES = {
     `✓ 已将分支 ${branch} 的最新变更应用到主 worktree（增量模式）\n  暂存区 = 上次快照，工作目录 = 最新变更`,
   /** 增量 validate 降级为全量模式提示 */
   INCREMENTAL_VALIDATE_FALLBACK: '增量对比失败，已降级为全量模式',
+  /** 增量 validate 检测到目标 worktree 无新变更 */
+  INCREMENTAL_VALIDATE_NO_CHANGES: (branch: string) =>
+    `分支 ${branch} 自上次 validate 以来没有新的变更，已恢复到上次验证状态`,
   /** validate 状态已清理 */
   VALIDATE_CLEANED: (branch: string) => `✓ 分支 ${branch} 的 validate 状态已清理`,
   /** validate patch apply 失败，提示用户同步主分支 */
