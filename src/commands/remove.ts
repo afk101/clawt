@@ -23,7 +23,7 @@ import {
   resolveTargetWorktrees,
   getValidateBranchName,
   deleteValidateBranch,
-  ensureOnMainWorkBranch,
+  requireProjectConfig,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
 
@@ -56,6 +56,7 @@ export function registerRemoveCommand(program: Command): void {
  */
 async function handleRemove(options: RemoveOptions): Promise<void> {
   validateMainWorktree();
+  requireProjectConfig();
 
   const projectName = getProjectName();
   logger.info(`remove 命令执行，项目: ${projectName}`);
@@ -98,8 +99,6 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   const failures: Array<{ path: string; error: string }> = [];
   for (const wt of worktreesToRemove) {
     try {
-      // 确保当前在主工作分支上
-      await ensureOnMainWorkBranch();
       removeWorktreeByPath(wt.path);
       if (shouldDeleteBranch) {
         deleteBranch(wt.branch);

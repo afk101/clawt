@@ -23,7 +23,6 @@ import {
   getMainWorkBranch,
   rebuildValidateBranch,
   getValidateBranchName,
-  ensureOnMainWorkBranch,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -140,7 +139,6 @@ export async function executeSyncForBranch(targetWorktreePath: string, branch: s
 async function handleSync(options: SyncOptions): Promise<void> {
   validateMainWorktree();
   requireProjectConfig();
-  await ensureOnMainWorkBranch();
 
   logger.info(`sync 命令执行，分支: ${options.branch ?? '(未指定)'}`);
 
