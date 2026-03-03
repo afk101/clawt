@@ -245,6 +245,7 @@ export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');
 │   └── <project-name>/                  # 以项目名分组
 │       ├── <branchName>.tree            # 每个分支一个 tree hash 快照文件（存储 git tree 对象的 hash）
 │       ├── <branchName>.head            # 每个分支一个 HEAD commit hash 快照文件（存储快照时验证分支的 HEAD commit hash）
+│       ├── <branchName>.staged          # 每个分支一个 staged tree hash 快照文件（存储 validate 结束时暂存区对应的 tree hash，用于无变更时恢复）
 │       └── ...
 ├── projects/<project-name>/             # 项目级配置目录
 │   └── config.json                      # 项目级配置（含 clawtMainWorkBranch）

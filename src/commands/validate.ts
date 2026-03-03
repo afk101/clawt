@@ -161,20 +161,35 @@ async function handlePatchApplyFailure(targetWorktreePath: string, branchName: s
 }
 
 /**
+ * 计算当前主 worktree 工作目录变更的 git tree hash
+ * 操作序列：git add . → git write-tree → git restore --staged .
+ * 仅计算 tree hash，不写入快照文件
+ * @param {string} mainWorktreePath - 主 worktree 路径
+ * @returns {string} 当前工作目录变更对应的 tree hash
+ */
+function computeCurrentTreeHash(mainWorktreePath: string): string {
+  gitAddAll(mainWorktreePath);
+  const treeHash = gitWriteTree(mainWorktreePath);
+  gitRestoreStaged(mainWorktreePath);
+  return treeHash;
+}
+
+/**
  * 保存当前主 worktree 工作目录变更为 git tree 对象快照
  * 操作序列：git add . → git write-tree → git restore --staged .
  * 同时保存当前 HEAD commit hash，用于增量 validate 时对齐基准
  * @param {string} mainWorktreePath - 主 worktree 路径
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
+ * @param {string} [stagedTreeHash=''] - validate 结束时暂存区对应的 tree hash
  * @returns {string} 生成的 tree hash
  */
-function saveCurrentSnapshotTree(mainWorktreePath: string, projectName: string, branchName: string): string {
+function saveCurrentSnapshotTree(mainWorktreePath: string, projectName: string, branchName: string, stagedTreeHash = ''): string {
   gitAddAll(mainWorktreePath);
   const treeHash = gitWriteTree(mainWorktreePath);
   gitRestoreStaged(mainWorktreePath);
   const headCommitHash = getHeadCommitHash(mainWorktreePath);
-  writeSnapshot(projectName, branchName, treeHash, headCommitHash);
+  writeSnapshot(projectName, branchName, treeHash, headCommitHash, stagedTreeHash);
   return treeHash;
 }
 
@@ -266,8 +281,8 @@ async function handleFirstValidate(targetWorktreePath: string, mainWorktreePath:
  * @param {boolean} hasUncommitted - 目标 worktree 是否有未提交修改
  */
 async function handleIncrementalValidate(targetWorktreePath: string, mainWorktreePath: string, projectName: string, branchName: string, hasUncommitted: boolean): Promise<void> {
-  // 步骤 1：读取旧快照（tree hash + 当时的 HEAD commit hash）
-  const { treeHash: oldTreeHash, headCommitHash: oldHeadCommitHash } = readSnapshot(projectName, branchName);
+  // 步骤 1：读取旧快照（tree hash + 当时的 HEAD commit hash + 暂存区 tree hash）
+  const { treeHash: oldTreeHash, headCommitHash: oldHeadCommitHash, stagedTreeHash: oldStagedTreeHash } = readSnapshot(projectName, branchName);
 
   // 步骤 2：确保主 worktree 干净（调用方已通过 handleDirtyMainWorktree 处理）
   // 这里做兜底清理，防止 handleDirtyMainWorktree 之后仍有残留
@@ -296,13 +311,33 @@ async function handleIncrementalValidate(targetWorktreePath: string, mainWorktre
     return;
   }
 
-  // 步骤 5：保存最新快照为 git tree 对象（同时记录当前 HEAD）
-  saveCurrentSnapshotTree(mainWorktreePath, projectName, branchName);
+  // 步骤 5：计算当前变更的 tree hash，检测是否有新变更
+  const newTreeHash = computeCurrentTreeHash(mainWorktreePath);
+  const currentHeadCommitHash = getHeadCommitHash(mainWorktreePath);
+
+  // 检测目标 worktree 自上次 validate 以来是否有新变更
+  const hasNewChanges = newTreeHash !== oldTreeHash
+    || (oldHeadCommitHash && oldHeadCommitHash !== currentHeadCommitHash);
+
+  if (!hasNewChanges) {
+    // 无新变更：不更新快照，恢复到上次 validate 结束时的完整状态
+    if (oldStagedTreeHash) {
+      try {
+        gitReadTree(oldStagedTreeHash, mainWorktreePath);
+      } catch (error) {
+        logger.warn(`恢复暂存区失败: ${error}`);
+      }
+    }
+    printInfo(MESSAGES.INCREMENTAL_VALIDATE_NO_CHANGES(branchName));
+    printSuccess(MESSAGES.VALIDATE_SUCCESS_WITH_BRANCH(branchName, validateBranchName));
+    return;
+  }
+
+  // 有新变更：执行暂存区载入并记录 stagedTreeHash
 
   // 步骤 6：将旧变更状态载入暂存区
+  let newStagedTreeHash = '';
   try {
-    const currentHeadCommitHash = getHeadCommitHash(mainWorktreePath);
-
     if (oldHeadCommitHash && oldHeadCommitHash !== currentHeadCommitHash) {
       // HEAD 发生了变化：
       // 将旧变更 patch（旧 tree 相对于旧 HEAD 的差异）重放到当前 HEAD 暂存区上，
@@ -313,10 +348,13 @@ async function handleIncrementalValidate(targetWorktreePath: string, mainWorktre
       if (oldChangePatch.length > 0 && gitApplyCachedCheck(oldChangePatch, mainWorktreePath)) {
         // 无冲突：apply --cached 到当前 HEAD 暂存区
         gitApplyCachedFromStdin(oldChangePatch, mainWorktreePath);
+        // 记录暂存区的 tree hash（gitWriteTree 不修改暂存区内容，仅生成 tree 对象）
+        newStagedTreeHash = gitWriteTree(mainWorktreePath);
       } else if (oldChangePatch.length > 0) {
         // 有冲突：降级为全量模式（暂存区保持为空）
         logger.warn('旧变更 patch 与当前 HEAD 冲突，降级为全量模式');
         printWarning(MESSAGES.INCREMENTAL_VALIDATE_FALLBACK);
+        writeSnapshot(projectName, branchName, newTreeHash, currentHeadCommitHash, '');
         printSuccess(MESSAGES.VALIDATE_SUCCESS_WITH_BRANCH(branchName, validateBranchName));
         return;
       }
@@ -324,15 +362,20 @@ async function handleIncrementalValidate(targetWorktreePath: string, mainWorktre
     } else {
       // HEAD 未变化（或旧版快照无 HEAD 信息）：直接 read-tree 旧快照
       gitReadTree(oldTreeHash, mainWorktreePath);
+      newStagedTreeHash = oldTreeHash;
     }
   } catch (error) {
     // 旧 tree 对象无法读取（可能被 git gc 回收），降级为全量模式
     logger.warn(`增量 read-tree 失败: ${error}`);
     printWarning(MESSAGES.INCREMENTAL_VALIDATE_FALLBACK);
     // 降级后暂存区保持为空，工作目录为最新全量变更，与首次 validate 一致
+    writeSnapshot(projectName, branchName, newTreeHash, currentHeadCommitHash, '');
     printSuccess(MESSAGES.VALIDATE_SUCCESS_WITH_BRANCH(branchName, validateBranchName));
     return;
   }
+
+  // 步骤 7：写入新快照（包含 stagedTreeHash 供下次无变更时恢复用）
+  writeSnapshot(projectName, branchName, newTreeHash, currentHeadCommitHash, newStagedTreeHash);
 
   // 结果：暂存区=上次快照，工作目录=最新全量变更
   printSuccess(MESSAGES.INCREMENTAL_VALIDATE_SUCCESS(branchName));

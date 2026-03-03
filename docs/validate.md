@@ -30,7 +30,7 @@ validate 不再在主工作分支上直接 apply patch，而是先切换到目�
 
 **快照机制：**
 
-validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更通过 `git write-tree` 保存为 git tree 对象，并将 tree hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），同时将验证分支的 HEAD commit hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.head`），用于增量 validate 时对齐基准。当再次执行 validate 时，如果验证分支 HEAD 未变化（正常情况），通过 `git read-tree` 将上次快照的 tree 对象载入暂存区；如果验证分支 HEAD 已变化（sync 后重建了验证分支），则将旧变更 patch（旧 tree 相对于旧 HEAD 的差异）重放到当前 HEAD 暂存区上，避免新旧 tree 基准不同导致 diff 混入 HEAD 变化的内容。最终用户可通过 `git diff` 查看两次 validate 之间的增量差异。
+validate 命令引入了**快照（snapshot）机制**来支持增量对比。每次 validate 执行成功后，会将当前全量变更通过 `git write-tree` 保存为 git tree 对象，并将 tree hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），同时将验证分支的 HEAD commit hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.head`），以及 validate 结束时暂存区对应的 tree hash 记录到文件（`~/.clawt/validate-snapshots/<project>/<branchName>.staged`），用于增量 validate 时对齐基准和无变更恢复。当再次执行 validate 时，先计算当前变更的 tree hash 与旧快照对比：如果没有新变更（tree hash 和 HEAD 均未变化），直接通过 `git read-tree` 恢复上次 validate 结束时的暂存区状态，跳过后续步骤；如果有新变更，则继续执行暂存区载入流程——如果验证分支 HEAD 未变化（正常情况），通过 `git read-tree` 将上次快照的 tree 对象载入暂存区；如果验证分支 HEAD 已变化（sync 后重建了验证分支），则将旧变更 patch（旧 tree 相对于旧 HEAD 的差异）重放到当前 HEAD 暂存区上，避免新旧 tree 基准不同导致 diff 混入 HEAD 变化的内容。最终用户可通过 `git diff` 查看两次 validate 之间的增量差异。
 
 **运行流程：**
 
@@ -288,7 +288,7 @@ clawt validate -b feature-scheme-1 -r "pnpm test & pnpm build"
 
 ##### 步骤 1：读取旧快照
 
-在清空主 worktree 之前，读取上次保存的快照 tree hash 及当时的 HEAD commit hash。
+在清空主 worktree 之前，读取上次保存的快照 tree hash、当时的 HEAD commit hash 和暂存区 tree hash（`stagedTreeHash`）。
 
 ##### 步骤 2：确保主 worktree 干净
 
@@ -306,9 +306,27 @@ git checkout clawt-validate-<branchName>
 
 通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 4）。如果 patch apply 失败，同样进入自动 sync 交互流程（见首次 validate 的 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)），validate 流程提前结束。
 
-##### 步骤 5：保存最新快照为 git tree 对象
+##### 步骤 5：检测是否有新变更
 
-将最新全量变更保存为新的 tree 对象（覆盖旧快照），同时记录验证分支的 HEAD commit hash（流程同首次 validate 的步骤 5）。
+计算当前工作目录变更的 tree hash（`git add . → git write-tree → git restore --staged .`），并与旧快照的 tree hash 及 HEAD commit hash 对比：
+
+```bash
+# 计算当前变更的 tree hash
+git add .
+git write-tree  # → newTreeHash
+git restore --staged .
+
+# 获取当前 HEAD
+git rev-parse HEAD  # → currentHeadCommitHash
+
+# 判断是否有新变更
+hasNewChanges = (newTreeHash !== oldTreeHash) || (oldHeadCommitHash !== currentHeadCommitHash)
+```
+
+- **无新变更**（tree hash 和 HEAD 均未变化）→ 不更新快照，直接通过 `git read-tree <oldStagedTreeHash>` 恢复上次 validate 结束时的暂存区状态，输出提示后返回
+- **有新变更** → 继续步骤 6
+
+> 无变更检测避免了重复 validate 时不必要的快照更新和暂存区重载操作。恢复上次暂存区状态后，用户看到的 `git diff` 结果与上次 validate 结束时完全一致。
 
 ##### 步骤 6：将旧变更状态载入暂存区
 
@@ -322,8 +340,8 @@ git checkout clawt-validate-<branchName>
 git read-tree <旧 tree hash>
 ```
 
-- **读取成功** → 结果：暂存区=上次快照，工作目录=最新全量变更（用户可通过 `git diff` 查看增量差异）
-- **读取失败**（tree 对象可能被 git gc 回收）→ 降级为全量模式，暂存区保持为空，等同于首次 validate 的结果
+- **读取成功** → 记录 `newStagedTreeHash = oldTreeHash`，结果：暂存区=上次快照，工作目录=最新全量变更（用户可通过 `git diff` 查看增量差异）
+- **读取失败**（tree 对象可能被 git gc 回收）→ 降级为全量模式，写入快照（`stagedTreeHash` 为空）后返回，暂存区保持为空，等同于首次 validate 的结果
 
 > 这是最常见的路径。相比重构前，正常情况不再需要处理 HEAD 变化的复杂逻辑，代码路径更简单、更可靠。
 
@@ -343,25 +361,48 @@ git apply --cached --check < patch
 
 # 无冲突：apply --cached 到当前 HEAD 暂存区
 git apply --cached < patch
+
+# 记录暂存区的 tree hash
+git write-tree  # → newStagedTreeHash
 ```
 
 - **patch 为空**（旧变更为空）→ 暂存区保持干净
-- **无冲突** → apply --cached 到当前 HEAD 暂存区，结果与正常情况一致
-- **有冲突** → 降级为全量模式（暂存区保持为空），等同于首次 validate 的结果
+- **无冲突** → apply --cached 到当前 HEAD 暂存区，通过 `git write-tree` 记录 `newStagedTreeHash`，结果与正常情况一致
+- **有冲突** → 降级为全量模式（暂存区保持为空），写入快照（`stagedTreeHash` 为空）后返回
 
-##### 步骤 7：输出成功提示
+##### 步骤 7：写入新快照
+
+将步骤 5 计算的 `newTreeHash`、当前 HEAD commit hash 和步骤 6 记录的 `newStagedTreeHash` 写入快照文件，供下次 validate 使用：
+
+```bash
+# 写入 ~/.clawt/validate-snapshots/<project>/<branchName>.tree
+echo <newTreeHash>
+
+# 写入 ~/.clawt/validate-snapshots/<project>/<branchName>.head
+echo <currentHeadCommitHash>
+
+# 写入 ~/.clawt/validate-snapshots/<project>/<branchName>.staged
+echo <newStagedTreeHash>
+```
+
+> `stagedTreeHash` 记录了 validate 结束时暂存区的完整状态。下次 validate 如果检测到无新变更，可直接通过此值恢复暂存区，避免重复执行 read-tree 或 apply --cached 流程。
+
+##### 步骤 8：输出成功提示
 
 ```
 # 增量模式成功
 ✓ 已将分支 feature-scheme-1 的最新变更应用到主 worktree（增量模式）
   暂存区 = 上次快照，工作目录 = 最新变更
 
+# 增量无变更
+分支 feature-scheme-1 自上次 validate 以来没有新的变更，已恢复到上次验证状态
+
 # 增量降级为全量
 ✓ 已切换到验证分支 clawt-validate-feature-scheme-1 并应用分支 feature-scheme-1 的变更
   可以开始验证了
 ```
 
-##### 步骤 8：执行 `--run` 命令（可选）
+##### 步骤 9：执行 `--run` 命令（可选）
 
 与首次 validate 的步骤 7 相同，增量 validate 成功后也会执行 `-r, --run` 指定的命令。
 

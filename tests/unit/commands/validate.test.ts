@@ -259,7 +259,7 @@ describe('handleValidate', () => {
 
     expect(mockedGitDiffBinaryAgainstBranch).toHaveBeenCalledWith('feature', '/repo');
     expect(mockedGitApplyFromStdin).toHaveBeenCalled();
-    expect(mockedWriteSnapshot).toHaveBeenCalledWith('test-project', 'feature', 'treehash123', 'headhash456');
+    expect(mockedWriteSnapshot).toHaveBeenCalledWith('test-project', 'feature', 'treehash123', 'headhash456', '');
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
