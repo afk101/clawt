@@ -6,4 +6,4 @@ export type { TaskResult, TaskSummary } from './taskResult.js';
 export type { WorktreeDetailedStatus, MainWorktreeStatus, SnapshotInfo, SnapshotSummary, StatusResult } from './status.js';
 export type { TaskFileEntry, ParseTaskFileOptions } from './taskFile.js';
 export type { ProjectOverview, ProjectWorktreeDetail, ProjectDetailResult, ProjectsOverviewResult } from './project.js';
-export type { ProjectConfig } from './projectConfig.js';
+export type { ProjectConfig, ProjectConfigItemDefinition, ProjectConfigDefinitions } from './projectConfig.js';

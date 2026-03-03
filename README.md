@@ -43,10 +43,10 @@ clawt merge -b branch-1 -m "feat: 实现xxx功能"
 ```bash
 clawt init                # 以当前分支作为主工作分支进行初始化
 clawt init -b <branch>    # 指定主工作分支名
-clawt init show           # 查看当前项目的 init 配置（JSON 格式）
+clawt init show           # 交互式查看和修改项目配置
 ```
 
-设置项目的主工作分支。重复执行会更新主工作分支配置。
+设置项目的主工作分支。重复执行会更新主工作分支配置。`init show` 提供交互式面板，可查看和修改项目配置项（如 validate 成功后自动执行的命令）。
 
 ### `clawt run` — 创建 worktree 并执行任务
 
@@ -140,7 +140,7 @@ clawt validate -b <branch> -r "pnpm test & pnpm build"  # 并行执行多个命�
 
 当 patch apply 失败（目标分支与主分支差异过大）时，会自动询问是否执行 `sync` 同步主分支到目标 worktree，无需手动操作。
 
-`-r, --run` 选项可在 validate 成功后自动在主 worktree 中执行指定命令（如测试、构建等），命令执行失败不影响 validate 结果。支持用 `&` 分隔多个命令并行执行：
+`-r, --run` 选项可在 validate 成功后自动在主 worktree 中执行指定命令（如测试、构建等），命令执行失败不影响 validate 结果。不传 `-r` 时会自动从项目配置的 `validateRunCommand` 读取（可通过 `clawt init show` 设置）。支持用 `&` 分隔多个命令并行执行：
 
 | 用法 | 行为 |
 | ---- | ---- |

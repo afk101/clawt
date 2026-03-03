@@ -48,6 +48,7 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       CONFIG_INVALID_ENUM: (key: string, validValues: readonly string[]) =>
         `配置项 ${key} 仅接受以下值: ${validValues.join(', ')}`,
       CONFIG_INPUT_PROMPT: (key: string) => `输入 ${key} 的新值`,
+      CONFIG_SELECT_PROMPT: '选择要修改的配置项',
     },
   };
 });
@@ -58,6 +59,7 @@ import {
   parseConfigValue,
   promptConfigValue,
   formatConfigValue,
+  interactiveConfigEditor,
 } from '../../../src/utils/config-strategy.js';
 
 beforeEach(() => {
@@ -184,7 +186,7 @@ describe('promptConfigValue', () => {
 
   it('字符串 + 有 allowedValues 使用 Select 提示', async () => {
     mockSelectRun.mockResolvedValueOnce('iterm2');
-    const result = await promptConfigValue('terminalApp', 'auto');
+    const result = await promptConfigValue('terminalApp', 'auto', ['auto', 'iterm2', 'terminal']);
     expect(result).toBe('iterm2');
     expect(mockSelectRun).toHaveBeenCalledTimes(1);
   });
@@ -216,5 +218,79 @@ describe('formatConfigValue', () => {
   it('字符串显示为 cyan', () => {
     const result = formatConfigValue('hello');
     expect(result).toContain('hello');
+  });
+
+  it('undefined 显示为 (未设置)', () => {
+    const result = formatConfigValue(undefined);
+    expect(result).toContain('未设置');
+  });
+
+  it('null 显示为 (未设置)', () => {
+    const result = formatConfigValue(null);
+    expect(result).toContain('未设置');
+  });
+});
+
+describe('interactiveConfigEditor', () => {
+  it('选择配置项并返回新值（布尔类型）', async () => {
+    // 第一次 Select 选择配置项，第二次 Select 选择布尔值
+    mockSelectRun.mockResolvedValueOnce('enabled');
+    mockSelectRun.mockResolvedValueOnce('true');
+
+    const config = { enabled: false, name: 'test' };
+    const definitions = {
+      enabled: { description: '是否启用' },
+      name: { description: '名称' },
+    };
+
+    const result = await interactiveConfigEditor(config, definitions);
+    expect(result.key).toBe('enabled');
+    expect(result.newValue).toBe(true);
+  });
+
+  it('选择配置项并返回新值（字符串类型）', async () => {
+    mockSelectRun.mockResolvedValueOnce('name');
+    mockInputRun.mockResolvedValueOnce('new-name');
+
+    const config = { enabled: false, name: 'test' };
+    const definitions = {
+      enabled: { description: '是否启用' },
+      name: { description: '名称' },
+    };
+
+    const result = await interactiveConfigEditor(config, definitions);
+    expect(result.key).toBe('name');
+    expect(result.newValue).toBe('new-name');
+  });
+
+  it('支持自定义 selectPrompt', async () => {
+    mockSelectRun.mockResolvedValueOnce('name');
+    mockInputRun.mockResolvedValueOnce('value');
+
+    const config = { name: 'test' };
+    const definitions = { name: { description: '名称' } };
+
+    await interactiveConfigEditor(config, definitions, {
+      selectPrompt: '自定义提示',
+    });
+
+    // 验证 Select 被调用（无需检查具体参数，因为 mock 不保留构造参数）
+    expect(mockSelectRun).toHaveBeenCalledTimes(1);
+  });
+
+  it('有 allowedValues 的字符串配置项使用 Select 提示', async () => {
+    mockSelectRun.mockResolvedValueOnce('mode');
+    mockSelectRun.mockResolvedValueOnce('fast');
+
+    const config = { mode: 'normal' };
+    const definitions = {
+      mode: { description: '模式', allowedValues: ['normal', 'fast', 'slow'] as const },
+    };
+
+    const result = await interactiveConfigEditor(config, definitions);
+    expect(result.key).toBe('mode');
+    expect(result.newValue).toBe('fast');
+    // 两次 Select：一次选择配置项，一次选择枚举值
+    expect(mockSelectRun).toHaveBeenCalledTimes(2);
   });
 });

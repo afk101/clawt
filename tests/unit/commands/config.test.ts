@@ -38,6 +38,7 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
     parseConfigValue: original.parseConfigValue,
     promptConfigValue: original.promptConfigValue,
     formatConfigValue: original.formatConfigValue,
+    interactiveConfigEditor: original.interactiveConfigEditor,
   };
 });
 
