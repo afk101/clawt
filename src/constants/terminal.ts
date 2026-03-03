@@ -17,3 +17,4 @@ export const VALID_TERMINAL_APPS: readonly string[] = ['auto', 'iterm2', 'termin
 
 /** iTerm2 应用路径，用于 auto 模式检测是否已安装 */
 export const ITERM2_APP_PATH = '/Applications/iTerm.app';
+

@@ -35,6 +35,10 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     description: '批量 resume 使用的终端应用：auto（自动检测）、iterm2、terminal（macOS）',
     allowedValues: VALID_TERMINAL_APPS,
   },
+  resumeInPlace: {
+    defaultValue: false,
+    description: 'resume 单选时是否在当前终端就地打开，false 则通过 terminalApp 在新 Tab 中打开',
+  },
   aliases: {
     defaultValue: {} as Record<string, string>,
     description: '命令别名映射',

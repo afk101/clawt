@@ -38,8 +38,10 @@ clawt resume
      3. **无匹配** → 报错退出，并列出所有可用分支名
 4. **根据选中数量自动分发**：
    - **用户未选择任何分支** → 直接退出
-   - **选中 1 个** → 在当前终端恢复（同原有行为），通过 `launchInteractiveClaude()` 启动（使用 `spawnSync` + `inherit stdio`）
-   - **选中多个** → 进入批量恢复流程（见下文）
+   - **选中 1 个** → 根据全局配置项 `resumeInPlace` 决定打开方式：
+     - `resumeInPlace: true` → 在当前终端就地恢复，通过 `launchInteractiveClaude()` 启动（使用 `spawnSync` + `inherit stdio`）
+     - `resumeInPlace: false`（默认） → 通过 `launchInteractiveClaudeInNewTerminal()` 在新终端 Tab 中恢复，终端类型由 `terminalApp` 配置控制
+   - **选中多个** → 进入批量恢复流程（见下文），始终在新终端 Tab 中打开，不受 `resumeInPlace` 影响
 
 **批量恢复流程：**
 

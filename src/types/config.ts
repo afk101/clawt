@@ -12,6 +12,8 @@ export interface ClawtConfig {
   maxConcurrency: number;
   /** 批量 resume 使用的终端应用：'auto'（自动检测）、'iterm2'、'terminal'（macOS） */
   terminalApp: string;
+  /** resume 单选时是否在当前终端就地打开，false 则通过 terminalApp 在新 Tab 中打开 */
+  resumeInPlace: boolean;
   /** 命令别名映射，键为别名，值为目标内置命令名 */
   aliases: Record<string, string>;
   /** 是否启用自动更新检查 */

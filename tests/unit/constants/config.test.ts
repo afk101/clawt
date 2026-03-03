@@ -33,6 +33,7 @@ describe('DEFAULT_CONFIG', () => {
     expect(DEFAULT_CONFIG.confirmDestructiveOps).toBe(true);
     expect(DEFAULT_CONFIG.maxConcurrency).toBe(0);
     expect(DEFAULT_CONFIG.aliases).toEqual({});
+    expect(DEFAULT_CONFIG.resumeInPlace).toBe(false);
   });
 });
 
