@@ -21,6 +21,7 @@ import {
   printInfo,
   printDoubleSeparator,
   printSeparator,
+  InteractivePanel,
 } from '../utils/index.js';
 
 /**
@@ -32,8 +33,9 @@ export function registerStatusCommand(program: Command): void {
     .command('status')
     .description('显示项目全局状态总览（支持 --json 格式输出）')
     .option('--json', '以 JSON 格式输出')
-    .action((options: StatusOptions) => {
-      handleStatus(options);
+    .option('-i, --interactive', '交互式面板模式')
+    .action(async (options: StatusOptions) => {
+      await handleStatus(options);
     });
 }
 
@@ -41,8 +43,15 @@ export function registerStatusCommand(program: Command): void {
  * 执行 status 命令的核心逻辑
  * @param {StatusOptions} options - 命令选项
  */
-function handleStatus(options: StatusOptions): void {
+async function handleStatus(options: StatusOptions): Promise<void> {
   validateMainWorktree();
+
+  // 交互式面板模式
+  if (options.interactive) {
+    const panel = new InteractivePanel(collectStatus);
+    await panel.start();
+    return;
+  }
 
   const statusResult = collectStatus();
 
@@ -60,7 +69,7 @@ function handleStatus(options: StatusOptions): void {
  * 收集项目全局状态信息
  * @returns {StatusResult} 完整的状态数据
  */
-function collectStatus(): StatusResult {
+export function collectStatus(): StatusResult {
   const projectName = getProjectName();
   const currentBranch = getCurrentBranch();
   const isClean = isWorkingDirClean();

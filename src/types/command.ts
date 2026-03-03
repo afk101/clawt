@@ -68,6 +68,8 @@ export interface ListOptions {
 export interface StatusOptions {
   /** 以 JSON 格式输出 */
   json?: boolean;
+  /** 交互式面板模式 */
+  interactive?: boolean;
 }
 
 /** projects 命令选项 */
