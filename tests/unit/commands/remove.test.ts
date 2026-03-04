@@ -25,6 +25,10 @@ vi.mock('../../../src/constants/index.js', () => ({
     REMOVE_MULTIPLE_MATCHES: (name: string) => `"${name}" 匹配到多个分支`,
     REMOVE_NO_MATCH: (name: string, branches: string[]) => `未找到与 "${name}" 匹配的分支，可用：${branches.join(', ')}`,
     REMOVE_BRANCHES_KEPT: '已保留本地分支，可稍后使用 git branch -D <分支名> 手动删除',
+    REMOVE_BRANCH_IS_CURRENT: (branch: string) =>
+      `无法移除：分支 ${branch} 是主 worktree 当前所在分支，请先切换到其他分支后再移除`,
+    REMOVE_VALIDATE_BRANCH_IS_CURRENT: (branch: string, validateBranch: string) =>
+      `无法移除：分支 ${branch} 的验证分支 ${validateBranch} 是主 worktree 当前所在分支，请先切换到其他分支后再移除`,
   },
 }));
 
@@ -49,6 +53,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
   getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
   deleteValidateBranch: vi.fn(),
+  getCurrentBranch: vi.fn(),
 }));
 
 import { registerRemoveCommand } from '../../../src/commands/remove.js';
@@ -66,6 +71,7 @@ import {
   printError,
   printHint,
   resolveTargetWorktrees,
+  getCurrentBranch,
 } from '../../../src/utils/index.js';
 
 const mockedGetProjectName = vi.mocked(getProjectName);
@@ -80,6 +86,7 @@ const mockedPrintSuccess = vi.mocked(printSuccess);
 const mockedPrintError = vi.mocked(printError);
 const mockedPrintHint = vi.mocked(printHint);
 const mockedResolveTargetWorktrees = vi.mocked(resolveTargetWorktrees);
+const mockedGetCurrentBranch = vi.mocked(getCurrentBranch);
 
 beforeEach(() => {
   vi.mocked(validateMainWorktree).mockReset();
@@ -95,6 +102,8 @@ beforeEach(() => {
   mockedPrintError.mockReset();
   mockedPrintHint.mockReset();
   mockedResolveTargetWorktrees.mockReset();
+  mockedGetCurrentBranch.mockReset();
+  mockedGetCurrentBranch.mockReturnValue('main');
 });
 
 describe('registerRemoveCommand', () => {

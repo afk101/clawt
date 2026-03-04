@@ -34,6 +34,7 @@
   - [5.17 自动更新检查](./update-check.md)
   - [5.18 跨项目 Worktree 概览](./projects.md)
   - [5.19 初始化项目级配置](./init.md)
+  - [5.20 切换回主工作分支](./home.md)
 - [6. 验证架构规则](#6-验证架构规则)
 - [7. 错误处理规范](#7-错误处理规范)
 - [8. 非功能性需求](#8-非功能性需求)
@@ -292,6 +293,7 @@ async function interactiveConfigEditor<T extends object>(
 | `clawt alias`         | 管理命令别名（列出 / 设置 / 移除）                       | 5.15     |
 | `clawt completion`    | 为终端提供 shell 自动补全功能（bash/zsh）              | 5.16     |
 | `clawt projects`      | 展示所有项目的 worktree 概览，或查看指定项目的 worktree 详情 | 5.17     |
+| `clawt home`          | 快速切换回主工作分支                                      | 5.20     |
 
 **全局选项：**
 
@@ -325,6 +327,7 @@ async function interactiveConfigEditor<T extends object>(
 - [5.17 自动更新检查](./update-check.md)
 - [5.18 跨项目 Worktree 概览](./projects.md)
 - [5.19 初始化项目级配置](./init.md)
+- [5.20 切换回主工作分支](./home.md)
 
 ---
 
@@ -333,12 +336,12 @@ async function interactiveConfigEditor<T extends object>(
 以下规则适用于验证分支架构的所有实现工作：
 
 1. **不兼容旧版本**：本次重构不考虑旧版本数据、旧版本创建的 worktree 或旧版本配置的兼容性。所有命令均假定验证分支和项目级配置已按新架构存在。用户需删除旧 worktree 后重新创建。
-2. **项目级配置前置校验**：仅对 create、run、validate、sync、remove、merge、reset 这 7 个核心命令添加检测，执行时必须先检查项目级配置（`~/.clawt/projects/<projectName>/config.json`）是否存在且包含 `clawtMainWorkBranch`。如果不存在，直接报错退出并提示用户先执行 `clawt init`：
+2. **项目级配置前置校验**：仅对 create、run、validate、sync、remove、merge、reset、home 这 8 个核心命令添加检测，执行时必须先检查项目级配置（`~/.clawt/projects/<projectName>/config.json`）是否存在且包含 `clawtMainWorkBranch`。如果不存在，直接报错退出并提示用户先执行 `clawt init`：
    ```
    ✗ 该项目尚未初始化，请先执行 clawt init -b<branchName>设置主工作分支
    ```
    其他命令（list、resume、config、status、alias、projects、completion）不受影响，无需添加该校验。
-   > **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` → `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、merge）**无需再显式调用 `requireProjectConfig()`**，避免重复校验。sync 和 remove 命令因不依赖主 worktree 的分支状态而不调用 `ensureOnMainWorkBranch`，需自行显式调用 `requireProjectConfig()`。reset 命令同理，也需自行调用 `requireProjectConfig()`。
+   > **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` → `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、merge）**无需再显式调用 `requireProjectConfig()`**，避免重复校验。sync 和 remove 命令因不依赖主 worktree 的分支状态而不调用 `ensureOnMainWorkBranch`，需自行显式调用 `requireProjectConfig()`。reset 和 home 命令同理，也需自行调用 `requireProjectConfig()`。
 3. **主分支名统一从项目级配置获取**：所有需要获取主分支名的场景（sync 中合并主分支、merge 中计算 merge-base、切回主分支等），统一使用项目级配置中的 `clawtMainWorkBranch`，不再通过 `getCurrentBranch(mainWorktreePath)` 动态获取。因为在新架构下，主 worktree 可能处于验证分支上，`getCurrentBranch` 会返回验证分支名而非真正的主工作分支名。
 4. **测试文件全量更新**：本次重构涉及的所有命令（init、create、run、validate、sync、remove、merge、reset），其对应的测试文件必须同步更新，确保覆盖新增的验证分支逻辑、项目级配置逻辑和变更后的流程。
 
