@@ -14,6 +14,7 @@ import { PROJECTS_MESSAGES } from './projects.js';
 import { COMPLETION_MESSAGES } from './completion.js';
 import { UPDATE_MESSAGES, UPDATE_COMMANDS } from './update.js';
 import { INIT_MESSAGES } from './init.js';
+import { HOME_MESSAGES } from './home.js';
 import { PANEL_FOOTER_SHORTCUTS, PANEL_FOOTER_COUNTDOWN, PANEL_OVERFLOW_DOWN_HINT, PANEL_OVERFLOW_UP_HINT, PANEL_SNAPSHOT_SUMMARY, PANEL_NO_WORKTREES as PANEL_NO_WORKTREES_MSG, PANEL_PRESS_ENTER_TO_RETURN, PANEL_NOT_TTY, PANEL_TITLE } from './interactive-panel.js';
 
 export { CONFIG_ALIAS_DISABLED_HINT };
@@ -40,4 +41,5 @@ export const MESSAGES = {
   ...PROJECTS_MESSAGES,
   ...COMPLETION_MESSAGES,
   ...INIT_MESSAGES,
+  ...HOME_MESSAGES,
 } as const;

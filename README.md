@@ -203,6 +203,14 @@ clawt status -i       # 交互式面板模式（实时刷新，支持键盘导�
 clawt reset
 ```
 
+### `clawt home` — 切换回主工作分支
+
+```bash
+clawt home
+```
+
+如果当前已在主工作分支上，会提示无需切换。
+
 ### `clawt projects` — 跨项目 worktree 概览
 
 ```bash
