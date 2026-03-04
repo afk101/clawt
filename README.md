@@ -17,7 +17,9 @@ npm i -g clawt
 ## 快速开始
 
 ```bash
-# 1. 在项目根目录（包含 .git 的目录）下执行
+# 1. 在项目根目录（包含 .git 的目录）下初始化
+clawt init
+
 # 2. 并行执行 3 个任务，每个任务在独立的 worktree 中运行
 clawt run -b <branch-1>
 clawt run -b <branch-2>
@@ -31,12 +33,11 @@ clawt validate -b branch-1
 
 # 5. 确认无误后合并到主分支
 clawt merge -b branch-1 -m "feat: 实现xxx功能"
-
 ```
 
 ## 命令一览
 
-> 所有命令必须在**主 worktree 的仓库根目录**下执行。`-b` 参数支持模糊匹配。
+> 除 `config`、`alias`、`projects`、`completion` 外，其余命令需在**主 worktree 的仓库根目录**下执行。`-b` 参数支持模糊匹配。大部分操作命令（`run`、`create`、`validate`、`merge` 等）需要先执行 `clawt init`。
 
 ### `clawt init` — 初始化项目级配置
 
