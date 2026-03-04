@@ -18,9 +18,10 @@ import {
   gitReadTree,
   gitDiffTree,
   gitApplyFromStdin,
-  getHeadCommitHash,
   printSuccess,
   printInfo,
+  isWorkingDirClean,
+  confirmAction,
 } from '../utils/index.js';
 
 /**
@@ -121,6 +122,13 @@ async function handleCoverValidate(): Promise<void> {
   }
   const { treeHash: snapshotTreeHash } = readSnapshot(projectName, targetBranchName);
 
+  // 步骤 3.5：工作区干净时提示确认，避免误操作
+  if (isWorkingDirClean(mainWorktreePath)) {
+    printInfo(MESSAGES.COVER_VALIDATE_WORKING_DIR_CLEAN);
+    const confirmed = await confirmAction('是否继续执行覆盖？');
+    if (!confirmed) return;
+  }
+
   // 步骤 4：计算增量 patch
   const result = computeIncrementalPatch(snapshotTreeHash, mainWorktreePath);
   if (!result) {
@@ -136,9 +144,8 @@ async function handleCoverValidate(): Promise<void> {
     throw new ClawtError(MESSAGES.COVER_VALIDATE_APPLY_FAILED(targetBranchName));
   }
 
-  // 步骤 6：更新快照（使后续再次 cover-validate 的基准正确）
-  const headCommitHash = getHeadCommitHash(mainWorktreePath);
-  writeSnapshot(projectName, targetBranchName, result.currentTreeHash, headCommitHash);
+  // 步骤 6：更新快照 treeHash（使后续再次 cover 的基准正确），HEAD 和 stagedTreeHash 不变
+  writeSnapshot(projectName, targetBranchName, result.currentTreeHash);
 
   printSuccess(MESSAGES.COVER_VALIDATE_SUCCESS(targetBranchName));
 }

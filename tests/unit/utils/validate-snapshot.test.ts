@@ -107,7 +107,7 @@ describe('readSnapshotTreeHash', () => {
 
 describe('writeSnapshot', () => {
   it('正确写入三个文件', () => {
-    writeSnapshot('proj', 'branch', 'tree123', 'head456');
+    writeSnapshot('proj', 'branch', 'tree123', 'head456', 'staged789');
     expect(mockedEnsureDir).toHaveBeenCalledWith('/tmp/test-snapshots/proj');
     expect(mockedWriteFileSync).toHaveBeenCalledTimes(3);
     expect(mockedWriteFileSync).toHaveBeenCalledWith(
@@ -122,9 +122,25 @@ describe('writeSnapshot', () => {
     );
     expect(mockedWriteFileSync).toHaveBeenCalledWith(
       '/tmp/test-snapshots/proj/branch.staged',
-      '',
+      'staged789',
       'utf-8',
     );
+  });
+
+  it('未传 headCommitHash 和 stagedTreeHash 时只写入 treeHash', () => {
+    writeSnapshot('proj', 'branch', 'tree123');
+    expect(mockedWriteFileSync).toHaveBeenCalledTimes(1);
+    expect(mockedWriteFileSync).toHaveBeenCalledWith(
+      '/tmp/test-snapshots/proj/branch.tree',
+      'tree123',
+      'utf-8',
+    );
+  });
+
+  it('所有字段都未传时不写入任何文件', () => {
+    writeSnapshot('proj', 'branch');
+    expect(mockedEnsureDir).toHaveBeenCalledWith('/tmp/test-snapshots/proj');
+    expect(mockedWriteFileSync).not.toHaveBeenCalled();
   });
 });
 

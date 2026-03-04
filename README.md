@@ -148,6 +148,14 @@ clawt validate -b <branch> -r "pnpm test & pnpm build"  # 并行执行多个命�
 | `-r "npm lint && npm test"` | `&&` 不拆分，同步执行 |
 | `-r "pnpm test & pnpm build"` | 并行执行，等全部完成后汇总结果 |
 
+### `clawt cover` — 将验证分支修改覆盖回目标 worktree
+
+```bash
+clawt cover    # 在验证分支上执行，自动推导目标分支
+```
+
+在 validate 验证过程中，如果在主 worktree（验证分支上）修改了代码，可通过 `cover` 将修改覆盖回目标 worktree。当工作区无修改时会提示确认，避免误操作。
+
 ### `clawt sync` — 同步主分支代码到目标 worktree
 
 ```bash

@@ -90,22 +90,26 @@ export function readSnapshot(projectName: string, branchName: string): { treeHas
 /**
  * 写入 validate 快照内容（自动创建目录）
  * tree hash 写入 .tree 文件，HEAD commit hash 写入 .head 文件，staged tree hash 写入 .staged 文件
+ * 未提供的可选字段（值为 undefined）不会覆盖，保留磁盘上的原值
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
- * @param {string} treeHash - git tree 对象的 hash
- * @param {string} headCommitHash - 快照时主 worktree 的 HEAD commit hash
- * @param {string} [stagedTreeHash=''] - validate 结束时暂存区对应的 tree hash
+ * @param {string} [treeHash] - git tree 对象的 hash，不传则保留原值
+ * @param {string} [headCommitHash] - 快照时主 worktree 的 HEAD commit hash，不传则保留原值
+ * @param {string} [stagedTreeHash] - validate 结束时暂存区对应的 tree hash，不传则保留原值
  */
-export function writeSnapshot(projectName: string, branchName: string, treeHash: string, headCommitHash: string, stagedTreeHash = ''): void {
-  const snapshotPath = getSnapshotPath(projectName, branchName);
-  const headPath = getSnapshotHeadPath(projectName, branchName);
-  const stagedPath = getSnapshotStagedPath(projectName, branchName);
+export function writeSnapshot(projectName: string, branchName: string, treeHash?: string, headCommitHash?: string, stagedTreeHash?: string): void {
   const snapshotDir = join(VALIDATE_SNAPSHOTS_DIR, projectName);
   ensureDir(snapshotDir);
-  writeFileSync(snapshotPath, treeHash, 'utf-8');
-  writeFileSync(headPath, headCommitHash, 'utf-8');
-  writeFileSync(stagedPath, stagedTreeHash, 'utf-8');
-  logger.info(`已保存 validate 快照: ${snapshotPath}, ${headPath}, ${stagedPath}`);
+  if (treeHash !== undefined) {
+    writeFileSync(getSnapshotPath(projectName, branchName), treeHash, 'utf-8');
+  }
+  if (headCommitHash !== undefined) {
+    writeFileSync(getSnapshotHeadPath(projectName, branchName), headCommitHash, 'utf-8');
+  }
+  if (stagedTreeHash !== undefined) {
+    writeFileSync(getSnapshotStagedPath(projectName, branchName), stagedTreeHash, 'utf-8');
+  }
+  logger.info(`已写入 validate 快照 (project=${projectName}, branch=${branchName})`);
 }
 
 /**

@@ -13,6 +13,8 @@ export const COVER_VALIDATE_MESSAGES = {
   /** patch 应用失败 */
   COVER_VALIDATE_APPLY_FAILED: (branch: string) =>
     `覆盖变更到 worktree ${branch} 失败：patch 应用出错\n  请检查目标 worktree 工作区状态后重试`,
+  /** 工作区和暂存区无修改，可能为误操作 */
+  COVER_VALIDATE_WORKING_DIR_CLEAN: '当前验证分支的工作区和暂存区没有任何修改，可能为误操作',
   /** 覆盖成功 */
   COVER_VALIDATE_SUCCESS: (branch: string) =>
     `✓ 已将验证分支上的修改覆盖到 worktree => ${branch}`,
