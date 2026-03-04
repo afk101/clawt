@@ -33,7 +33,6 @@ vi.mock('../../../src/constants/index.js', () => ({
 vi.mock('../../../src/utils/index.js', () => ({
   validateMainWorktree: vi.fn(),
   getGitTopLevel: vi.fn(),
-  getProjectName: vi.fn(),
   getProjectWorktrees: vi.fn(),
   isWorkingDirClean: vi.fn(),
   gitAddAll: vi.fn(),
@@ -41,8 +40,6 @@ vi.mock('../../../src/utils/index.js', () => ({
   gitMerge: vi.fn(),
   hasMergeConflict: vi.fn(),
   getCurrentBranch: vi.fn(),
-  hasSnapshot: vi.fn(),
-  removeSnapshot: vi.fn(),
   printSuccess: vi.fn(),
   printInfo: vi.fn(),
   printWarning: vi.fn(),
@@ -56,7 +53,6 @@ vi.mock('../../../src/utils/index.js', () => ({
 import { registerSyncCommand } from '../../../src/commands/sync.js';
 import {
   getGitTopLevel,
-  getProjectName,
   getProjectWorktrees,
   isWorkingDirClean,
   gitAddAll,
@@ -64,15 +60,12 @@ import {
   gitMerge,
   hasMergeConflict,
   getCurrentBranch,
-  hasSnapshot,
-  removeSnapshot,
   printSuccess,
   printWarning,
   resolveTargetWorktree,
 } from '../../../src/utils/index.js';
 
 const mockedGetGitTopLevel = vi.mocked(getGitTopLevel);
-const mockedGetProjectName = vi.mocked(getProjectName);
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
 const mockedIsWorkingDirClean = vi.mocked(isWorkingDirClean);
 const mockedGitAddAll = vi.mocked(gitAddAll);
@@ -80,15 +73,12 @@ const mockedGitCommit = vi.mocked(gitCommit);
 const mockedGitMerge = vi.mocked(gitMerge);
 const mockedHasMergeConflict = vi.mocked(hasMergeConflict);
 const mockedGetCurrentBranch = vi.mocked(getCurrentBranch);
-const mockedHasSnapshot = vi.mocked(hasSnapshot);
-const mockedRemoveSnapshot = vi.mocked(removeSnapshot);
 const mockedPrintSuccess = vi.mocked(printSuccess);
 const mockedPrintWarning = vi.mocked(printWarning);
 const mockedResolveTargetWorktree = vi.mocked(resolveTargetWorktree);
 
 beforeEach(() => {
   mockedGetGitTopLevel.mockReturnValue('/repo');
-  mockedGetProjectName.mockReturnValue('test-project');
   mockedGetCurrentBranch.mockReturnValue('main');
   mockedGetProjectWorktrees.mockReset();
   mockedIsWorkingDirClean.mockReset();
@@ -96,8 +86,6 @@ beforeEach(() => {
   mockedGitCommit.mockReset();
   mockedGitMerge.mockReset();
   mockedHasMergeConflict.mockReset();
-  mockedHasSnapshot.mockReset();
-  mockedRemoveSnapshot.mockReset();
   mockedPrintSuccess.mockReset();
   mockedPrintWarning.mockReset();
   mockedResolveTargetWorktree.mockReset();
@@ -118,7 +106,6 @@ describe('handleSync', () => {
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktree.mockResolvedValue(worktree);
     mockedIsWorkingDirClean.mockReturnValue(true);
-    mockedHasSnapshot.mockReturnValue(false);
 
     const program = new Command();
     program.exitOverride();
@@ -135,7 +122,6 @@ describe('handleSync', () => {
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktree.mockResolvedValue(worktree);
     mockedIsWorkingDirClean.mockReturnValue(false);
-    mockedHasSnapshot.mockReturnValue(false);
 
     const program = new Command();
     program.exitOverride();
@@ -162,36 +148,6 @@ describe('handleSync', () => {
 
     expect(mockedPrintWarning).toHaveBeenCalled();
     expect(mockedPrintSuccess).not.toHaveBeenCalled();
-  });
-
-  it('合并成功后清理 validate 快照', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
-    mockedGetProjectWorktrees.mockReturnValue([worktree]);
-    mockedResolveTargetWorktree.mockResolvedValue(worktree);
-    mockedIsWorkingDirClean.mockReturnValue(true);
-    mockedHasSnapshot.mockReturnValue(true);
-
-    const program = new Command();
-    program.exitOverride();
-    registerSyncCommand(program);
-    await program.parseAsync(['sync', '-b', 'feature'], { from: 'user' });
-
-    expect(mockedRemoveSnapshot).toHaveBeenCalledWith('test-project', 'feature');
-  });
-
-  it('合并成功且无快照时不调用 removeSnapshot', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
-    mockedGetProjectWorktrees.mockReturnValue([worktree]);
-    mockedResolveTargetWorktree.mockResolvedValue(worktree);
-    mockedIsWorkingDirClean.mockReturnValue(true);
-    mockedHasSnapshot.mockReturnValue(false);
-
-    const program = new Command();
-    program.exitOverride();
-    registerSyncCommand(program);
-    await program.parseAsync(['sync', '-b', 'feature'], { from: 'user' });
-
-    expect(mockedRemoveSnapshot).not.toHaveBeenCalled();
   });
 
   it('合并失败（非冲突错误）时向上抛出', async () => {

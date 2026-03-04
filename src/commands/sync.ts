@@ -6,15 +6,12 @@ import type { SyncOptions } from '../types/index.js';
 import {
   validateMainWorktree,
   getGitTopLevel,
-  getProjectName,
   getProjectWorktrees,
   isWorkingDirClean,
   gitAddAll,
   gitCommit,
   gitMerge,
   hasMergeConflict,
-  hasSnapshot,
-  removeSnapshot,
   printSuccess,
   printInfo,
   printWarning,
@@ -89,7 +86,7 @@ export interface SyncResult {
 }
 
 /**
- * 执行 sync 核心操作（检查未提交→自动保存→merge 主分支→清除快照）
+ * 执行 sync 核心操作（检查未提交→自动保存→merge 主分支）
  * 不包含 worktree 解析交互，供 validate 等命令复用
  * @param {string} targetWorktreePath - 目标 worktree 路径
  * @param {string} branch - 分支名
@@ -112,13 +109,6 @@ export async function executeSyncForBranch(targetWorktreePath: string, branch: s
   if (hasConflict) {
     printWarning(MESSAGES.SYNC_CONFLICT(targetWorktreePath));
     return { success: false, hasConflict: true };
-  }
-
-  // 合并成功后清除该分支的 validate 快照（代码基础已变化，旧快照无效）
-  const projectName = getProjectName();
-  if (hasSnapshot(projectName, branch)) {
-    removeSnapshot(projectName, branch);
-    logger.info(`已清除分支 ${branch} 的 validate 快照`);
   }
 
   printSuccess(MESSAGES.SYNC_SUCCESS(branch, mainBranch));
