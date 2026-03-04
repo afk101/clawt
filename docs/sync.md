@@ -76,7 +76,21 @@ export interface SyncResult {
      ```
    - 返回 `{ success: false, hasConflict: true }`
    - **无冲突** → 继续
-5. **清除 validate 快照**：合并成功后，如果该分支存在 validate 快照（`.tree` 和 `.head` 文件），自动删除（代码基础已变化，旧快照无效）
+5. **保留 validate 快照**：sync 合并成功后，不清除该分支的 validate 快照。因为 validate 使用三点 diff（`main...feature`），sync 后 merge-base 更新为合并提交，三点 diff 仍然只包含 feature 分支自身的修改，旧快照依然有效。增量 validate 时若检测到 HEAD 变化，会自动通过 diff-tree + apply 路径正确恢复暂存区状态。  
+示意图：  
+  场景：将 HEAD(master) 合并到 branchName
+
+  执行 git checkout branchName && git merge master 后：
+
+        A -- B -- C  (HEAD/master)
+       /            \
+      *              M  (branchName, merge commit)
+       \            /
+        D -- E ----
+
+  此时执行 git diff HEAD...branchName：
+
+  - merge-base 变成了 C（因为合并后，HEAD 和 branchName 的最近共同祖先就是 C）
 6. **重建验证分支**（`rebuildValidateBranch`，async 函数）：sync 将主分支合并到目标 worktree 后，目标分支的代码基点发生变化。为保持验证分支与目标分支基点一致，需要重建验证分支。
    - 确保在主工作分支上创建验证分支，处理三种情况：
      - **已在主工作分支上** → 直接重建
