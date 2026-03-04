@@ -15,5 +15,5 @@ export const COVER_VALIDATE_MESSAGES = {
     `覆盖变更到 worktree ${branch} 失败：patch 应用出错\n  请检查目标 worktree 工作区状态后重试`,
   /** 覆盖成功 */
   COVER_VALIDATE_SUCCESS: (branch: string) =>
-    `✓ 已将验证分支上的修改覆盖到 worktree ${branch}`,
+    `✓ 已将验证分支上的修改覆盖到 worktree => ${branch}`,
 } as const;
