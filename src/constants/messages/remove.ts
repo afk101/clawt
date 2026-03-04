@@ -16,4 +16,10 @@ export const REMOVE_MESSAGES = {
   REMOVE_BRANCHES_KEPT: '已保留本地分支，可稍后使用 git branch -D <分支名> 手动删除',
   /** 确认删除本地分支和验证分支 */
   REMOVE_CONFIRM_DELETE_BRANCHES: '是否同时删除对应的本地分支和验证分支？',
+  /** 待移除的 worktree 的分支是主 worktree 当前所在分支 */
+  REMOVE_BRANCH_IS_CURRENT: (branch: string) =>
+    `无法移除：分支 ${branch} 是主 worktree 当前所在分支，请先切换到其他分支后再移除`,
+  /** 待移除的 worktree 对应的验证分支是主 worktree 当前所在分支 */
+  REMOVE_VALIDATE_BRANCH_IS_CURRENT: (branch: string, validateBranch: string) =>
+    `无法移除：分支 ${branch} 的验证分支 ${validateBranch} 是主 worktree 当前所在分支，请先切换到其他分支后再移除`,
 } as const;

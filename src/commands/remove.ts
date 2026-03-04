@@ -24,6 +24,7 @@ import {
   getValidateBranchName,
   deleteValidateBranch,
   requireProjectConfig,
+  getCurrentBranch,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
 
@@ -75,6 +76,18 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   if (worktreesToRemove.length === 0) {
     printInfo(MESSAGES.NO_WORKTREES);
     return;
+  }
+
+  // 检查待移除的分支是否是主 worktree 当前所在分支
+  const currentBranch = getCurrentBranch();
+  for (const wt of worktreesToRemove) {
+    if (wt.branch === currentBranch) {
+      throw new ClawtError(MESSAGES.REMOVE_BRANCH_IS_CURRENT(wt.branch));
+    }
+    const validateBranch = getValidateBranchName(wt.branch);
+    if (validateBranch === currentBranch) {
+      throw new ClawtError(MESSAGES.REMOVE_VALIDATE_BRANCH_IS_CURRENT(wt.branch, validateBranch));
+    }
   }
 
   // 列出即将移除的 worktree
