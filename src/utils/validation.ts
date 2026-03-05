@@ -1,7 +1,7 @@
 import { MESSAGES } from '../constants/index.js';
 import { ClawtError } from '../errors/index.js';
 import { execCommand } from './shell.js';
-import { getGitCommonDir } from './git.js';
+import { getGitCommonDir, isWorkingDirClean } from './git.js';
 import { requireProjectConfig, guardMainWorkBranchExists } from './project-config.js';
 
 /** 统一前置校验选项 */
@@ -70,6 +70,17 @@ export function validateHeadExists(): void {
     execCommand('git rev-parse --verify HEAD');
   } catch {
     throw new ClawtError(MESSAGES.HEAD_NOT_FOUND);
+  }
+}
+
+/**
+ * 校验主分支工作区和暂存区是否干净
+ * 当存在未提交的更改时抛出错误，防止基于脏状态创建 worktree
+ * @throws {ClawtError} 工作区或暂存区不干净时抛出
+ */
+export function validateWorkingDirClean(): void {
+  if (!isWorkingDirClean()) {
+    throw new ClawtError(MESSAGES.MAIN_WORKTREE_DIRTY);
   }
 }
 

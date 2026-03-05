@@ -20,6 +20,7 @@ import {
   executeBatchTasks,
   printDryRunPreview,
   ensureOnMainWorkBranch,
+  validateWorkingDirClean,
   guardMainWorkBranch,
 } from '../utils/index.js';
 
@@ -126,6 +127,7 @@ async function handleRun(options: RunOptions): Promise<void> {
   if (!options.dryRun) {
     await guardMainWorkBranch();
     await ensureOnMainWorkBranch();
+    validateWorkingDirClean();
   }
 
   // 互斥校验：--file 和 --tasks 不能同时使用

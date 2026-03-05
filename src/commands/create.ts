@@ -7,6 +7,7 @@ import {
   runPreChecks,
   createWorktrees,
   ensureOnMainWorkBranch,
+  validateWorkingDirClean,
   getValidateBranchName,
   printSuccess,
   printInfo,
@@ -39,6 +40,8 @@ async function handleCreate(options: CreateOptions): Promise<void> {
   await guardMainWorkBranch();
 
   await ensureOnMainWorkBranch();
+
+  validateWorkingDirClean();
 
   const count = Number(options.number);
 
