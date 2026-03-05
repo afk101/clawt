@@ -17,23 +17,32 @@ npm i -g clawt
 ## 快速开始
 
 ```bash
-# 1. 在项目根目录（包含 .git 的目录）下初始化
+# 1. 在项目根目录（包含 .git 的目录）下初始化，确认主工作分支
 clawt init
 
-# 2. 并行执行 3 个任务，每个任务在独立的 worktree 中运行
-clawt run -b <branch-1>
-clawt run -b <branch-2>
-clawt run -b <branch-3>
+# 2. 并行执行任务，每个任务在独立的 worktree 中运行
+clawt run -b feat-login
+clawt run -b feat-search
+clawt run -b fix-bug
 
-# 3. 查看所有 worktree 状态
-clawt status
-
-# 4. 验证某个分支的变更（在主 worktree 中测试）
-clawt validate -b branch-1
-
-# 5. 确认无误后合并到主分支
-clawt merge -b branch-1 -m "feat: 实现xxx功能"
+# 3. 打开交互式面板，实时查看所有任务状态，一站式完成后续操作
+clawt status -i
 ```
+
+`clawt status -i` 提供实时刷新的 TUI 面板，用方向键选中 worktree 后可直接按快捷键操作：
+
+| 快捷键 | 操作 | 等同命令 |
+| ------ | ---- | -------- |
+| `v` | 验证分支变更 | `clawt validate -b <branch>` |
+| `m` | 合并到主分支 | `clawt merge -b <branch>` |
+| `r` | 恢复 Claude Code 会话 | `clawt resume -b <branch>` |
+| `s` | 同步主分支代码 | `clawt sync -b <branch>` |
+| `d` | 删除 worktree | `clawt remove -b <branch>` |
+| `q` | 退出面板 | — |
+  
+示例：  
+![](https://p3.ssl.qhimg.com/d/inn/8a3779be2486/upload_screenshot_1772675658.png)
+> 所有操作也可通过独立命令执行，详见下方「命令一览」。
 
 ## 命令一览
 
