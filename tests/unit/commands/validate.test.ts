@@ -92,6 +92,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   switchToValidateBranch: vi.fn((name: string) => `clawt-validate-${name}`),
   // validate-runner.ts 抽离的函数
   executeRunCommand: vi.fn(),
+  guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+  guardMainWorkBranchExists: vi.fn(),
 }));
 
 import { registerValidateCommand } from '../../../src/commands/validate.js';

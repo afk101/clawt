@@ -48,6 +48,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   getMainWorkBranch: vi.fn().mockReturnValue('main'),
   rebuildValidateBranch: vi.fn(),
   getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
+  guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+  guardMainWorkBranchExists: vi.fn(),
 }));
 
 import { registerSyncCommand } from '../../../src/commands/sync.js';

@@ -22,7 +22,11 @@ vi.mock('../../../src/constants/index.js', () => ({
     STATUS_NO_DIVERGED_COMMITS: '尚无分叉提交',
     STATUS_LAST_VALIDATED: (relativeTime: string) => `上次验证: ${relativeTime}`,
     STATUS_NOT_VALIDATED: '✗ 未验证',
+    STATUS_CONFIGURED_BRANCH: (branchName: string) => `主工作分支: ${branchName}`,
+    STATUS_CONFIGURED_BRANCH_DELETED: (branchName: string) => `✗ 主工作分支: ${branchName}（已不存在）`,
+    STATUS_CONFIGURED_BRANCH_MISMATCH: (branchName: string) => `⚠ 主工作分支: ${branchName}（当前分支不一致）`,
   },
+  VALIDATE_BRANCH_PREFIX: 'clawt-validate-',
 }));
 
 vi.mock('../../../src/utils/index.js', () => ({
@@ -43,6 +47,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   printInfo: vi.fn(),
   printDoubleSeparator: vi.fn(),
   printSeparator: vi.fn(),
+  loadProjectConfig: vi.fn().mockReturnValue(null),
+  checkBranchExists: vi.fn().mockReturnValue(true),
 }));
 
 import { registerStatusCommand } from '../../../src/commands/status.js';

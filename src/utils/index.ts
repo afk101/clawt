@@ -70,7 +70,7 @@ export { truncateTaskDesc, printDryRunPreview } from './dry-run.js';
 export { applyAliases } from './alias.js';
 export { isValidConfigKey, getValidConfigKeys, parseConfigValue, promptConfigValue, formatConfigValue, interactiveConfigEditor } from './config-strategy.js';
 export { checkForUpdates } from './update-checker.js';
-export { getProjectConfigPath, loadProjectConfig, saveProjectConfig, requireProjectConfig, getMainWorkBranch, getValidateRunCommand } from './project-config.js';
+export { getProjectConfigPath, loadProjectConfig, saveProjectConfig, requireProjectConfig, getMainWorkBranch, guardMainWorkBranchExists, guardMainWorkBranch, getValidateRunCommand } from './project-config.js';
 export { getValidateBranchName, createValidateBranch, deleteValidateBranch, rebuildValidateBranch, ensureOnMainWorkBranch, handleDirtyWorkingDir } from './validate-branch.js';
 export { safeStringify } from './json.js';
 export { executeRunCommand } from './validate-runner.js';

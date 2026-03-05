@@ -20,6 +20,7 @@ import {
   executeBatchTasks,
   printDryRunPreview,
   ensureOnMainWorkBranch,
+  guardMainWorkBranch,
 } from '../utils/index.js';
 
 /**
@@ -123,6 +124,7 @@ async function handleRun(options: RunOptions): Promise<void> {
 
   // dry-run 模式跳过项目配置前置校验
   if (!options.dryRun) {
+    await guardMainWorkBranch();
     await ensureOnMainWorkBranch();
   }
 

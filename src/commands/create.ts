@@ -11,6 +11,7 @@ import {
   printSuccess,
   printInfo,
   printSeparator,
+  guardMainWorkBranch,
 } from '../utils/index.js';
 
 /**
@@ -34,6 +35,8 @@ export function registerCreateCommand(program: Command): void {
  */
 async function handleCreate(options: CreateOptions): Promise<void> {
   validateMainWorktree();
+
+  await guardMainWorkBranch();
 
   await ensureOnMainWorkBranch();
 

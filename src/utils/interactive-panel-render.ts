@@ -7,6 +7,7 @@ import {
   PANEL_DATE_SEPARATOR_PREFIX,
   PANEL_FIXED_ROWS,
   UNKNOWN_DATE_GROUP,
+  VALIDATE_BRANCH_PREFIX,
 } from '../constants/index.js';
 import {
   PANEL_FOOTER_SHORTCUTS,
@@ -16,8 +17,12 @@ import {
   PANEL_SNAPSHOT_SUMMARY,
   PANEL_NO_WORKTREES_MSG,
   PANEL_TITLE,
+  PANEL_CONFIGURED_BRANCH,
+  PANEL_CONFIGURED_BRANCH_DELETED,
+  PANEL_CONFIGURED_BRANCH_MISMATCH,
+  PANEL_NOT_INITIALIZED,
 } from '../constants/messages/index.js';
-import type { StatusResult, WorktreeDetailedStatus } from '../types/index.js';
+import type { StatusResult, WorktreeDetailedStatus, MainWorktreeStatus } from '../types/index.js';
 import { formatRelativeTime, groupWorktreesByDate, formatRelativeDate } from './index.js';
 
 /** 面板行类型 */
@@ -72,6 +77,9 @@ export function buildPanelFrame(
 
   // 标题行
   lines.push(PANEL_TITLE(statusResult.main.projectName));
+
+  // 配置分支信息行
+  lines.push(renderConfiguredBranchLine(statusResult.main));
 
   // 快照摘要行
   lines.push(renderSnapshotSummary(statusResult.snapshots.total, statusResult.snapshots.orphaned));
@@ -284,6 +292,24 @@ function formatChangeStatusLabel(status: WorktreeDetailedStatus['changeStatus'])
 }
 
 /**
+ * 渲染配置的主工作分支信息行（面板模式）
+ * @param {MainWorktreeStatus} main - 主 worktree 状态
+ * @returns {string} 格式化的配置分支信息
+ */
+function renderConfiguredBranchLine(main: MainWorktreeStatus): string {
+  if (main.configuredMainBranch === null) {
+    return PANEL_NOT_INITIALIZED;
+  }
+  if (main.configuredBranchExists === false) {
+    return PANEL_CONFIGURED_BRANCH_DELETED(main.configuredMainBranch);
+  }
+  if (main.branch !== main.configuredMainBranch && !main.branch.startsWith(VALIDATE_BRANCH_PREFIX)) {
+    return PANEL_CONFIGURED_BRANCH_MISMATCH(main.configuredMainBranch);
+  }
+  return PANEL_CONFIGURED_BRANCH(main.configuredMainBranch);
+}
+
+/**
  * 渲染快照摘要行
  * @param {number} total - 快照总数
  * @param {number} orphaned - 孤立快照数
@@ -309,7 +335,7 @@ export function renderFooter(countdown: number): string {
  * @returns {number} 滚动区域总行数
  */
 export function calculateVisibleRows(terminalRows: number): number {
-  // 固定行：标题(1) + 快照摘要 + 顶部分隔线 + 底部分隔线 + 底栏（后四项 = PANEL_FIXED_ROWS）
+  // 固定行：标题(1) + 配置分支信息 + 快照摘要 + 顶部分隔线 + 底部分隔线 + 底栏（后五项 = PANEL_FIXED_ROWS）
   const fixedRows = PANEL_FIXED_ROWS + 1;
   return Math.max(terminalRows - fixedRows, 3);
 }

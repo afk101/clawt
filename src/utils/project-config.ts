@@ -1,10 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PROJECTS_CONFIG_DIR, MESSAGES } from '../constants/index.js';
+import { PROJECTS_CONFIG_DIR, MESSAGES, VALIDATE_BRANCH_PREFIX } from '../constants/index.js';
 import { ClawtError } from '../errors/index.js';
 import { logger } from '../logger/index.js';
-import { getProjectName } from './git.js';
+import { getProjectName, checkBranchExists, getCurrentBranch } from './git.js';
 import { ensureDir } from './fs.js';
+import { printWarning, confirmAction } from './formatter.js';
 import type { ProjectConfig } from '../types/index.js';
 
 /**
@@ -74,6 +75,42 @@ export function requireProjectConfig(): ProjectConfig {
 export function getMainWorkBranch(): string {
   const config = requireProjectConfig();
   return config.clawtMainWorkBranch;
+}
+
+/**
+ * 守卫检测：仅验证配置中的主工作分支是否存在
+ * 分支不存在 → 抛出 ClawtError（致命错误）
+ * 适用于不需要分支一致性检测的场景（如 home 命令）
+ * @param {string} [cwd] - 工作目录
+ */
+export function guardMainWorkBranchExists(cwd?: string): void {
+  const config = requireProjectConfig();
+  const mainBranch = config.clawtMainWorkBranch;
+
+  if (!checkBranchExists(mainBranch, cwd)) {
+    throw new ClawtError(MESSAGES.GUARD_BRANCH_NOT_EXISTS(mainBranch));
+  }
+}
+
+/**
+ * 守卫检测：验证配置中的主工作分支是否有效
+ * 分支不存在 → 抛出 ClawtError（致命错误）
+ * 当前分支与配置分支不一致且非验证分支 → 警告并交互确认是否继续
+ * @param {string} [cwd] - 工作目录
+ */
+export async function guardMainWorkBranch(cwd?: string): Promise<void> {
+  guardMainWorkBranchExists(cwd);
+
+  const config = requireProjectConfig();
+  const mainBranch = config.clawtMainWorkBranch;
+  const currentBranch = getCurrentBranch(cwd);
+  if (currentBranch !== mainBranch && !currentBranch.startsWith(VALIDATE_BRANCH_PREFIX)) {
+    printWarning(MESSAGES.GUARD_BRANCH_MISMATCH(mainBranch, currentBranch));
+    const confirmed = await confirmAction('是否继续执行？');
+    if (!confirmed) {
+      throw new ClawtError(MESSAGES.DESTRUCTIVE_OP_CANCELLED);
+    }
+  }
 }
 
 /**

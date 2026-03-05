@@ -59,3 +59,30 @@ export const PANEL_NOT_TTY = '交互式面板需要 TTY 终端环境，请直接
  * @returns {string} 格式化的标题
  */
 export const PANEL_TITLE = (projectName: string): string => chalk.bold.cyan(`项目状态总览: ${projectName}`);
+
+/**
+ * 面板配置分支信息（正常）
+ * @param {string} branchName - 分支名
+ * @returns {string} 格式化的分支信息
+ */
+export const PANEL_CONFIGURED_BRANCH = (branchName: string): string =>
+  chalk.gray(`主工作分支: ${branchName}`);
+
+/**
+ * 面板配置分支信息（分支已删除）
+ * @param {string} branchName - 分支名
+ * @returns {string} 格式化的分支信息
+ */
+export const PANEL_CONFIGURED_BRANCH_DELETED = (branchName: string): string =>
+  chalk.red(`✗ 主工作分支: ${branchName}（已不存在）`);
+
+/**
+ * 面板配置分支信息（分支不一致）
+ * @param {string} branchName - 分支名
+ * @returns {string} 格式化的分支信息
+ */
+export const PANEL_CONFIGURED_BRANCH_MISMATCH = (branchName: string): string =>
+  chalk.yellow(`⚠ 主工作分支: ${branchName}（不一致）`);
+
+/** 面板配置分支信息（未初始化） */
+export const PANEL_NOT_INITIALIZED = chalk.gray('未初始化（执行 clawt init 设置主工作分支）');

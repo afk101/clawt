@@ -8,6 +8,7 @@ import {
   getMainWorkBranch,
   printSuccess,
   printInfo,
+  guardMainWorkBranchExists,
 } from '../utils/index.js';
 
 /**
@@ -29,6 +30,7 @@ export function registerHomeCommand(program: Command): void {
 async function handleHome(): Promise<void> {
   validateMainWorktree();
   requireProjectConfig();
+  guardMainWorkBranchExists();
 
   const mainBranch = getMainWorkBranch();
   const currentBranch = getCurrentBranch();
