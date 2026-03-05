@@ -79,8 +79,12 @@ async function handleInit(options: InitOptions): Promise<void> {
 
   logger.info(`init 命令执行，主工作分支: ${branchName}`);
 
-  // 保存项目配置
-  saveProjectConfig({ clawtMainWorkBranch: branchName });
+  // 合并现有配置，仅更新 clawtMainWorkBranch
+  const updatedConfig: ProjectConfig = {
+    ...existingConfig,
+    clawtMainWorkBranch: branchName,
+  };
+  saveProjectConfig(updatedConfig);
 
   if (existingConfig) {
     printSuccess(MESSAGES.INIT_UPDATED(existingConfig.clawtMainWorkBranch, branchName));
