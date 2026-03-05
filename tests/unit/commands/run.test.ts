@@ -16,31 +16,35 @@ vi.mock('../../../src/errors/index.js', () => ({
   },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    BRANCH_EXISTS_USE_RESUME: (name: string) => `分支 ${name} 已存在，请使用 resume 恢复`,
-    WORKTREE_CREATED: (count: number) => `✓ 已创建 ${count} 个 worktree`,
-    INTERRUPTED: '已中断',
-    INTERRUPT_AUTO_CLEANED: (count: number) => `已清理 ${count} 个 worktree`,
-    INTERRUPT_CONFIRM_CLEANUP: '是否清理已创建的 worktree？',
-    INTERRUPT_CLEANED: (count: number) => `已清理 ${count} 个 worktree`,
-    INTERRUPT_KEPT: '已保留 worktree',
-    CONCURRENCY_INFO: (concurrency: number, total: number) => `并发限制: ${concurrency}，共 ${total} 个任务`,
-    CONCURRENCY_INVALID: '并发数必须为正整数',
-    FILE_AND_TASKS_CONFLICT: '--file 和 --tasks 不能同时使用',
-    BRANCH_OR_FILE_REQUIRED: '请指定 -b 或 -f',
-    TASK_FILE_LOADED: (count: number, path: string) => `✓ 从 ${path} 加载了 ${count} 个任务`,
-    TASK_FILE_MISSING_TASK_BY_INDEX: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少任务描述`,
-    DRY_RUN_TITLE: 'Dry Run 预览',
-    DRY_RUN_TASK_COUNT: (count: number) => `任务数: ${count}`,
-    DRY_RUN_CONCURRENCY: (concurrency: number) => `并发数: ${concurrency === 0 ? '不限制' : concurrency}`,
-    DRY_RUN_WORKTREE_DIR: (dir: string) => `Worktree 目录: ${dir}`,
-    DRY_RUN_BRANCH_EXISTS_WARNING: (name: string) => `分支 ${name} 已存在`,
-    DRY_RUN_INTERACTIVE_MODE: '模式: 交互式（无预设任务）',
-    DRY_RUN_READY: '预览完成，无冲突。移除 --dry-run 即可正式执行。',
-    DRY_RUN_HAS_CONFLICT: '存在分支冲突，实际执行时将会报错。请先处理冲突的分支。',
-  },
-}));
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      BRANCH_EXISTS_USE_RESUME: (name: string) => `分支 ${name} 已存在，请使用 resume 恢复`,
+      WORKTREE_CREATED: (count: number) => `✓ 已创建 ${count} 个 worktree`,
+      INTERRUPTED: '已中断',
+      INTERRUPT_AUTO_CLEANED: (count: number) => `已清理 ${count} 个 worktree`,
+      INTERRUPT_CONFIRM_CLEANUP: '是否清理已创建的 worktree？',
+      INTERRUPT_CLEANED: (count: number) => `已清理 ${count} 个 worktree`,
+      INTERRUPT_KEPT: '已保留 worktree',
+      CONCURRENCY_INFO: (concurrency: number, total: number) => `并发限制: ${concurrency}，共 ${total} 个任务`,
+      CONCURRENCY_INVALID: '并发数必须为正整数',
+      FILE_AND_TASKS_CONFLICT: '--file 和 --tasks 不能同时使用',
+      BRANCH_OR_FILE_REQUIRED: '请指定 -b 或 -f',
+      TASK_FILE_LOADED: (count: number, path: string) => `✓ 从 ${path} 加载了 ${count} 个任务`,
+      TASK_FILE_MISSING_TASK_BY_INDEX: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少任务描述`,
+      DRY_RUN_TITLE: 'Dry Run 预览',
+      DRY_RUN_TASK_COUNT: (count: number) => `任务数: ${count}`,
+      DRY_RUN_CONCURRENCY: (concurrency: number) => `并发数: ${concurrency === 0 ? '不限制' : concurrency}`,
+      DRY_RUN_WORKTREE_DIR: (dir: string) => `Worktree 目录: ${dir}`,
+      DRY_RUN_BRANCH_EXISTS_WARNING: (name: string) => `分支 ${name} 已存在`,
+      DRY_RUN_INTERACTIVE_MODE: '模式: 交互式（无预设任务）',
+      DRY_RUN_READY: '预览完成，无冲突。移除 --dry-run 即可正式执行。',
+      DRY_RUN_HAS_CONFLICT: '存在分支冲突，实际执行时将会报错。请先处理冲突的分支。',
+    },
+  };
+});
 
 /**
  * mock utils/index.js —— run.ts 的直接依赖

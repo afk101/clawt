@@ -23,8 +23,8 @@ export function registerListCommand(program: Command): void {
     .command('list')
     .description('列出当前项目所有 worktree（支持 --json 格式输出）')
     .option('--json', '以 JSON 格式输出')
-    .action((options: ListOptions) => {
-      handleList(options);
+    .action(async (options: ListOptions) => {
+      await handleList(options);
     });
 }
 
@@ -32,8 +32,8 @@ export function registerListCommand(program: Command): void {
  * 执行 list 命令的核心逻辑
  * @param {ListOptions} options - 命令选项
  */
-function handleList(options: ListOptions): void {
-  runPreChecks({ mainWorktree: true });
+async function handleList(options: ListOptions): Promise<void> {
+  await runPreChecks({ requireMainWorktree: true });
 
   const projectName = getProjectName();
   const worktrees = getProjectWorktrees();

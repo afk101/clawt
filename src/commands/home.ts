@@ -27,7 +27,7 @@ export function registerHomeCommand(program: Command): void {
  * 执行 home 命令：切换回主工作分支
  */
 async function handleHome(): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true, branchExists: true });
+  await runPreChecks({ requireMainWorktree: true, requireHead: true, requireProjectConfig: true, requireMainBranchExists: true });
 
   const mainBranch = getMainWorkBranch();
   const currentBranch = getCurrentBranch();

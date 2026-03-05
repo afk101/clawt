@@ -51,6 +51,7 @@ export {
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled, validateHeadExists, validateWorkingDirClean, runPreChecks } from './validation.js';
+export type { PreCheckOptions } from './validation.js';
 export { createWorktrees, getProjectWorktrees, getProjectWorktreeDir, cleanupWorktrees, getWorktreeStatus, createWorktreesByBranches } from './worktree.js';
 export { loadConfig, writeDefaultConfig, writeConfig, saveConfig, getConfigValue, ensureClawtDirs, parseConcurrency } from './config.js';
 export { printSuccess, printError, printWarning, printInfo, printHint, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString } from './formatter.js';
@@ -70,7 +71,7 @@ export { truncateTaskDesc, printDryRunPreview } from './dry-run.js';
 export { applyAliases } from './alias.js';
 export { isValidConfigKey, getValidConfigKeys, parseConfigValue, promptConfigValue, formatConfigValue, interactiveConfigEditor } from './config-strategy.js';
 export { checkForUpdates } from './update-checker.js';
-export { getProjectConfigPath, loadProjectConfig, saveProjectConfig, requireProjectConfig, getMainWorkBranch, guardMainWorkBranchExists, guardMainWorkBranch, getValidateRunCommand } from './project-config.js';
+export { getProjectConfigPath, loadProjectConfig, saveProjectConfig, requireProjectConfig, getMainWorkBranch, guardMainWorkBranchExists, getValidateRunCommand } from './project-config.js';
 export { getValidateBranchName, createValidateBranch, deleteValidateBranch, rebuildValidateBranch, ensureOnMainWorkBranch, handleDirtyWorkingDir } from './validate-branch.js';
 export { safeStringify } from './json.js';
 export { executeRunCommand } from './validate-runner.js';

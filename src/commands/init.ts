@@ -41,7 +41,7 @@ export function registerInitCommand(program: Command): void {
  * 处理 init show 子命令：交互式面板展示和修改项目配置
  */
 async function handleInitShow(): Promise<void> {
-  runPreChecks({ mainWorktree: true, projectConfig: true });
+  await runPreChecks({ requireMainWorktree: true, requireProjectConfig: true });
   const config = requireProjectConfig();
 
   logger.info('init show 命令执行，进入交互式项目配置');
@@ -67,7 +67,7 @@ async function handleInitShow(): Promise<void> {
  * @param {InitOptions} options - 命令选项
  */
 async function handleInit(options: InitOptions): Promise<void> {
-  runPreChecks({ mainWorktree: true });
+  await runPreChecks({ requireMainWorktree: true });
 
   const existingConfig = loadProjectConfig();
 

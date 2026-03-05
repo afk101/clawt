@@ -3,17 +3,24 @@ import { ClawtError } from '../errors/index.js';
 import { execCommand } from './shell.js';
 import { getGitCommonDir, isWorkingDirClean } from './git.js';
 import { requireProjectConfig, guardMainWorkBranchExists } from './project-config.js';
+import { ensureOnMainWorkBranch } from './validate-branch.js';
 
 /** 统一前置校验选项 */
-interface PreCheckOptions {
-  /** 校验是否在主 worktree 根目录 */
-  mainWorktree?: boolean;
+export interface PreCheckOptions {
+  /** 校验当前目录是否在主 worktree 根目录 */
+  requireMainWorktree?: boolean;
   /** 校验 HEAD 是否存在（仓库有至少一次 commit） */
-  headExists?: boolean;
-  /** 校验项目是否已初始化（配置文件存在） */
-  projectConfig?: boolean;
-  /** 校验配置的主工作分支是否存在 */
-  branchExists?: boolean;
+  requireHead?: boolean;
+  /** 校验项目配置文件是否存在且合法 */
+  requireProjectConfig?: boolean;
+  /** 校验配置中的主工作分支在 git 仓库中是否存在 */
+  requireMainBranchExists?: boolean;
+  /** 确保当前在主工作分支上，不在则自动切换 */
+  ensureOnClawtMainWorkBranch?: boolean;
+  /** 校验主分支工作区和暂存区是否干净 */
+  requireCleanWorkingDir?: boolean;
+  /** 校验 Claude Code CLI 是否已安装 */
+  requireClaudeCode?: boolean;
 }
 
 /**
@@ -38,6 +45,7 @@ export function validateMainWorktree(): void {
 
 /**
  * 校验 Git 是否已安装
+ * @deprecated 当前无调用方，保留函数不删除
  * @throws {ClawtError} Git 未安装时抛出
  */
 export function validateGitInstalled(): void {
@@ -86,24 +94,42 @@ export function validateWorkingDirClean(): void {
 
 /**
  * 统一前置校验入口，按需执行各项校验
+ * 执行顺序：同步快速校验 → 异步交互校验 → 依赖前序结果的校验
  * @param {PreCheckOptions} options - 校验选项
- * @param {boolean} [options.mainWorktree] - 校验是否在主 worktree 根目录
- * @param {boolean} [options.headExists] - 校验 HEAD 是否存在
- * @param {boolean} [options.projectConfig] - 校验项目是否已初始化
- * @param {boolean} [options.branchExists] - 校验配置的主工作分支是否存在
+ * @param {boolean} [options.requireMainWorktree] - 校验当前目录是否在主 worktree 根目录
+ * @param {boolean} [options.requireHead] - 校验 HEAD 是否存在
+ * @param {boolean} [options.requireProjectConfig] - 校验项目配置文件是否存在且合法
+ * @param {boolean} [options.requireMainBranchExists] - 校验配置中的主工作分支在 git 仓库中是否存在
+ * @param {boolean} [options.ensureOnClawtMainWorkBranch] - 确保当前在主工作分支上，不在则自动切换
+ * @param {boolean} [options.requireCleanWorkingDir] - 校验主分支工作区和暂存区是否干净
+ * @param {boolean} [options.requireClaudeCode] - 校验 Claude Code CLI 是否已安装
  * @throws {ClawtError} 任一校验未通过时抛出
  */
-export function runPreChecks(options: PreCheckOptions): void {
-  if (options.mainWorktree) {
+export async function runPreChecks(options: PreCheckOptions): Promise<void> {
+  // 阶段 1：同步快速校验
+  if (options.requireMainWorktree) {
     validateMainWorktree();
   }
-  if (options.headExists) {
+  if (options.requireHead) {
     validateHeadExists();
   }
-  if (options.projectConfig) {
+  if (options.requireProjectConfig) {
     requireProjectConfig();
   }
-  if (options.branchExists) {
+  if (options.requireMainBranchExists) {
     guardMainWorkBranchExists();
+  }
+
+  // 阶段 2：异步交互校验
+  if (options.ensureOnClawtMainWorkBranch) {
+    await ensureOnMainWorkBranch();
+  }
+
+  // 阶段 3：依赖前序结果的校验
+  if (options.requireCleanWorkingDir) {
+    validateWorkingDirClean();
+  }
+  if (options.requireClaudeCode) {
+    validateClaudeCodeInstalled();
   }
 }

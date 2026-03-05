@@ -15,29 +15,33 @@ vi.mock('../../../src/errors/index.js', () => ({
   },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    MERGE_NO_WORKTREES: '没有可用的 worktree',
-    MERGE_SELECT_BRANCH: '选择要合并的分支',
-    MERGE_MULTIPLE_MATCHES: (keyword: string) => `找到多个匹配 "${keyword}" 的分支`,
-    MERGE_NO_MATCH: (keyword: string, branches: string[]) => `未找到匹配 "${keyword}" 的分支`,
-    MERGE_SQUASH_PROMPT: '是否压缩提交？',
-    MERGE_SQUASH_COMMITTED: (branch: string) => `已压缩提交: ${branch}`,
-    MERGE_SQUASH_PENDING: (path: string, branch: string) => `请手动提交: ${path}`,
-    MERGE_VALIDATE_STATE_HINT: (branch: string) => `分支 ${branch} 存在 validate 状态`,
-    MAIN_WORKTREE_DIRTY: '主 worktree 有未提交的更改',
-    TARGET_WORKTREE_DIRTY_NO_MESSAGE: (worktreePath: string) =>
-      `${worktreePath} 有未提交修改，请提供 -m 参数`,
-    TARGET_WORKTREE_NO_CHANGES: '没有可合并的变更',
-    MERGE_CONFLICT: '合并冲突',
-    PULL_CONFLICT: 'pull 冲突',
-    PUSH_FAILED: 'push 失败',
-    MERGE_SUCCESS: (branch: string, message: string, autoPullPush: boolean) => `合并成功: ${branch}`,
-    MERGE_SUCCESS_NO_MESSAGE: (branch: string, autoPullPush: boolean) => `合并成功: ${branch}`,
-    WORKTREE_CLEANED: (branch: string) => `已清理: ${branch}`,
-  },
-  AUTO_SAVE_COMMIT_MESSAGE: 'clawt:auto-save',
-}));
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      MERGE_NO_WORKTREES: '没有可用的 worktree',
+      MERGE_SELECT_BRANCH: '选择要合并的分支',
+      MERGE_MULTIPLE_MATCHES: (keyword: string) => `找到多个匹配 "${keyword}" 的分支`,
+      MERGE_NO_MATCH: (keyword: string, branches: string[]) => `未找到匹配 "${keyword}" 的分支`,
+      MERGE_SQUASH_PROMPT: '是否压缩提交？',
+      MERGE_SQUASH_COMMITTED: (branch: string) => `已压缩提交: ${branch}`,
+      MERGE_SQUASH_PENDING: (path: string, branch: string) => `请手动提交: ${path}`,
+      MERGE_VALIDATE_STATE_HINT: (branch: string) => `分支 ${branch} 存在 validate 状态`,
+      MAIN_WORKTREE_DIRTY: '主 worktree 有未提交的更改',
+      TARGET_WORKTREE_DIRTY_NO_MESSAGE: (worktreePath: string) =>
+        `${worktreePath} 有未提交修改，请提供 -m 参数`,
+      TARGET_WORKTREE_NO_CHANGES: '没有可合并的变更',
+      MERGE_CONFLICT: '合并冲突',
+      PULL_CONFLICT: 'pull 冲突',
+      PUSH_FAILED: 'push 失败',
+      MERGE_SUCCESS: (branch: string, message: string, autoPullPush: boolean) => `合并成功: ${branch}`,
+      MERGE_SUCCESS_NO_MESSAGE: (branch: string, autoPullPush: boolean) => `合并成功: ${branch}`,
+      WORKTREE_CLEANED: (branch: string) => `已清理: ${branch}`,
+    },
+    AUTO_SAVE_COMMIT_MESSAGE: 'clawt:auto-save',
+  };
+});
 
 vi.mock('../../../src/utils/index.js', () => ({
   runPreChecks: vi.fn(),

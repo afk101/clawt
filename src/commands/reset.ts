@@ -30,7 +30,7 @@ export function registerResetCommand(program: Command): void {
  * 执行 reset 命令：重置主 worktree 工作区和暂存区
  */
 async function handleReset(): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
+  await runPreChecks({ requireMainWorktree: true, requireHead: true, requireProjectConfig: true });
 
   const mainWorktreePath = getGitTopLevel();
   logger.info('reset 命令执行');

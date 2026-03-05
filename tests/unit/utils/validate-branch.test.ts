@@ -19,6 +19,11 @@ vi.mock('../../../src/errors/index.js', () => ({
 // mock constants
 vi.mock('../../../src/constants/index.js', () => ({
   VALIDATE_BRANCH_PREFIX: 'clawt-validate-',
+  MESSAGES: {
+    GUARD_BRANCH_MISMATCH: (mainBranch: string, currentBranch: string) =>
+      `当前分支 ${currentBranch} 与配置的主工作分支 ${mainBranch} 不一致`,
+    DESTRUCTIVE_OP_CANCELLED: '已取消操作',
+  },
 }));
 
 // mock enquirer（必须在所有 import 之前）
@@ -55,6 +60,7 @@ vi.mock('../../../src/utils/project-config.js', () => ({
 // mock formatter
 vi.mock('../../../src/utils/formatter.js', () => ({
   printWarning: vi.fn(),
+  confirmAction: vi.fn().mockResolvedValue(true),
 }));
 
 import {
@@ -77,6 +83,7 @@ import {
   ensureOnMainWorkBranch,
   handleDirtyWorkingDir,
 } from '../../../src/utils/validate-branch.js';
+import { printWarning, confirmAction } from '../../../src/utils/formatter.js';
 const mockedCheckBranchExists = vi.mocked(checkBranchExists);
 const mockedCreateBranch = vi.mocked(createBranch);
 const mockedDeleteBranch = vi.mocked(deleteBranch);
@@ -87,6 +94,8 @@ const mockedGitCleanForce = vi.mocked(gitCleanForce);
 const mockedIsWorkingDirClean = vi.mocked(isWorkingDirClean);
 const mockedGitAddAll = vi.mocked(gitAddAll);
 const mockedGitStashPush = vi.mocked(gitStashPush);
+const mockedPrintWarning = vi.mocked(printWarning);
+const mockedConfirmAction = vi.mocked(confirmAction);
 
 beforeEach(() => {
   mockedCheckBranchExists.mockReset();
@@ -100,6 +109,8 @@ beforeEach(() => {
   mockedGitAddAll.mockReset();
   mockedGitStashPush.mockReset();
   mockSelectRun.mockReset();
+  mockedPrintWarning.mockReset();
+  mockedConfirmAction.mockReset().mockResolvedValue(true);
 });
 
 describe('getValidateBranchName', () => {
@@ -242,11 +253,21 @@ describe('ensureOnMainWorkBranch', () => {
     expect(mockedGitCheckout).toHaveBeenCalledWith('main', undefined);
   });
 
-  it('当前在其他分支上且工作区干净时直接切换到主工作分支', async () => {
+  it('当前在其他分支上且工作区干净时警告确认后切换到主工作分支', async () => {
     mockedGetCurrentBranch.mockReturnValue('feature');
     mockedIsWorkingDirClean.mockReturnValue(true);
+    mockedConfirmAction.mockResolvedValue(true);
     await ensureOnMainWorkBranch();
+    expect(mockedPrintWarning).toHaveBeenCalled();
+    expect(mockedConfirmAction).toHaveBeenCalledWith('是否继续执行？');
     expect(mockedGitCheckout).toHaveBeenCalledWith('main', undefined);
+  });
+
+  it('当前在其他分支上且用户取消确认时抛出错误', async () => {
+    mockedGetCurrentBranch.mockReturnValue('feature');
+    mockedConfirmAction.mockResolvedValue(false);
+    await expect(ensureOnMainWorkBranch()).rejects.toThrow('已取消操作');
+    expect(mockedGitCheckout).not.toHaveBeenCalled();
   });
 
   it('当前在其他分支上且工作区脏时先处理再切换', async () => {

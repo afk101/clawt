@@ -3,6 +3,7 @@ import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
 import type { RunOptions, WorktreeInfo } from '../types/index.js';
+import { PRE_CHECK_DRY_RUN, PRE_CHECK_RUN } from '../constants/index.js';
 import {
   runPreChecks,
   validateClaudeCodeInstalled,
@@ -19,9 +20,6 @@ import {
   parseTasksFromOptions,
   executeBatchTasks,
   printDryRunPreview,
-  ensureOnMainWorkBranch,
-  validateWorkingDirClean,
-  guardMainWorkBranch,
 } from '../utils/index.js';
 
 /**
@@ -121,14 +119,8 @@ function handleDryRunFromFile(options: RunOptions): void {
  * @param {RunOptions} options - 命令选项
  */
 async function handleRun(options: RunOptions): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true });
-
-  // dry-run 模式跳过项目配置前置校验
-  if (!options.dryRun) {
-    await guardMainWorkBranch();
-    await ensureOnMainWorkBranch();
-    validateWorkingDirClean();
-  }
+  const preChecks = options.dryRun ? PRE_CHECK_DRY_RUN : PRE_CHECK_RUN;
+  await runPreChecks(preChecks);
 
   // 互斥校验：--file 和 --tasks 不能同时使用
   if (options.file && options.tasks) {

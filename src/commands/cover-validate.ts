@@ -97,7 +97,7 @@ export function computeIncrementalPatch(snapshotTreeHash: string, mainWorktreePa
  */
 async function handleCoverValidate(): Promise<void> {
   // 步骤 1：前置校验
-  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
+  await runPreChecks({ requireMainWorktree: true, requireHead: true, requireProjectConfig: true });
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();
   const currentBranch = getCurrentBranch(mainWorktreePath);

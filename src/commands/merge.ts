@@ -3,6 +3,7 @@ import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
 import type { MergeOptions } from '../types/index.js';
+import { PRE_CHECK_MERGE } from '../constants/index.js';
 import {
   runPreChecks,
   getProjectName,
@@ -32,8 +33,6 @@ import {
   gitCheckout,
   resolveTargetWorktree,
   getMainWorkBranch,
-  ensureOnMainWorkBranch,
-  guardMainWorkBranch,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -136,16 +135,9 @@ function cleanupWorktreeAndBranch(worktreePath: string, branchName: string): voi
  * @param {MergeOptions} options - 命令选项
  */
 async function handleMerge(options: MergeOptions): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true });
-
-  await guardMainWorkBranch();
-
-  await guardMainWorkBranch();
+  await runPreChecks(PRE_CHECK_MERGE);
 
   const mainWorktreePath = getGitTopLevel();
-
-  // 确保当前在主工作分支上
-  await ensureOnMainWorkBranch(mainWorktreePath);
 
   logger.info(`merge 命令执行，分支: ${options.branch ?? '(未指定)'}，提交信息: ${options.message ?? '(未提供)'}`);
 

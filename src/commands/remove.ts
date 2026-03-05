@@ -55,7 +55,7 @@ export function registerRemoveCommand(program: Command): void {
  * @param {RemoveOptions} options - 命令选项
  */
 async function handleRemove(options: RemoveOptions): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
+  await runPreChecks({ requireMainWorktree: true, requireHead: true, requireProjectConfig: true });
 
   const projectName = getProjectName();
   logger.info(`remove 命令执行，项目: ${projectName}`);

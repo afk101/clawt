@@ -97,7 +97,7 @@ async function handlePatchApplyFailure(targetWorktreePath: string, branchName: s
  * @param {ValidateOptions} options - 命令选项
  */
 async function handleValidateClean(options: ValidateOptions): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
+  await runPreChecks({ requireMainWorktree: true, requireHead: true, requireProjectConfig: true });
 
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();
@@ -261,7 +261,7 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
     return;
   }
 
-  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
+  await runPreChecks({ requireMainWorktree: true, requireHead: true, requireProjectConfig: true });
 
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();

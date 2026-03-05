@@ -1,9 +1,9 @@
 import Enquirer from 'enquirer';
-import { VALIDATE_BRANCH_PREFIX } from '../constants/index.js';
+import { VALIDATE_BRANCH_PREFIX, MESSAGES } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import { checkBranchExists, createBranch, deleteBranch, getCurrentBranch, gitCheckout, gitResetHard, gitCleanForce, isWorkingDirClean, gitAddAll, gitStashPush } from './git.js';
 import { getMainWorkBranch } from './project-config.js';
-import { printWarning } from './formatter.js';
+import { printWarning, confirmAction } from './formatter.js';
 import { ClawtError } from '../errors/index.js';
 
 /**
@@ -133,7 +133,7 @@ export async function handleDirtyWorkingDir(cwd?: string): Promise<void> {
  * 三种情况：
  * 1. 已在主工作分支上 → 直接返回
  * 2. 在验证分支上 → 清理工作区后自动切回主工作分支
- * 3. 在其他分支上 → 处理脏工作区后切换到主工作分支
+ * 3. 在其他分支上 → 警告并确认后，处理脏工作区再切换到主工作分支
  * @param {string} [cwd] - 工作目录
  */
 export async function ensureOnMainWorkBranch(cwd?: string): Promise<void> {
@@ -157,7 +157,12 @@ export async function ensureOnMainWorkBranch(cwd?: string): Promise<void> {
     return;
   }
 
-  // 当前在其他分支上，处理脏工作区后切换
+  // 当前在其他分支上，警告并确认后处理脏工作区再切换
+  printWarning(MESSAGES.GUARD_BRANCH_MISMATCH(mainBranch, currentBranch));
+  const confirmed = await confirmAction('是否继续执行？');
+  if (!confirmed) {
+    throw new ClawtError(MESSAGES.DESTRUCTIVE_OP_CANCELLED);
+  }
   logger.info(`当前在分支 ${currentBranch} 上，需切换到主工作分支 ${mainBranch}`);
   if (!isWorkingDirClean(cwd)) {
     await handleDirtyWorkingDir(cwd);

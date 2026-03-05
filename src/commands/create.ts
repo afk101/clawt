@@ -3,16 +3,14 @@ import { MESSAGES, EXIT_CODES } from '../constants/index.js';
 import { ClawtError } from '../errors/index.js';
 import { logger } from '../logger/index.js';
 import type { CreateOptions } from '../types/index.js';
+import { PRE_CHECK_CREATE } from '../constants/index.js';
 import {
   runPreChecks,
   createWorktrees,
-  ensureOnMainWorkBranch,
-  validateWorkingDirClean,
   getValidateBranchName,
   printSuccess,
   printInfo,
   printSeparator,
-  guardMainWorkBranch,
 } from '../utils/index.js';
 
 /**
@@ -35,13 +33,7 @@ export function registerCreateCommand(program: Command): void {
  * @param {CreateOptions} options - 命令选项
  */
 async function handleCreate(options: CreateOptions): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true });
-
-  await guardMainWorkBranch();
-
-  await ensureOnMainWorkBranch();
-
-  validateWorkingDirClean();
+  await runPreChecks(PRE_CHECK_CREATE);
 
   const count = Number(options.number);
 

@@ -15,13 +15,17 @@ vi.mock('../../../src/errors/index.js', () => ({
   },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    INVALID_COUNT: (val: string) => `数量必须为正整数: ${val}`,
-    WORKTREE_CREATED: (count: number) => `✓ 已创建 ${count} 个 worktree`,
-  },
-  EXIT_CODES: { SUCCESS: 0, ERROR: 1, ARGUMENT_ERROR: 2 },
-}));
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      INVALID_COUNT: (val: string) => `数量必须为正整数: ${val}`,
+      WORKTREE_CREATED: (count: number) => `✓ 已创建 ${count} 个 worktree`,
+    },
+    EXIT_CODES: { SUCCESS: 0, ERROR: 1, ARGUMENT_ERROR: 2 },
+  };
+});
 
 vi.mock('../../../src/utils/index.js', () => ({
   runPreChecks: vi.fn(),

@@ -46,7 +46,7 @@ export function registerStatusCommand(program: Command): void {
  * @param {StatusOptions} options - 命令选项
  */
 async function handleStatus(options: StatusOptions): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true });
+  await runPreChecks({ requireMainWorktree: true, requireHead: true });
 
   // 交互式面板模式
   if (options.interactive) {

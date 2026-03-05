@@ -3,6 +3,7 @@ import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
 import type { SyncOptions } from '../types/index.js';
+import { PRE_CHECK_SYNC } from '../constants/index.js';
 import {
   runPreChecks,
   getGitTopLevel,
@@ -19,7 +20,6 @@ import {
   getMainWorkBranch,
   rebuildValidateBranch,
   getValidateBranchName,
-  guardMainWorkBranch,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -127,8 +127,7 @@ export async function executeSyncForBranch(targetWorktreePath: string, branch: s
  * @param {SyncOptions} options - 命令选项
  */
 async function handleSync(options: SyncOptions): Promise<void> {
-  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
-  await guardMainWorkBranch();
+  await runPreChecks(PRE_CHECK_SYNC);
 
   logger.info(`sync 命令执行，分支: ${options.branch ?? '(未指定)'}`);
 

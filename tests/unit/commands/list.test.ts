@@ -5,12 +5,16 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    NO_WORKTREES: '(无 worktree)',
-    WORKTREE_STATUS_UNAVAILABLE: '(状态不可用)',
-  },
-}));
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      NO_WORKTREES: '(无 worktree)',
+      WORKTREE_STATUS_UNAVAILABLE: '(状态不可用)',
+    },
+  };
+});
 
 vi.mock('../../../src/utils/index.js', () => ({
   runPreChecks: vi.fn(),
@@ -49,20 +53,20 @@ describe('registerListCommand', () => {
 });
 
 describe('handleList', () => {
-  it('无 worktree 时文本输出', () => {
+  it('无 worktree 时文本输出', async () => {
     mockedGetProjectName.mockReturnValue('test-project');
     mockedGetProjectWorktrees.mockReturnValue([]);
 
     const program = new Command();
     program.exitOverride();
     registerListCommand(program);
-    program.parse(['list'], { from: 'user' });
+    await program.parseAsync(['list'], { from: 'user' });
 
     expect(mockedRunPreChecks).toHaveBeenCalled();
     expect(mockedPrintInfo).toHaveBeenCalled();
   });
 
-  it('有 worktree 时文本输出', () => {
+  it('有 worktree 时文本输出', async () => {
     mockedGetProjectName.mockReturnValue('test-project');
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
@@ -74,12 +78,12 @@ describe('handleList', () => {
     const program = new Command();
     program.exitOverride();
     registerListCommand(program);
-    program.parse(['list'], { from: 'user' });
+    await program.parseAsync(['list'], { from: 'user' });
 
     expect(mockedGetWorktreeStatus).toHaveBeenCalled();
   });
 
-  it('--json 输出 JSON 格式', () => {
+  it('--json 输出 JSON 格式', async () => {
     mockedGetProjectName.mockReturnValue('test-project');
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
@@ -89,7 +93,7 @@ describe('handleList', () => {
     const program = new Command();
     program.exitOverride();
     registerListCommand(program);
-    program.parse(['list', '--json'], { from: 'user' });
+    await program.parseAsync(['list', '--json'], { from: 'user' });
 
     // 应通过 console.log 输出 JSON
     const jsonCall = consoleSpy.mock.calls.find((call) => {
@@ -101,7 +105,7 @@ describe('handleList', () => {
     expect(parsed.total).toBe(1);
   });
 
-  it('worktree 状态不可用时显示提示', () => {
+  it('worktree 状态不可用时显示提示', async () => {
     mockedGetProjectName.mockReturnValue('test-project');
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
@@ -111,7 +115,7 @@ describe('handleList', () => {
     const program = new Command();
     program.exitOverride();
     registerListCommand(program);
-    program.parse(['list'], { from: 'user' });
+    await program.parseAsync(['list'], { from: 'user' });
 
     expect(mockedGetWorktreeStatus).toHaveBeenCalled();
   });

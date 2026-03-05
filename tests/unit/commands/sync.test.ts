@@ -15,20 +15,24 @@ vi.mock('../../../src/errors/index.js', () => ({
   },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    SYNC_NO_WORKTREES: '没有可用的 worktree',
-    SYNC_SELECT_BRANCH: '选择要同步的分支',
-    SYNC_MULTIPLE_MATCHES: (keyword: string) => `找到多个匹配 "${keyword}" 的分支`,
-    SYNC_NO_MATCH: (keyword: string, branches: string[]) => `未找到匹配 "${keyword}" 的分支`,
-    SYNC_AUTO_COMMITTED: (branch: string) => `已自动保存 ${branch} 的未提交变更`,
-    SYNC_MERGING: (branch: string, mainBranch: string) => `正在将 ${mainBranch} 合并到 ${branch}...`,
-    SYNC_CONFLICT: (path: string) => `合并冲突，请手动解决: ${path}`,
-    SYNC_SUCCESS: (branch: string, mainBranch: string) => `✓ 已将 ${mainBranch} 同步到 ${branch}`,
-    SYNC_VALIDATE_BRANCH_REBUILT: (validateBranch: string) => `验证分支 ${validateBranch} 已重建`,
-  },
-  AUTO_SAVE_COMMIT_MESSAGE: 'clawt:auto-save',
-}));
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      SYNC_NO_WORKTREES: '没有可用的 worktree',
+      SYNC_SELECT_BRANCH: '选择要同步的分支',
+      SYNC_MULTIPLE_MATCHES: (keyword: string) => `找到多个匹配 "${keyword}" 的分支`,
+      SYNC_NO_MATCH: (keyword: string, branches: string[]) => `未找到匹配 "${keyword}" 的分支`,
+      SYNC_AUTO_COMMITTED: (branch: string) => `已自动保存 ${branch} 的未提交变更`,
+      SYNC_MERGING: (branch: string, mainBranch: string) => `正在将 ${mainBranch} 合并到 ${branch}...`,
+      SYNC_CONFLICT: (path: string) => `合并冲突，请手动解决: ${path}`,
+      SYNC_SUCCESS: (branch: string, mainBranch: string) => `✓ 已将 ${mainBranch} 同步到 ${branch}`,
+      SYNC_VALIDATE_BRANCH_REBUILT: (validateBranch: string) => `验证分支 ${validateBranch} 已重建`,
+    },
+    AUTO_SAVE_COMMIT_MESSAGE: 'clawt:auto-save',
+  };
+});
 
 vi.mock('../../../src/utils/index.js', () => ({
   runPreChecks: vi.fn(),

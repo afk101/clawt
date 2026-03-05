@@ -5,29 +5,33 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    STATUS_TITLE: (name: string) => `项目 ${name} 状态`,
-    STATUS_MAIN_SECTION: '主 Worktree',
-    STATUS_WORKTREES_SECTION: 'Worktree 列表',
-    STATUS_SNAPSHOTS_SECTION: 'Validate 快照',
-    STATUS_NO_WORKTREES: '无 worktree',
-    STATUS_NO_SNAPSHOTS: '无快照',
-    STATUS_CHANGE_COMMITTED: '已提交',
-    STATUS_CHANGE_UNCOMMITTED: '未提交',
-    STATUS_CHANGE_CONFLICT: '冲突',
-    STATUS_CHANGE_CLEAN: '干净',
-    STATUS_SNAPSHOT_ORPHANED: (count: number) => `其中 ${count} 个快照对应的 worktree 已不存在`,
-    STATUS_CREATED_AT: (relativeTime: string) => `创建于 ${relativeTime}`,
-    STATUS_NO_DIVERGED_COMMITS: '尚无分叉提交',
-    STATUS_LAST_VALIDATED: (relativeTime: string) => `上次验证: ${relativeTime}`,
-    STATUS_NOT_VALIDATED: '✗ 未验证',
-    STATUS_CONFIGURED_BRANCH: (branchName: string) => `主工作分支: ${branchName}`,
-    STATUS_CONFIGURED_BRANCH_DELETED: (branchName: string) => `✗ 主工作分支: ${branchName}（已不存在）`,
-    STATUS_CONFIGURED_BRANCH_MISMATCH: (branchName: string) => `⚠ 主工作分支: ${branchName}（当前分支不一致）`,
-  },
-  VALIDATE_BRANCH_PREFIX: 'clawt-validate-',
-}));
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      STATUS_TITLE: (name: string) => `项目 ${name} 状态`,
+      STATUS_MAIN_SECTION: '主 Worktree',
+      STATUS_WORKTREES_SECTION: 'Worktree 列表',
+      STATUS_SNAPSHOTS_SECTION: 'Validate 快照',
+      STATUS_NO_WORKTREES: '无 worktree',
+      STATUS_NO_SNAPSHOTS: '无快照',
+      STATUS_CHANGE_COMMITTED: '已提交',
+      STATUS_CHANGE_UNCOMMITTED: '未提交',
+      STATUS_CHANGE_CONFLICT: '冲突',
+      STATUS_CHANGE_CLEAN: '干净',
+      STATUS_SNAPSHOT_ORPHANED: (count: number) => `其中 ${count} 个快照对应的 worktree 已不存在`,
+      STATUS_CREATED_AT: (relativeTime: string) => `创建于 ${relativeTime}`,
+      STATUS_NO_DIVERGED_COMMITS: '尚无分叉提交',
+      STATUS_LAST_VALIDATED: (relativeTime: string) => `上次验证: ${relativeTime}`,
+      STATUS_NOT_VALIDATED: '✗ 未验证',
+      STATUS_CONFIGURED_BRANCH: (branchName: string) => `主工作分支: ${branchName}`,
+      STATUS_CONFIGURED_BRANCH_DELETED: (branchName: string) => `✗ 主工作分支: ${branchName}（已不存在）`,
+      STATUS_CONFIGURED_BRANCH_MISMATCH: (branchName: string) => `⚠ 主工作分支: ${branchName}（当前分支不一致）`,
+    },
+    VALIDATE_BRANCH_PREFIX: 'clawt-validate-',
+  };
+});
 
 vi.mock('../../../src/utils/index.js', () => ({
   runPreChecks: vi.fn(),
@@ -111,16 +115,16 @@ describe('registerStatusCommand', () => {
 });
 
 describe('handleStatus', () => {
-  it('无 worktree 时文本输出', () => {
+  it('无 worktree 时文本输出', async () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status'], { from: 'user' });
+    await program.parseAsync(['status'], { from: 'user' });
 
     expect(mockedPrintInfo).toHaveBeenCalled();
   });
 
-  it('--json 输出完整 JSON 结构', () => {
+  it('--json 输出完整 JSON 结构', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -133,7 +137,7 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status', '--json'], { from: 'user' });
+    await program.parseAsync(['status', '--json'], { from: 'user' });
 
     const jsonCall = consoleSpy.mock.calls.find((call) => {
       try { JSON.parse(call[0]); return true; } catch { return false; }
@@ -147,7 +151,7 @@ describe('handleStatus', () => {
     expect(parsed.worktrees[0].branch).toBe('feature');
   });
 
-  it('有 worktree 时收集正确的变更状态', () => {
+  it('有 worktree 时收集正确的变更状态', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -159,7 +163,7 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status', '--json'], { from: 'user' });
+    await program.parseAsync(['status', '--json'], { from: 'user' });
 
     const jsonCall = consoleSpy.mock.calls.find((call) => {
       try { JSON.parse(call[0]); return true; } catch { return false; }
@@ -168,7 +172,7 @@ describe('handleStatus', () => {
     expect(parsed.worktrees[0].changeStatus).toBe('conflict');
   });
 
-  it('主 worktree 不干净时 isClean=false', () => {
+  it('主 worktree 不干净时 isClean=false', async () => {
     mockedIsWorkingDirClean.mockReturnValue(false);
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -176,7 +180,7 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status', '--json'], { from: 'user' });
+    await program.parseAsync(['status', '--json'], { from: 'user' });
 
     const jsonCall = consoleSpy.mock.calls.find((call) => {
       try { JSON.parse(call[0]); return true; } catch { return false; }
@@ -185,7 +189,7 @@ describe('handleStatus', () => {
     expect(parsed.main.isClean).toBe(false);
   });
 
-  it('快照摘要包含总数和孤立数', () => {
+  it('快照摘要包含总数和孤立数', async () => {
     mockedGetProjectSnapshotBranches.mockReturnValue(['feature', 'deleted-branch']);
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
@@ -196,7 +200,7 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status', '--json'], { from: 'user' });
+    await program.parseAsync(['status', '--json'], { from: 'user' });
 
     const jsonCall = consoleSpy.mock.calls.find((call) => {
       try { JSON.parse(call[0]); return true; } catch { return false; }
@@ -206,7 +210,7 @@ describe('handleStatus', () => {
     expect(parsed.snapshots.orphaned).toBe(1);
   });
 
-  it('uncommitted 变更状态正确检测', () => {
+  it('uncommitted 变更状态正确检测', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -220,7 +224,7 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status', '--json'], { from: 'user' });
+    await program.parseAsync(['status', '--json'], { from: 'user' });
 
     const jsonCall = consoleSpy.mock.calls.find((call) => {
       try { JSON.parse(call[0]); return true; } catch { return false; }
@@ -229,7 +233,7 @@ describe('handleStatus', () => {
     expect(parsed.worktrees[0].changeStatus).toBe('uncommitted');
   });
 
-  it('createdAt 字段包含在 JSON 输出中', () => {
+  it('createdAt 字段包含在 JSON 输出中', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -240,7 +244,7 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status', '--json'], { from: 'user' });
+    await program.parseAsync(['status', '--json'], { from: 'user' });
 
     const jsonCall = consoleSpy.mock.calls.find((call) => {
       try { JSON.parse(call[0]); return true; } catch { return false; }
@@ -249,7 +253,7 @@ describe('handleStatus', () => {
     expect(parsed.worktrees[0].createdAt).toBe('2026-02-20T14:30:00+08:00');
   });
 
-  it('snapshotTime 字段包含在 JSON 输出中', () => {
+  it('snapshotTime 字段包含在 JSON 输出中', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -260,7 +264,7 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status', '--json'], { from: 'user' });
+    await program.parseAsync(['status', '--json'], { from: 'user' });
 
     const jsonCall = consoleSpy.mock.calls.find((call) => {
       try { JSON.parse(call[0]); return true; } catch { return false; }
@@ -269,7 +273,7 @@ describe('handleStatus', () => {
     expect(parsed.worktrees[0].snapshotTime).toBe('2026-02-22T10:00:00.000Z');
   });
 
-  it('文本模式显示分支创建时间', () => {
+  it('文本模式显示分支创建时间', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -279,14 +283,14 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status'], { from: 'user' });
+    await program.parseAsync(['status'], { from: 'user' });
 
     const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0]);
     const createdAtLine = printedLines.find((line) => line.includes('创建于'));
     expect(createdAtLine).toBeDefined();
   });
 
-  it('文本模式 createdAt 为 null 时不显示创建时间', () => {
+  it('文本模式 createdAt 为 null 时不显示创建时间', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -295,14 +299,14 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status'], { from: 'user' });
+    await program.parseAsync(['status'], { from: 'user' });
 
     const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0]);
     const createdAtLine = printedLines.find((line) => line.includes('创建于'));
     expect(createdAtLine).toBeUndefined();
   });
 
-  it('文本模式无快照时显示未验证警示', () => {
+  it('文本模式无快照时显示未验证警示', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -311,14 +315,14 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status'], { from: 'user' });
+    await program.parseAsync(['status'], { from: 'user' });
 
     const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0]);
     const unverifiedLine = printedLines.find((line) => line.includes('未验证'));
     expect(unverifiedLine).toBeDefined();
   });
 
-  it('文本模式有快照时显示上次验证时间', () => {
+  it('文本模式有快照时显示上次验证时间', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
@@ -328,7 +332,7 @@ describe('handleStatus', () => {
     const program = new Command();
     program.exitOverride();
     registerStatusCommand(program);
-    program.parse(['status'], { from: 'user' });
+    await program.parseAsync(['status'], { from: 'user' });
 
     const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0]);
     const validatedLine = printedLines.find((line) => line.includes('上次验证'));

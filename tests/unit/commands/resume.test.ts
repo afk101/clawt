@@ -5,16 +5,20 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    RESUME_NO_WORKTREES: '没有可用的 worktree',
-    RESUME_SELECT_BRANCH: '选择要恢复的分支',
-    RESUME_MULTIPLE_MATCHES: (keyword: string) => `找到多个匹配 "${keyword}" 的分支`,
-    RESUME_NO_MATCH: (keyword: string, branches: string[]) => `未找到匹配 "${keyword}" 的分支`,
-    RESUME_ALL_CONFIRM: (count: number) => `确认恢复 ${count} 个分支？`,
-    RESUME_ALL_SUCCESS: (count: number) => `已恢复 ${count} 个分支`,
-  },
-}));
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      RESUME_NO_WORKTREES: '没有可用的 worktree',
+      RESUME_SELECT_BRANCH: '选择要恢复的分支',
+      RESUME_MULTIPLE_MATCHES: (keyword: string) => `找到多个匹配 "${keyword}" 的分支`,
+      RESUME_NO_MATCH: (keyword: string, branches: string[]) => `未找到匹配 "${keyword}" 的分支`,
+      RESUME_ALL_CONFIRM: (count: number) => `确认恢复 ${count} 个分支？`,
+      RESUME_ALL_SUCCESS: (count: number) => `已恢复 ${count} 个分支`,
+    },
+  };
+});
 
 vi.mock('../../../src/utils/index.js', () => ({
   runPreChecks: vi.fn(),
@@ -91,7 +95,6 @@ describe('handleResume', () => {
     await program.parseAsync(['resume', '-b', 'feature'], { from: 'user' });
 
     expect(mockedRunPreChecks).toHaveBeenCalled();
-    expect(mockedValidateClaudeCodeInstalled).toHaveBeenCalled();
     expect(mockedResolveTargetWorktrees).toHaveBeenCalled();
     expect(mockedPromptGroupedMultiSelectBranches).not.toHaveBeenCalled();
     expect(mockedLaunchInteractiveClaude).toHaveBeenCalledWith(worktree, { autoContinue: true });
