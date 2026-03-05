@@ -4,7 +4,7 @@ import { ClawtError } from '../errors/index.js';
 import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
 import type { SyncOptions } from '../types/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   getGitTopLevel,
   getProjectWorktrees,
   isWorkingDirClean,
@@ -16,7 +16,6 @@ import {
   printInfo,
   printWarning,
   resolveTargetWorktree,
-  requireProjectConfig,
   getMainWorkBranch,
   rebuildValidateBranch,
   getValidateBranchName,
@@ -128,8 +127,7 @@ export async function executeSyncForBranch(targetWorktreePath: string, branch: s
  * @param {SyncOptions} options - 命令选项
  */
 async function handleSync(options: SyncOptions): Promise<void> {
-  validateMainWorktree();
-  requireProjectConfig();
+  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
   await guardMainWorkBranch();
 
   logger.info(`sync 命令执行，分支: ${options.branch ?? '(未指定)'}`);

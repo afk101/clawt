@@ -31,7 +31,7 @@ vi.mock('../../../src/constants/index.js', () => ({
 }));
 
 vi.mock('../../../src/utils/index.js', () => ({
-  validateMainWorktree: vi.fn(),
+  runPreChecks: vi.fn(),
   getGitTopLevel: vi.fn(),
   getProjectWorktrees: vi.fn(),
   isWorkingDirClean: vi.fn(),

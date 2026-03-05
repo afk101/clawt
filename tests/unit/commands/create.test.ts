@@ -24,7 +24,7 @@ vi.mock('../../../src/constants/index.js', () => ({
 }));
 
 vi.mock('../../../src/utils/index.js', () => ({
-  validateMainWorktree: vi.fn(),
+  runPreChecks: vi.fn(),
   createWorktrees: vi.fn(),
   getConfigValue: vi.fn().mockReturnValue(true),
   requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
@@ -38,14 +38,14 @@ vi.mock('../../../src/utils/index.js', () => ({
 }));
 
 import { registerCreateCommand } from '../../../src/commands/create.js';
-import { validateMainWorktree, createWorktrees, printSuccess } from '../../../src/utils/index.js';
+import { runPreChecks, createWorktrees, printSuccess } from '../../../src/utils/index.js';
 
-const mockedValidateMainWorktree = vi.mocked(validateMainWorktree);
+const mockedRunPreChecks = vi.mocked(runPreChecks);
 const mockedCreateWorktrees = vi.mocked(createWorktrees);
 const mockedPrintSuccess = vi.mocked(printSuccess);
 
 beforeEach(() => {
-  mockedValidateMainWorktree.mockReset();
+  mockedRunPreChecks.mockReset();
   mockedCreateWorktrees.mockReset();
   mockedPrintSuccess.mockReset();
 });
@@ -70,7 +70,7 @@ describe('handleCreate', () => {
     registerCreateCommand(program);
     await program.parseAsync(['create', '-b', 'feature'], { from: 'user' });
 
-    expect(mockedValidateMainWorktree).toHaveBeenCalled();
+    expect(mockedRunPreChecks).toHaveBeenCalled();
     expect(mockedCreateWorktrees).toHaveBeenCalledWith('feature', 1);
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });

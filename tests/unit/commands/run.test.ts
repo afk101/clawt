@@ -50,7 +50,7 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/utils/index.js')>();
   return {
     ...actual,
-    validateMainWorktree: vi.fn(),
+    runPreChecks: vi.fn(),
     validateClaudeCodeInstalled: vi.fn(),
     createWorktrees: vi.fn(),
     sanitizeBranchName: vi.fn(),

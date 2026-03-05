@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { logger } from '../logger/index.js';
 import { MESSAGES } from '../constants/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   getGitTopLevel,
   getConfigValue,
   isWorkingDirClean,
@@ -11,7 +11,6 @@ import {
   confirmDestructiveAction,
   printSuccess,
   printInfo,
-  requireProjectConfig,
 } from '../utils/index.js';
 
 /**
@@ -31,8 +30,7 @@ export function registerResetCommand(program: Command): void {
  * 执行 reset 命令：重置主 worktree 工作区和暂存区
  */
 async function handleReset(): Promise<void> {
-  validateMainWorktree();
-  requireProjectConfig();
+  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
 
   const mainWorktreePath = getGitTopLevel();
   logger.info('reset 命令执行');

@@ -4,7 +4,8 @@ import { logger } from '../logger/index.js';
 import { MESSAGES, PROJECT_CONFIG_DEFINITIONS } from '../constants/index.js';
 import type { InitOptions, ProjectConfig } from '../types/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
+  validateHeadExists,
   getCurrentBranch,
   loadProjectConfig,
   saveProjectConfig,
@@ -40,7 +41,7 @@ export function registerInitCommand(program: Command): void {
  * 处理 init show 子命令：交互式面板展示和修改项目配置
  */
 async function handleInitShow(): Promise<void> {
-  validateMainWorktree();
+  runPreChecks({ mainWorktree: true, projectConfig: true });
   const config = requireProjectConfig();
 
   logger.info('init show 命令执行，进入交互式项目配置');
@@ -66,11 +67,14 @@ async function handleInitShow(): Promise<void> {
  * @param {InitOptions} options - 命令选项
  */
 async function handleInit(options: InitOptions): Promise<void> {
-  validateMainWorktree();
+  runPreChecks({ mainWorktree: true });
 
   const existingConfig = loadProjectConfig();
 
   // 确定分支名：优先使用 -b 参数，否则使用当前分支
+  if (!options.branch) {
+    validateHeadExists();
+  }
   const branchName = options.branch || getCurrentBranch();
 
   logger.info(`init 命令执行，主工作分支: ${branchName}`);

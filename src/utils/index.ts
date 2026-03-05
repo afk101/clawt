@@ -50,7 +50,7 @@ export {
   createBranch,
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
-export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled } from './validation.js';
+export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled, validateHeadExists, runPreChecks } from './validation.js';
 export { createWorktrees, getProjectWorktrees, getProjectWorktreeDir, cleanupWorktrees, getWorktreeStatus, createWorktreesByBranches } from './worktree.js';
 export { loadConfig, writeDefaultConfig, writeConfig, saveConfig, getConfigValue, ensureClawtDirs, parseConcurrency } from './config.js';
 export { printSuccess, printError, printWarning, printInfo, printHint, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString } from './formatter.js';
