@@ -38,8 +38,6 @@ async function handleCreate(options: CreateOptions): Promise<void> {
 
   await guardMainWorkBranch();
 
-  await guardMainWorkBranch();
-
   await ensureOnMainWorkBranch();
 
   const count = Number(options.number);
