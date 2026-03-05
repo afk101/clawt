@@ -22,10 +22,12 @@ clawt sync
 
 **运行流程：**
 
-1. **主 worktree 校验** (2.1)
-2. **项目配置校验**：调用 `requireProjectConfig()` 确保项目已初始化（存在 `clawtMainWorkBranch` 配置）
-3. **确保在主工作分支上**：`handleSync` 在执行核心逻辑前，调用 `ensureOnMainWorkBranch()` 确保当前处于主工作分支上。sync 命令需要从主分支发起合并操作，因此必须保证当前分支状态正确。
-4. **解析目标 worktree**：根据 `-b` 参数解析目标 worktree，匹配策略如下：
+1. **统一前置校验**：调用 `runPreChecks(PRE_CHECK_SYNC)` 执行以下校验：
+   - `requireMainWorktree`：校验当前目录是否在主 worktree 根目录
+   - `requireHead`：校验 HEAD 是否存在（仓库至少有一次 commit）
+   - `requireProjectConfig`：校验项目配置文件是否存在且合法（存在 `clawtMainWorkBranch` 配置）
+   - `ensureOnClawtMainWorkBranch`：确保当前处于主工作分支上，不在则自动切换。sync 命令需要从主分支发起合并操作，因此必须保证当前分支状态正确
+2. **解析目标 worktree**：根据 `-b` 参数解析目标 worktree，匹配策略如下：
    - **未传 `-b` 参数**：
      - 获取当前项目所有 worktree
      - 无可用 worktree → 报错退出
@@ -37,7 +39,7 @@ clawt sync
         - 唯一匹配 → 直接使用
         - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
      3. **无匹配** → 报错退出，并列出所有可用分支名
-5. 调用 `executeSyncForBranch(targetWorktreePath, branch)` 执行核心同步逻辑
+3. 调用 `executeSyncForBranch(targetWorktreePath, branch)` 执行核心同步逻辑
 
 #### `executeSyncForBranch` — sync 核心操作函数
 
@@ -57,7 +59,7 @@ export interface SyncResult {
 
 **执行流程：**
 
-1. **获取主分支名**：通过项目级配置 `clawtMainWorkBranch` 获取主工作分支名（不再通过 `getCurrentBranch` 动态获取，因为在新架构下主 worktree 可能处于验证分支上）
+1. **获取主 worktree 路径和主分支名**：通过 `getGitTopLevel()` 获取主 worktree 路径（后续传给 `rebuildValidateBranch`），通过项目级配置 `clawtMainWorkBranch` 获取主工作分支名（不再通过 `getCurrentBranch` 动态获取，因为在新架构下主 worktree 可能处于验证分支上）
 2. **自动保存未提交变更**：检查目标 worktree 是否有未提交修改
    - 有修改 → 自动执行 `git add . && git commit -m "<AUTO_SAVE_COMMIT_MESSAGE>"` 保存变更（commit message 由常量 `AUTO_SAVE_COMMIT_MESSAGE` 定义，值为 `chore: auto-save before sync`，同时用于 merge 命令的 squash 检测）
    - 无修改 → 跳过
@@ -76,21 +78,7 @@ export interface SyncResult {
      ```
    - 返回 `{ success: false, hasConflict: true }`
    - **无冲突** → 继续
-5. **保留 validate 快照**：sync 合并成功后，不清除该分支的 validate 快照。因为 validate 使用三点 diff（`main...feature`），sync 后 merge-base 更新为合并提交，三点 diff 仍然只包含 feature 分支自身的修改，旧快照依然有效。增量 validate 时若检测到 HEAD 变化，会自动通过 diff-tree + apply 路径正确恢复暂存区状态。  
-示意图：  
-  场景：将 HEAD(master) 合并到 branchName
-
-  执行 git checkout branchName && git merge master 后：
-
-        A -- B -- C  (HEAD/master)
-       /            \
-      *              M  (branchName, merge commit)
-       \            /
-        D -- E ----
-
-  此时执行 git diff HEAD...branchName：
-
-  - merge-base 变成了 C（因为合并后，HEAD 和 branchName 的最近共同祖先就是 C）
+5. **输出合并成功提示**：`✓ 已将 <mainBranch> 的最新代码同步到 <branchName>`
 6. **重建验证分支**（`rebuildValidateBranch`，async 函数）：sync 将主分支合并到目标 worktree 后，目标分支的代码基点发生变化。为保持验证分支与目标分支基点一致，需要重建验证分支。
    - 确保在主工作分支上创建验证分支，处理三种情况：
      - **已在主工作分支上** → 直接重建
@@ -115,11 +103,23 @@ export interface SyncResult {
    # 基于当前主分支 HEAD 重新创建验证分支
    git branch clawt-validate-<branchName>
    ```
-7. **输出成功提示**，然后执行 `rebuildValidateBranch` 重建验证分支，再输出验证分支重建提示，最后返回 `{ success: true, hasConflict: false }`：
-   ```
-   ✓ 已将 <mainBranch> 的最新代码同步到 <branchName>
-     验证分支 clawt-validate-<branchName> 已重建
-   ```
+7. **输出验证分支重建提示并返回结果**：输出 `验证分支 clawt-validate-<branchName> 已重建`，返回 `{ success: true, hasConflict: false }`
+
+**设计说明 — 保留 validate 快照**：sync 合并成功后，不清除该分支的 validate 快照。因为 validate 使用三点 diff（`main...feature`），sync 后 merge-base 更新为合并提交，三点 diff 仍然只包含 feature 分支自身的修改，旧快照依然有效。增量 validate 时若检测到 HEAD 变化，会自动通过 diff-tree + apply 路径正确恢复暂存区状态。
+示意图：
+  场景：将 HEAD(master) 合并到 branchName
+
+  执行 git checkout branchName && git merge master 后：
+
+        A -- B -- C  (HEAD/master)
+       /            \
+      *              M  (branchName, merge commit)
+       \            /
+        D -- E ----
+
+  此时执行 git diff HEAD...branchName：
+
+  - merge-base 变成了 C（因为合并后，HEAD 和 branchName 的最近共同祖先就是 C）
 
 #### validate 中自动 sync 的联动
 

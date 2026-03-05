@@ -38,15 +38,17 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
 
 当指定 `--clean` 选项时，执行清理逻辑后直接返回，不进入常规 validate 流程：
 
-1. **主 worktree 校验** (2.1)
+1. **前置校验**：主 worktree 校验 + HEAD 存在性校验 + 项目配置校验（`runPreChecks`）
 2. **解析目标 worktree**：通过模糊匹配解析目标分支（匹配策略同下文常规 validate 流程中的描述）
 3. 如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
 4. 如果主 worktree 有未提交更改，执行 `git reset --hard` + `git clean -fd` 清空
-5. **（新增）** 确保当前处于主工作分支上（`ensureOnMainWorkBranch`）：如果在验证分支上，清理后切回；如果在其他分支上，交互处理脏工作区后切回
+5. 确保当前处于主工作分支上（`ensureOnMainWorkBranch`）：如果在验证分支上，清理后切回；如果在其他分支上，交互处理脏工作区后切回
 6. 删除对应分支的快照文件
 7. 输出清理成功提示
 
 #### 首次 validate（无历史快照）
+
+> 常规 validate（首次和增量）执行前均会先进行前置校验：主 worktree 校验 + HEAD 存在性校验 + 项目配置校验（`runPreChecks`）。
 
 ##### 步骤 0：解析目标 worktree
 
@@ -153,9 +155,9 @@ git restore --staged .
 
 **实现要点：**
 
-- `migrateChangesViaPatch()` 返回类型从 `void` 改为 `{ success: boolean }`，patch apply 失败时返回 `{ success: false }` 而非抛出异常
-- `handleFirstValidate()` 和 `handleIncrementalValidate()` 从同步函数改为 `async` 函数，以支持交互式确认
-- `handlePatchApplyFailure()` 为新增的异步函数（`src/commands/validate.ts`），负责 patch 失败后的交互逻辑
+- `migrateChangesViaPatch()`（`src/utils/validate-core.ts`）返回 `{ success: boolean }`，patch apply 失败时返回 `{ success: false }` 而非抛出异常
+- `handleFirstValidate()` 和 `handleIncrementalValidate()` 为 `async` 函数，支持交互式确认
+- `handlePatchApplyFailure()`（`src/commands/validate.ts`）为异步函数，负责 patch 失败后的交互逻辑
 - 消息常量：`MESSAGES.VALIDATE_CONFIRM_AUTO_SYNC`、`MESSAGES.VALIDATE_AUTO_SYNC_START`、`MESSAGES.VALIDATE_AUTO_SYNC_DECLINED`（`src/constants/messages/validate.ts`）
 
 ##### 步骤 5：保存快照为 git tree 对象
@@ -166,6 +168,7 @@ git restore --staged .
 git add .
 git write-tree  # → 返回 tree hash，写入 ~/.clawt/validate-snapshots/<project>/<branchName>.tree
 git rev-parse HEAD  # → 返回验证分支的 HEAD commit hash，写入 ~/.clawt/validate-snapshots/<project>/<branchName>.head
+# 同时写入 ~/.clawt/validate-snapshots/<project>/<branchName>.staged（首次 validate 为空字符串）
 git restore --staged .
 ```
 
@@ -279,7 +282,7 @@ clawt validate -b feature-scheme-1 -r "pnpm test & pnpm build"
 
 - 命令解析：`parseParallelCommands()`（`src/utils/shell.ts`）
 - 并行执行：`runParallelCommands()`（`src/utils/shell.ts`），返回 `ParallelCommandResult[]`
-- 结果汇总：`reportParallelResults()`（`src/commands/validate.ts`）
+- 结果汇总：`reportParallelResults()`（`src/utils/validate-runner.ts`）
 - 消息常量：`MESSAGES.VALIDATE_PARALLEL_*` 系列（`src/constants/messages/validate.ts`）
 - 命令解析优先级：`resolveRunCommand()`（`src/commands/validate.ts`）负责解析最终要执行的命令，优先使用 `-r` 参数，否则从项目配置读取 `validateRunCommand`（通过 `getValidateRunCommand()`，`src/utils/project-config.ts`）
 
@@ -324,7 +327,7 @@ git rev-parse HEAD  # → currentHeadCommitHash
 hasNewChanges = (newTreeHash !== oldTreeHash) || (oldHeadCommitHash !== currentHeadCommitHash)
 ```
 
-- **无新变更**（tree hash 和 HEAD 均未变化）→ 不更新快照，直接通过 `git read-tree <oldStagedTreeHash>` 恢复上次 validate 结束时的暂存区状态，输出提示后返回
+- **无新变更**（tree hash 和 HEAD 均未变化）→ 不更新快照；如果旧快照记录了 `oldStagedTreeHash`（非空），通过 `git read-tree <oldStagedTreeHash>` 恢复上次 validate 结束时的暂存区状态（恢复失败仅输出 warn 日志，不影响流程）；输出提示后返回
 - **有新变更** → 继续步骤 6
 
 > 无变更检测避免了重复 validate 时不必要的快照更新和暂存区重载操作。恢复上次暂存区状态后，用户看到的 `git diff` 结果与上次 validate 结束时完全一致。
@@ -397,8 +400,11 @@ echo <newStagedTreeHash>
 
 # 增量无变更
 分支 feature-scheme-1 自上次 validate 以来没有新的变更，已恢复到上次验证状态
+✓ 已切换到验证分支 clawt-validate-feature-scheme-1 并应用分支 feature-scheme-1 的变更
+  可以开始验证了
 
 # 增量降级为全量
+增量对比失败，已降级为全量模式
 ✓ 已切换到验证分支 clawt-validate-feature-scheme-1 并应用分支 feature-scheme-1 的变更
   可以开始验证了
 ```

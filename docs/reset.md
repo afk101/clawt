@@ -16,12 +16,14 @@ clawt reset
 
 **运行流程：**
 
-1. **主 worktree 校验** (2.1)
-2. **项目级配置校验**（`requireProjectConfig()`，因 reset 不调用 `ensureOnMainWorkBranch`，需自行校验）
-3. **检测工作区状态**：通过 `git status --porcelain` 检测主 worktree 是否有未提交的更改
+1. **前置校验**（`runPreChecks`）：
+   - `requireMainWorktree`：主 worktree 校验 (2.1)
+   - `requireHead`：HEAD 存在校验
+   - `requireProjectConfig`：项目级配置校验
+2. **检测工作区状态**：通过 `git status --porcelain` 检测主 worktree 是否有未提交的更改
    - **工作区干净** → 输出提示 `主 worktree 工作区和暂存区已是干净状态，无需重置`，退出
    - **工作区不干净** → 继续
-3. **确认破坏性操作**：如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令和操作后果），用户取消则退出
+3. **确认破坏性操作**：如果配置项 `confirmDestructiveOps` 为 `true`，提示确认（显示即将执行的危险指令 `git reset --hard + git clean -fd` 和操作后果 `丢弃所有未提交的更改`），用户取消则输出 `已取消操作` 并退出
 4. **重置工作区和暂存区**：
    ```bash
    git reset --hard HEAD

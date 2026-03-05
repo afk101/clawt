@@ -20,9 +20,10 @@ clawt cover
 
 ##### 步骤 1：前置校验
 
-1. **主 worktree 校验**（2.1）
-2. **项目级配置校验**（`requireProjectConfig`）
-3. **验证分支校验**：当前分支必须以 `clawt-validate-` 开头，否则报错退出
+1. **主 worktree 校验**（`requireMainWorktree`）
+2. **HEAD 校验**（`requireHead`）
+3. **项目级配置校验**（`requireProjectConfig`）
+4. **验证分支校验**：当前分支必须以 `clawt-validate-` 开头，否则报错退出
 
 ##### 步骤 2：查找目标 worktree
 

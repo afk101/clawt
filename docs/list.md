@@ -16,11 +16,10 @@ clawt list [--json]
 
 1. **主 worktree 校验** (2.1)
 2. **获取项目名** (2.2)
-3. 扫描 `~/.clawt/worktrees/<project>/` 目录
-4. 对每个子目录，验证是否为有效的 git worktree（`git worktree list` 交叉验证）
-5. 根据 `--json` 选项决定输出格式：
-   - 指定 `--json` → 以 JSON 格式输出
-   - 未指定 → 以文本格式输出
+3. 获取项目的所有 worktree 列表（扫描 `~/.clawt/worktrees/<project>/` 目录，与 `git worktree list` 交叉验证）
+4. 根据 `--json` 选项决定输出格式：
+   - 指定 `--json` → 以 JSON 格式输出（仅包含 path 和 branch）
+   - 未指定 → 以文本格式输出（包含变更状态信息）
 
 **文本输出格式（默认）：**
 
@@ -30,9 +29,16 @@ clawt list [--json]
 当前项目: main-project
 
   ~/.clawt/worktrees/main-project/feature-scheme-1   [feature-scheme-1]
+    3 个提交   +120 -30   (未提交修改)
+
   ~/.clawt/worktrees/main-project/feature-scheme-2   [feature-scheme-2]
-  ~/.clawt/worktrees/main-project/feature-scheme-3   [feature-scheme-3]
-  ~/.clawt/worktrees/main-project/bugfix-login        [bugfix-login]
+    1 个提交   +45 -10
+
+  ~/.clawt/worktrees/main-project/feature-scheme-3   [feature-scheme-3]    ← 橙色路径（空闲）
+    0 个提交   无变更
+
+  ~/.clawt/worktrees/main-project/bugfix-login   [bugfix-login]
+    2 个提交   +80 -25
 
 共 4 个 worktree
 ```

@@ -33,26 +33,26 @@ clawt merge [-m <commitMessage>]
         - 唯一匹配 → 直接使用
         - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
      3. **无匹配** → 报错退出，并列出所有可用分支名
-3. **主 worktree 状态检测**
+4. **主 worktree 状态检测**
    - 执行 `git status --porcelain`
    - 如果有更改：
      - 如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.tree`），额外输出警告 `主 worktree 可能存在 validate 残留状态，可先执行 clawt validate -b <branchName> --clean 清理`
      - 提示 `主 worktree 有未提交的更改，请先处理`，退出
    - 无更改 → 继续
-4. **Squash 检测与执行（auto-save 临时提交压缩）**
+5. **Squash 检测与执行（auto-save 临时提交压缩）**
    - 通过 `git log HEAD..<branchName> --format=%s` 检查目标分支是否存在以 `AUTO_SAVE_COMMIT_MESSAGE`（`chore: auto-save before sync`）为前缀的 commit
-   - **不存在** → 跳过，进入步骤 5
+   - **不存在** → 跳过，进入步骤 6
    - **存在** → 提示用户是否将所有提交压缩为一个：
      ```
      检测到 sync 产生的临时提交，是否将所有提交压缩为一个？
        压缩后变更将保留在目标worktree的暂存区，需要重新提交（可使用 Claude Code Cli或其他工具生成提交信息）
      ```
-   - **用户选择不压缩** → 跳过，进入步骤 5
+   - **用户选择不压缩** → 跳过，进入步骤 6
    - **用户选择压缩** →
      1. 获取主分支名（从项目级配置 `clawtMainWorkBranch` 获取）
      2. 计算分叉点：`git merge-base <mainBranch> <branchName>`
      3. 在目标 worktree 中执行 `git reset --soft <merge-base>`，将所有 commit 撤销到暂存区
-     4. 如果用户提供了 `-m` → 直接在目标 worktree 执行 `git commit -m '<commitMessage>'`，输出成功提示，继续步骤 5
+     4. 如果用户提供了 `-m` → 直接在目标 worktree 执行 `git commit -m '<commitMessage>'`，输出成功提示，继续步骤 6
      5. 如果用户未提供 `-m` → 提示用户前往目标 worktree 自行提交后重新执行 `clawt merge`：
         ```
         ✓ 已将所有提交压缩到暂存区
@@ -61,7 +61,7 @@ clawt merge [-m <commitMessage>]
           提交完成后执行：clawt merge -b <branch>
         ```
         **退出流程**
-5. **根据目标 worktree 状态决定是否需要提交**
+6. **根据目标 worktree 状态决定是否需要提交**
    - 检测目标 worktree 工作区是否干净（`git status --porcelain`）
    - **工作区有未提交修改**：
      - 如果用户未提供 `-m`，提示 `<worktreePath> 有未提交的修改，请通过 -m 参数提供提交信息`（其中 `<worktreePath>` 为目标 worktree 的完整路径），退出
@@ -75,23 +75,23 @@ clawt merge [-m <commitMessage>]
      - 检查目标分支相对于主分支是否有本地提交（`git log HEAD..<branchName> --oneline`）
      - 有本地提交 → 跳过提交步骤，直接进入合并
      - 无本地提交 → 提示 `目标 worktree 没有任何可合并的变更（工作区干净且无本地提交）`，退出
-6. **回到主 worktree 进行合并**
+7. **回到主 worktree 进行合并**
    ```bash
    cd <主 worktree 路径>
    git merge <branchName>
    ```
-7. **冲突检测**（双层机制）
+8. **冲突检测**（双层机制）
    - **try-catch 层**：`git merge` 抛出异常时，先检查是否有冲突，有冲突则报错退出，否则重新抛出原始异常
    - **二次确认层**：即使 merge 未抛异常，也再次检查是否有合并冲突
    - **有冲突** → 提示 `合并存在冲突，请手动处理：\n  解决冲突后执行 git add . && git merge --continue`，退出
    - **无冲突** → 继续
-8. **推送（受 `autoPullPush` 配置控制）**
+9. **推送（受 `autoPullPush` 配置控制）**
    - `autoPullPush` 为 `false` → 输出提示 `已跳过自动 pull/push，请手动执行 git pull && git push`
    - `autoPullPush` 为 `true` → 执行 `git pull` + `git push`：
      - `git pull` 失败且有冲突 → 输出警告 `自动 pull 时发生冲突，merge 已完成但远程同步失败`，退出（不再 push）
      - `git pull` 失败且无冲突 → 抛出错误
      - `git push` 失败 → 输出警告 `自动 push 失败，merge 和 pull 已完成\n  请手动执行 git push`，退出
-9. **输出成功提示**
+10. **输出成功提示**
 
 ```
 # 提供了 -m 且已推送时
@@ -111,7 +111,7 @@ clawt merge [-m <commitMessage>]
 ✓ 分支 feature-scheme-1 已成功合并到当前分支
 ```
 
-10. **merge 成功后确认并清理 worktree 和分支（可选）**
+11. **merge 成功后确认并清理 worktree 和分支（可选）**
    - 如果配置文件中 `autoDeleteBranch` 为 `true`，自动执行清理
    - 否则交互式询问用户是否清理
    - 用户确认后，依次执行：
@@ -129,7 +129,7 @@ clawt merge [-m <commitMessage>]
    - 输出清理成功提示：`✓ 已清理 worktree 和分支: <branchName>`
    - 验证分支的删除时机与目标分支保持一致（见 [2.5 验证分支生命周期](#25-验证分支)）：用户确认清理 → 同步删除验证分支；用户拒绝清理 → 验证分支也保留
 
-11. **清理 validate 快照**
+12. **清理 validate 快照**
     - merge 成功后，如果存在该分支的 validate 快照（`~/.clawt/validate-snapshots/<project>/<branchName>.tree` 和 `<branchName>.head`），自动删除这些快照文件（merge 成功后快照已无意义）
 
 > **注意：** 清理确认和清理操作均在 merge 成功后执行。只有 merge 成功才会询问用户是否清理 worktree 和分支，避免 merge 冲突时用户被提前询问造成困惑。

@@ -22,9 +22,8 @@ clawt resume
 
 **运行流程：**
 
-1. **主 worktree 校验** (2.1)
-2. **Claude Code CLI 校验**：确认 `claude` CLI 可用
-3. **解析目标 worktree**：根据是否传入 `-b` 参数以及 worktree 数量，采用不同的解析策略：
+1. **前置校验**（`PRE_CHECK_RESUME`）：主 worktree 校验 (2.1) + HEAD 存在性校验 + Claude Code CLI 可用性校验
+2. **解析目标 worktree**：根据是否传入 `-b` 参数以及 worktree 数量，采用不同的解析策略：
    - **未传 `-b` 参数**：
      - 获取当前项目所有 worktree
      - 无可用 worktree → 报错退出
@@ -36,7 +35,7 @@ clawt resume
         - 唯一匹配 → 直接使用
         - 多个匹配 → 通过交互式多选列表让用户从匹配结果中选择
      3. **无匹配** → 报错退出，并列出所有可用分支名
-4. **根据选中数量自动分发**：
+3. **根据选中数量自动分发**：
    - **用户未选择任何分支** → 直接退出
    - **选中 1 个** → 根据全局配置项 `resumeInPlace` 决定打开方式：
      - `resumeInPlace: true` → 在当前终端就地恢复，通过 `launchInteractiveClaude()` 启动（使用 `spawnSync` + `inherit stdio`）

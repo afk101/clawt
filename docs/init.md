@@ -27,20 +27,24 @@ clawt init show
 **运行流程（设置模式）：**
 
 1. **主 worktree 校验** (2.1)
-2. **确定主工作分支名**：
+2. **加载现有配置**：尝试读取 `~/.clawt/projects/<projectName>/config.json`（可能为 `null`）
+3. **确定主工作分支名**：
    - 传了 `-b` → 使用指定的分支名
-   - 未传 `-b` → 使用当前分支名（`git rev-parse --abbrev-ref HEAD`）
-3. **写入项目级配置**：将 `clawtMainWorkBranch` 写入 `~/.clawt/projects/<projectName>/config.json`
-   - 配置文件不存在 → 创建
-   - 配置文件已存在 → 覆盖整个配置文件内容
-4. **输出成功提示**
+   - 未传 `-b` → 先验证 HEAD 存在，再使用当前分支名（`git rev-parse --abbrev-ref HEAD`）
+4. **合并并写入项目级配置**：将 `clawtMainWorkBranch` 合并到现有配置并写入 `~/.clawt/projects/<projectName>/config.json`
+   - 配置文件不存在 → 创建新配置
+   - 配置文件已存在 → 合并现有配置，仅更新 `clawtMainWorkBranch` 字段（保留其他配置项不变）
+5. **输出成功提示**：
+   - 已有配置 → `✓ 已将主工作分支从 <旧分支> 更新为 <新分支>`
+   - 无已有配置 → `✓ 项目初始化成功，主工作分支设置为: <分支名>`
 
 **运行流程（show 模式）：**
 
 1. **主 worktree 校验** (2.1)
-2. **读取项目级配置**：读取 `~/.clawt/projects/<projectName>/config.json`
+2. **项目配置校验**（`requireProjectConfig`）：读取 `~/.clawt/projects/<projectName>/config.json`
    - 配置不存在 → 抛出错误 `项目尚未初始化，请先执行 clawt init 设置主工作分支`
-   - 配置存在 → 进入交互式面板
+   - 配置缺少 `clawtMainWorkBranch` 字段 → 抛出错误 `项目配置缺少主工作分支信息，请重新执行 clawt init 设置主工作分支`
+   - 配置存在且合法 → 进入交互式面板
 3. **交互式配置编辑**：调用 `interactiveConfigEditor`（`src/utils/config-strategy.ts`），基于 `PROJECT_CONFIG_DEFINITIONS` 构建配置项列表（详见 [project-config.md](./project-config.md)）
    - 列出所有项目配置项，显示名称、当前值和描述
    - 用户选择配置项后，根据值类型自动选择输入方式（与全局配置的交互式编辑逻辑一致）
@@ -61,9 +65,12 @@ clawt init show
 
 # show 未初始化（抛出错误）
 项目尚未初始化，请先执行 clawt init 设置主工作分支
+
+# show 配置缺少主工作分支字段（抛出错误）
+项目配置缺少主工作分支信息，请重新执行 clawt init 设置主工作分支
 ```
 
-**重复执行：** 支持重复执行，后一次覆盖前一次的配置。
+**重复执行：** 支持重复执行，后一次会合并到现有配置中更新 `clawtMainWorkBranch`，不影响其他配置项。
 
 **实现要点：**
 

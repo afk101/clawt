@@ -24,7 +24,10 @@ clawt remove
 
 **运行流程：**
 
-1. **主 worktree 校验** (2.1)
+1. **前置校验**：
+   - 主 worktree 校验 (2.1)
+   - HEAD 存在性校验
+   - 项目配置文件校验（确保项目已通过 `clawt init` 初始化）
 2. **获取项目名** (2.2)
 3. **确定待移除的 worktree 列表**：
    - **指定 `--all`** → 选中当前项目所有 worktree（若当前项目无 worktree，则提示并退出）
@@ -39,7 +42,8 @@ clawt remove
           - 唯一匹配 → 直接使用
           - 多个匹配 → 通过交互式多选列表让用户从匹配结果中选择
        3. **无匹配** → 报错退出，并列出所有可用分支名
-4. 列出即将移除的 worktree 及对应分支：
+4. **当前分支安全检查**：逐个检查待移除的分支，如果该分支或其对应的验证分支（`clawt-validate-<branchName>`）是主 worktree 当前所在分支，则抛出错误并阻止移除。
+5. 列出即将移除的 worktree 及对应分支：
 
 ```
 即将移除以下 worktree 及本地分支：
@@ -51,29 +55,36 @@ clawt remove
 是否同时删除对应的本地分支和验证分支？(y/N)
 ```
 
-5. 用户确认后（只需确认一次），对每个 worktree 依次执行（单个失败不影响其他）：
+6. **判断是否删除本地分支**：
+   - 如果配置文件 `~/.clawt/config.json` 中 `autoDeleteBranch` 为 `true`，则跳过询问，直接删除分支
+   - 否则询问用户是否删除，用户拒绝时提示可稍后手动删除
+7. 对每个 worktree 依次执行（单个失败不影响其他）：
 
 ```bash
-# 确保当前处于主工作分支上（若不在则自动切回）
-git checkout <clawtMainWorkBranch>
-
 # 移除 worktree
 git worktree remove -f <worktree路径>
 
-# 如果用户选择了删除分支
+# 如果用户选择了删除分支（或 autoDeleteBranch 为 true）
 git branch -D <branchName>
 
-# 无条件删除验证分支和清理快照（不受用户确认控制）
+# 无条件删除验证分支（不受用户确认控制，存在则删除）
 git branch -D clawt-validate-<branchName>
-# 清理该分支对应的 validate 快照
+# 无条件清理该分支对应的 validate 快照
 ```
 
-6. 如果配置文件 `~/.clawt/config.json` 中 `autoDeleteBranch` 为 `true`，则跳过询问，直接删除分支。
+8. 如果使用 `--all` 模式，额外清理整个项目的 validate 快照目录。
 
-7. 如果使用 `--all` 模式，额外清理整个项目的 validate 快照目录。
+9. 移除完成后执行清理：
+   - `git worktree prune` 清理已失效的 worktree 引用
+   - 如果 `~/.clawt/worktrees/<project>/` 下已无 worktree，则删除该项目目录
 
-8. 移除完成后，清理空目录（如果 `~/.clawt/worktrees/<project>/` 下已无 worktree，则删除该项目目录）。
+10. 批量移除时，单个 worktree 移除失败不会中断整个流程，而是收集所有失败项，最后汇总报告并以错误状态退出（抛出 ClawtError）。
 
-9. 批量移除时，单个 worktree 移除失败不会中断整个流程，而是收集所有失败项，最后汇总报告并以错误状态退出（抛出 ClawtError）。
+**实现要点：**
+
+- 消息常量定义在 `src/constants/messages/remove.ts`
+- 分支解析逻辑复用公共模块 `resolveTargetWorktrees`（`src/utils/worktree-matcher.ts`）
+- 验证分支删除通过 `deleteValidateBranch`（`src/utils/validate-branch.ts`），内部判断分支是否存在后才执行删除
+- 快照清理通过 `removeSnapshot` 和 `removeProjectSnapshots`（`src/utils/validate-snapshot.ts`）
 
 ---
