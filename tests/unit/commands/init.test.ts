@@ -32,6 +32,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   printInfo: vi.fn(),
   safeStringify: vi.fn((value: unknown, indent: number = 2) => JSON.stringify(value, null, indent)),
   interactiveConfigEditor: vi.fn(),
+  guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+  guardMainWorkBranchExists: vi.fn(),
 }));
 
 import { registerInitCommand } from '../../../src/commands/init.js';

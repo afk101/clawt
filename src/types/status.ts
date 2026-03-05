@@ -28,6 +28,10 @@ export interface MainWorktreeStatus {
   isClean: boolean;
   /** 项目名 */
   projectName: string;
+  /** 配置的主工作分支名（项目未初始化时为 null） */
+  configuredMainBranch: string | null;
+  /** 配置的主工作分支是否存在（项目未初始化时为 null） */
+  configuredBranchExists: boolean | null;
 }
 
 /** validate 快照信息 */

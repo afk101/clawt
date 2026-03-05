@@ -25,6 +25,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   printInfo: vi.fn(),
   requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
   switchBackIfOnValidateBranch: vi.fn(),
+  guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+  guardMainWorkBranchExists: vi.fn(),
 }));
 
 import { registerResetCommand } from '../../../src/commands/reset.js';

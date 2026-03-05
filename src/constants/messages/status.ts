@@ -30,4 +30,13 @@ export const STATUS_MESSAGES = {
   STATUS_LAST_VALIDATED: (relativeTime: string) => `上次验证: ${relativeTime}`,
   /** status 未验证警示 */
   STATUS_NOT_VALIDATED: '✗ 未验证',
+  /** status 配置的主工作分支（正常状态） */
+  STATUS_CONFIGURED_BRANCH: (branchName: string) =>
+    `主工作分支: ${branchName}`,
+  /** status 配置的主工作分支已不存在 */
+  STATUS_CONFIGURED_BRANCH_DELETED: (branchName: string) =>
+    `✗ 主工作分支: ${branchName}（已不存在，请执行 clawt init 重新设置）`,
+  /** status 当前分支与配置的主工作分支不一致 */
+  STATUS_CONFIGURED_BRANCH_MISMATCH: (branchName: string) =>
+    `⚠ 主工作分支: ${branchName}（当前分支不一致，如需更新请执行 clawt init）`,
 } as const;

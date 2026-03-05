@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import chalk from 'chalk';
-import { MESSAGES } from '../constants/index.js';
+import { MESSAGES, VALIDATE_BRANCH_PREFIX } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import type { StatusOptions, WorktreeDetailedStatus, MainWorktreeStatus, SnapshotSummary, StatusResult, WorktreeInfo } from '../types/index.js';
 import {
@@ -22,6 +22,8 @@ import {
   printDoubleSeparator,
   printSeparator,
   InteractivePanel,
+  loadProjectConfig,
+  checkBranchExists,
 } from '../utils/index.js';
 
 /**
@@ -74,11 +76,18 @@ export function collectStatus(): StatusResult {
   const currentBranch = getCurrentBranch();
   const isClean = isWorkingDirClean();
 
+  // 配置分支信息收集
+  const projectConfig = loadProjectConfig();
+  const configuredMainBranch = projectConfig?.clawtMainWorkBranch || null;
+  const configuredBranchExists = configuredMainBranch ? checkBranchExists(configuredMainBranch) : null;
+
   // 主 worktree 状态
   const main: MainWorktreeStatus = {
     branch: currentBranch,
     isClean,
     projectName,
+    configuredMainBranch,
+    configuredBranchExists,
   };
 
   // 各 worktree 详细状态
@@ -265,6 +274,18 @@ function printMainSection(main: MainWorktreeStatus): void {
   } else {
     printInfo(`    状态: ${chalk.yellow('✗ 有未提交修改')}`);
   }
+
+  // 配置分支信息展示
+  if (main.configuredMainBranch !== null) {
+    if (main.configuredBranchExists === false) {
+      printInfo(`    ${chalk.red(MESSAGES.STATUS_CONFIGURED_BRANCH_DELETED(main.configuredMainBranch))}`);
+    } else if (main.branch !== main.configuredMainBranch && !main.branch.startsWith(VALIDATE_BRANCH_PREFIX)) {
+      printInfo(`    ${chalk.yellow(MESSAGES.STATUS_CONFIGURED_BRANCH_MISMATCH(main.configuredMainBranch))}`);
+    } else {
+      printInfo(`    ${chalk.gray(MESSAGES.STATUS_CONFIGURED_BRANCH(main.configuredMainBranch))}`);
+    }
+  }
+
   printInfo('');
 }
 

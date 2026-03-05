@@ -10,9 +10,10 @@ vi.mock('../../../src/utils/git.js', () => ({
   getGitCommonDir: vi.fn(),
 }));
 
-// mock project-config（validate 依赖 requireProjectConfig）
+// mock project-config（runPreChecks 依赖 requireProjectConfig 和 guardMainWorkBranchExists）
 vi.mock('../../../src/utils/project-config.js', () => ({
   requireProjectConfig: vi.fn(),
+  guardMainWorkBranchExists: vi.fn(),
 }));
 
 // mock logger
@@ -23,12 +24,13 @@ vi.mock('../../../src/logger/index.js', () => ({
 import { execCommand } from '../../../src/utils/shell.js';
 import { getGitCommonDir } from '../../../src/utils/git.js';
 import { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled, validateHeadExists, runPreChecks } from '../../../src/utils/validation.js';
-import { requireProjectConfig } from '../../../src/utils/project-config.js';
+import { requireProjectConfig, guardMainWorkBranchExists } from '../../../src/utils/project-config.js';
 import { ClawtError } from '../../../src/errors/index.js';
 
 const mockedExecCommand = vi.mocked(execCommand);
 const mockedGetGitCommonDir = vi.mocked(getGitCommonDir);
 const mockedRequireProjectConfig = vi.mocked(requireProjectConfig);
+const mockedGuardMainWorkBranchExists = vi.mocked(guardMainWorkBranchExists);
 
 describe('validateMainWorktree', () => {
   it('.git 返回时正常通过', () => {
@@ -88,8 +90,9 @@ describe('runPreChecks', () => {
     mockedGetGitCommonDir.mockReturnValue('.git');
     mockedExecCommand.mockReturnValue('abc1234');
     mockedRequireProjectConfig.mockReturnValue({ clawtMainWorkBranch: 'main' });
+    mockedGuardMainWorkBranchExists.mockReturnValue(undefined);
 
-    expect(() => runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true })).not.toThrow();
+    expect(() => runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true, branchExists: true })).not.toThrow();
   });
 
   it('未设置的选项不触发校验', () => {
@@ -97,6 +100,7 @@ describe('runPreChecks', () => {
     mockedGetGitCommonDir.mockImplementation(() => { throw new Error('should not be called'); });
     mockedExecCommand.mockImplementation(() => { throw new Error('should not be called'); });
     mockedRequireProjectConfig.mockImplementation(() => { throw new Error('should not be called'); });
+    mockedGuardMainWorkBranchExists.mockImplementation(() => { throw new Error('should not be called'); });
 
     expect(() => runPreChecks({})).not.toThrow();
   });

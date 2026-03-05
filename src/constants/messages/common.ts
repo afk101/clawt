@@ -40,4 +40,10 @@ export const COMMON_MESSAGES = {
   SEPARATOR: '────────────────────────────────────────',
   /** 粗分隔线 */
   DOUBLE_SEPARATOR: '════════════════════════════════════════',
+  /** 守卫检测：配置的主工作分支已不存在 */
+  GUARD_BRANCH_NOT_EXISTS: (branchName: string) =>
+    `配置的主工作分支 ${branchName} 已不存在，请执行 clawt init 重新设置主工作分支`,
+  /** 守卫检测：当前分支与配置的主工作分支不一致 */
+  GUARD_BRANCH_MISMATCH: (configuredBranch: string, currentBranch: string) =>
+    `当前分支 ${currentBranch} 与配置的主工作分支 ${configuredBranch} 不一致，如需更新请执行 clawt init`,
 } as const;

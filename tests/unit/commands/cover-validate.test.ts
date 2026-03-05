@@ -48,6 +48,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   printInfo: vi.fn(),
   isWorkingDirClean: vi.fn().mockReturnValue(false),
   confirmAction: vi.fn().mockResolvedValue(true),
+  guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+  guardMainWorkBranchExists: vi.fn(),
 }));
 
 import { registerCoverValidateCommand, extractTargetBranchName, findTargetWorktreePath, computeIncrementalPatch } from '../../../src/commands/cover-validate.js';

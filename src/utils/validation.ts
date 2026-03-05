@@ -2,7 +2,7 @@ import { MESSAGES } from '../constants/index.js';
 import { ClawtError } from '../errors/index.js';
 import { execCommand } from './shell.js';
 import { getGitCommonDir } from './git.js';
-import { requireProjectConfig } from './project-config.js';
+import { requireProjectConfig, guardMainWorkBranchExists } from './project-config.js';
 
 /** 统一前置校验选项 */
 interface PreCheckOptions {
@@ -12,6 +12,8 @@ interface PreCheckOptions {
   headExists?: boolean;
   /** 校验项目是否已初始化（配置文件存在） */
   projectConfig?: boolean;
+  /** 校验配置的主工作分支是否存在 */
+  branchExists?: boolean;
 }
 
 /**
@@ -77,6 +79,7 @@ export function validateHeadExists(): void {
  * @param {boolean} [options.mainWorktree] - 校验是否在主 worktree 根目录
  * @param {boolean} [options.headExists] - 校验 HEAD 是否存在
  * @param {boolean} [options.projectConfig] - 校验项目是否已初始化
+ * @param {boolean} [options.branchExists] - 校验配置的主工作分支是否存在
  * @throws {ClawtError} 任一校验未通过时抛出
  */
 export function runPreChecks(options: PreCheckOptions): void {
@@ -88,5 +91,8 @@ export function runPreChecks(options: PreCheckOptions): void {
   }
   if (options.projectConfig) {
     requireProjectConfig();
+  }
+  if (options.branchExists) {
+    guardMainWorkBranchExists();
   }
 }

@@ -71,6 +71,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
   getMainWorkBranch: vi.fn().mockReturnValue('main'),
   ensureOnMainWorkBranch: vi.fn(),
+  guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+  guardMainWorkBranchExists: vi.fn(),
 }));
 
 import { registerMergeCommand } from '../../../src/commands/merge.js';

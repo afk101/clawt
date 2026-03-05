@@ -54,6 +54,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
   deleteValidateBranch: vi.fn(),
   getCurrentBranch: vi.fn(),
+  guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+  guardMainWorkBranchExists: vi.fn(),
 }));
 
 import { registerRemoveCommand } from '../../../src/commands/remove.js';

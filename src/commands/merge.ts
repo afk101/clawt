@@ -33,6 +33,7 @@ import {
   resolveTargetWorktree,
   getMainWorkBranch,
   ensureOnMainWorkBranch,
+  guardMainWorkBranch,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -136,6 +137,8 @@ function cleanupWorktreeAndBranch(worktreePath: string, branchName: string): voi
  */
 async function handleMerge(options: MergeOptions): Promise<void> {
   runPreChecks({ mainWorktree: true, headExists: true });
+
+  await guardMainWorkBranch();
 
   const mainWorktreePath = getGitTopLevel();
 

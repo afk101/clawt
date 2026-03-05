@@ -73,6 +73,8 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
     printDryRunPreview: vi.fn(),
     requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
     ensureOnMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+    guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
+    guardMainWorkBranchExists: vi.fn(),
   };
 });
 
