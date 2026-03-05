@@ -311,6 +311,21 @@ export function getWorktreeCreatedDate(dirPath: string): string | null {
 }
 
 /**
+ * 获取 worktree 目录的创建时间（ISO 8601 格式）
+ * 通过文件系统的 birthtime 获取目录实际创建时间，保留小时/分钟级精度
+ * @param {string} dirPath - worktree 目录路径
+ * @returns {string | null} ISO 8601 格式的时间字符串，无法获取时返回 null
+ */
+export function getWorktreeCreatedTime(dirPath: string): string | null {
+  try {
+    const stat = statSync(dirPath);
+    return stat.birthtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 将 YYYY-MM-DD 日期字符串格式化为中文相对日期描述
  * 基于自然日计算，适用于日期分组场景
  * @param {string} dateStr - YYYY-MM-DD 格式的日期字符串

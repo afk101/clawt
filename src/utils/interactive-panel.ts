@@ -281,6 +281,11 @@ export class InteractivePanel {
       this.executeOperation(() => this.handleSync());
       return;
     }
+
+    if (key === PANEL_SHORTCUT_KEYS.COVER) {
+      this.executeOperation(() => this.handleCover());
+      return;
+    }
   }
 
   /**
@@ -569,6 +574,14 @@ export class InteractivePanel {
   private handleSync(): void {
     const branch = this.getSelectedBranch();
     runCommandInherited(`clawt sync -b ${branch}`);
+  }
+
+  /**
+   * 执行覆盖操作
+   * cover 命令从主 worktree 当前所在的验证分支名自动推导目标分支
+   */
+  private handleCover(): void {
+    runCommandInherited('clawt cover');
   }
 
   /**

@@ -46,7 +46,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   hasLocalCommits: vi.fn(),
   getSnapshotModifiedTime: vi.fn(),
   getProjectSnapshotBranches: vi.fn(),
-  getBranchCreatedAt: vi.fn(),
+  getWorktreeCreatedTime: vi.fn(),
   formatRelativeTime: vi.fn(),
   printInfo: vi.fn(),
   printDoubleSeparator: vi.fn(),
@@ -68,7 +68,7 @@ import {
   hasLocalCommits,
   getSnapshotModifiedTime,
   getProjectSnapshotBranches,
-  getBranchCreatedAt,
+  getWorktreeCreatedTime,
   formatRelativeTime,
   printInfo,
 } from '../../../src/utils/index.js';
@@ -84,7 +84,7 @@ const mockedHasMergeConflict = vi.mocked(hasMergeConflict);
 const mockedHasLocalCommits = vi.mocked(hasLocalCommits);
 const mockedGetSnapshotModifiedTime = vi.mocked(getSnapshotModifiedTime);
 const mockedGetProjectSnapshotBranches = vi.mocked(getProjectSnapshotBranches);
-const mockedGetBranchCreatedAt = vi.mocked(getBranchCreatedAt);
+const mockedGetWorktreeCreatedTime = vi.mocked(getWorktreeCreatedTime);
 const mockedFormatRelativeTime = vi.mocked(formatRelativeTime);
 const mockedPrintInfo = vi.mocked(printInfo);
 
@@ -100,7 +100,7 @@ beforeEach(() => {
   mockedHasMergeConflict.mockReturnValue(false);
   mockedHasLocalCommits.mockReturnValue(false);
   mockedGetSnapshotModifiedTime.mockReturnValue(null);
-  mockedGetBranchCreatedAt.mockReturnValue(null);
+  mockedGetWorktreeCreatedTime.mockReturnValue(null);
   mockedFormatRelativeTime.mockReturnValue('3 天前');
   mockedPrintInfo.mockReset();
 });
@@ -237,7 +237,7 @@ describe('handleStatus', () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
-    mockedGetBranchCreatedAt.mockReturnValue('2026-02-20T14:30:00+08:00');
+    mockedGetWorktreeCreatedTime.mockReturnValue('2026-02-20T14:30:00+08:00');
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -277,7 +277,7 @@ describe('handleStatus', () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
-    mockedGetBranchCreatedAt.mockReturnValue('2026-02-20T14:30:00+08:00');
+    mockedGetWorktreeCreatedTime.mockReturnValue('2026-02-20T14:30:00+08:00');
     mockedFormatRelativeTime.mockReturnValue('2 天前');
 
     const program = new Command();
@@ -294,7 +294,7 @@ describe('handleStatus', () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
-    mockedGetBranchCreatedAt.mockReturnValue(null);
+    mockedGetWorktreeCreatedTime.mockReturnValue(null);
 
     const program = new Command();
     program.exitOverride();

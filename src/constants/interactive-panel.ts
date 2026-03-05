@@ -31,6 +31,8 @@ export const PANEL_SHORTCUT_KEYS = {
   RESUME: 'r',
   /** 同步 */
   SYNC: 's',
+  /** 覆盖 */
+  COVER: 'c',
   /** 手动刷新 */
   REFRESH: 'f',
   /** 退出 */

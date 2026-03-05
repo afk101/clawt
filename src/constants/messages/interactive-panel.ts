@@ -8,6 +8,7 @@ const SHORTCUT_LABELS: Record<keyof typeof PANEL_SHORTCUT_KEYS, string> = {
   DELETE: '删除',
   RESUME: '恢复',
   SYNC: '同步',
+  COVER: '覆盖',
   REFRESH: '刷新',
   QUIT: '退出',
 };

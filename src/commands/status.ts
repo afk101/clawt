@@ -16,7 +16,7 @@ import {
   hasLocalCommits,
   getSnapshotModifiedTime,
   getProjectSnapshotBranches,
-  getBranchCreatedAt,
+  getWorktreeCreatedTime,
   formatRelativeTime,
   printInfo,
   printDoubleSeparator,
@@ -116,7 +116,7 @@ function collectWorktreeDetailedStatus(worktree: WorktreeInfo, projectName: stri
   const changeStatus = detectChangeStatus(worktree);
   const { commitsAhead, commitsBehind } = countCommitDivergence(worktree.branch);
   const { insertions, deletions } = countDiffStat(worktree.path);
-  const createdAt = resolveBranchCreatedAt(worktree.branch);
+  const createdAt = getWorktreeCreatedTime(worktree.path);
 
   return {
     path: worktree.path,
@@ -180,19 +180,6 @@ function countDiffStat(worktreePath: string): { insertions: number; deletions: n
     return getDiffStat(worktreePath);
   } catch {
     return { insertions: 0, deletions: 0 };
-  }
-}
-
-/**
- * 获取分支的创建时间
- * @param {string} branchName - 分支名
- * @returns {string | null} ISO 8601 格式的创建时间，获取失败时返回 null
- */
-function resolveBranchCreatedAt(branchName: string): string | null {
-  try {
-    return getBranchCreatedAt(branchName);
-  } catch {
-    return null;
   }
 }
 

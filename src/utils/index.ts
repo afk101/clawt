@@ -59,7 +59,7 @@ export { ensureDir, removeEmptyDir, calculateDirSize } from './fs.js';
 export { multilineInput } from './prompt.js';
 export { launchInteractiveClaude, hasClaudeSessionHistory, launchInteractiveClaudeInNewTerminal } from './claude.js';
 export { getSnapshotPath, hasSnapshot, getSnapshotModifiedTime, readSnapshotTreeHash, readSnapshot, writeSnapshot, removeSnapshot, removeProjectSnapshots, getProjectSnapshotBranches } from './validate-snapshot.js';
-export { findExactMatch, findFuzzyMatches, promptSelectBranch, promptMultiSelectBranches, promptGroupedMultiSelectBranches, resolveTargetWorktree, resolveTargetWorktrees, groupWorktreesByDate, buildGroupedChoices, buildGroupMembershipMap, formatRelativeDate, getWorktreeCreatedDate } from './worktree-matcher.js';
+export { findExactMatch, findFuzzyMatches, promptSelectBranch, promptMultiSelectBranches, promptGroupedMultiSelectBranches, resolveTargetWorktree, resolveTargetWorktrees, groupWorktreesByDate, buildGroupedChoices, buildGroupMembershipMap, formatRelativeDate, getWorktreeCreatedDate, getWorktreeCreatedTime } from './worktree-matcher.js';
 export type { WorktreeResolveMessages, WorktreeMultiResolveMessages } from './worktree-matcher.js';
 export { ProgressRenderer } from './progress.js';
 export { parseTaskFile, loadTaskFile, parseTasksFromOptions } from './task-file.js';
