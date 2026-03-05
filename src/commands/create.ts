@@ -4,7 +4,7 @@ import { ClawtError } from '../errors/index.js';
 import { logger } from '../logger/index.js';
 import type { CreateOptions } from '../types/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   createWorktrees,
   ensureOnMainWorkBranch,
   getValidateBranchName,
@@ -33,7 +33,7 @@ export function registerCreateCommand(program: Command): void {
  * @param {CreateOptions} options - 命令选项
  */
 async function handleCreate(options: CreateOptions): Promise<void> {
-  validateMainWorktree();
+  runPreChecks({ mainWorktree: true, headExists: true });
 
   await ensureOnMainWorkBranch();
 

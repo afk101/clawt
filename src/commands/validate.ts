@@ -4,7 +4,7 @@ import { MESSAGES } from '../constants/index.js';
 import type { ValidateOptions } from '../types/index.js';
 import { executeSyncForBranch } from './sync.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   getProjectName,
   getGitTopLevel,
   getProjectWorktrees,
@@ -25,7 +25,6 @@ import {
   printWarning,
   printInfo,
   resolveTargetWorktree,
-  requireProjectConfig,
   ensureOnMainWorkBranch,
   handleDirtyWorkingDir,
   getValidateRunCommand,
@@ -98,9 +97,7 @@ async function handlePatchApplyFailure(targetWorktreePath: string, branchName: s
  * @param {ValidateOptions} options - 命令选项
  */
 async function handleValidateClean(options: ValidateOptions): Promise<void> {
-  validateMainWorktree();
-  // 显式前置校验：确保项目已初始化
-  requireProjectConfig();
+  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
 
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();
@@ -264,8 +261,7 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
     return;
   }
 
-  validateMainWorktree();
-  requireProjectConfig();
+  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
 
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();

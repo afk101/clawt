@@ -4,7 +4,7 @@ import { MESSAGES } from '../constants/index.js';
 import type { ResumeOptions } from '../types/index.js';
 import type { WorktreeInfo } from '../types/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   validateClaudeCodeInstalled,
   getProjectWorktrees,
   launchInteractiveClaude,
@@ -47,7 +47,7 @@ export function registerResumeCommand(program: Command): void {
  * @param {ResumeOptions} options - 命令选项
  */
 async function handleResume(options: ResumeOptions): Promise<void> {
-  validateMainWorktree();
+  runPreChecks({ mainWorktree: true, headExists: true });
   validateClaudeCodeInstalled();
 
   logger.info(`resume 命令执行，分支过滤: ${options.branch ?? '(无)'}`);

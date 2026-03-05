@@ -3,8 +3,7 @@ import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES, VALIDATE_BRANCH_PREFIX } from '../constants/index.js';
 import {
-  validateMainWorktree,
-  requireProjectConfig,
+  runPreChecks,
   getProjectName,
   getGitTopLevel,
   getCurrentBranch,
@@ -98,8 +97,7 @@ export function computeIncrementalPatch(snapshotTreeHash: string, mainWorktreePa
  */
 async function handleCoverValidate(): Promise<void> {
   // 步骤 1：前置校验
-  validateMainWorktree();
-  requireProjectConfig();
+  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
   const projectName = getProjectName();
   const mainWorktreePath = getGitTopLevel();
   const currentBranch = getCurrentBranch(mainWorktreePath);

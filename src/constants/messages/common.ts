@@ -6,6 +6,8 @@ export const COMMON_MESSAGES = {
   GIT_NOT_INSTALLED: 'Git 未安装或不在 PATH 中，请先安装 Git',
   /** Claude Code CLI 未安装 */
   CLAUDE_NOT_INSTALLED: 'Claude Code CLI 未安装，请先安装：npm install -g @anthropic-ai/claude-code',
+  /** HEAD 不存在（仓库无任何 commit） */
+  HEAD_NOT_FOUND: '当前仓库尚未创建任何提交，请先执行 git commit 创建首次提交后再使用 clawt',
   /** 分支已存在 */
   BRANCH_EXISTS: (name: string) => `分支 ${name} 已存在，无法创建`,
   /** 分支名清理后为空 */

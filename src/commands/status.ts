@@ -4,7 +4,7 @@ import { MESSAGES } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import type { StatusOptions, WorktreeDetailedStatus, MainWorktreeStatus, SnapshotSummary, StatusResult, WorktreeInfo } from '../types/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   getProjectName,
   getCurrentBranch,
   isWorkingDirClean,
@@ -44,7 +44,7 @@ export function registerStatusCommand(program: Command): void {
  * @param {StatusOptions} options - 命令选项
  */
 async function handleStatus(options: StatusOptions): Promise<void> {
-  validateMainWorktree();
+  runPreChecks({ mainWorktree: true, headExists: true });
 
   // 交互式面板模式
   if (options.interactive) {

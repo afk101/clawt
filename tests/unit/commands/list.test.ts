@@ -13,7 +13,7 @@ vi.mock('../../../src/constants/index.js', () => ({
 }));
 
 vi.mock('../../../src/utils/index.js', () => ({
-  validateMainWorktree: vi.fn(),
+  runPreChecks: vi.fn(),
   getProjectName: vi.fn(),
   getProjectWorktrees: vi.fn(),
   getWorktreeStatus: vi.fn(),
@@ -23,16 +23,16 @@ vi.mock('../../../src/utils/index.js', () => ({
 }));
 
 import { registerListCommand } from '../../../src/commands/list.js';
-import { validateMainWorktree, getProjectName, getProjectWorktrees, getWorktreeStatus, printInfo } from '../../../src/utils/index.js';
+import { runPreChecks, getProjectName, getProjectWorktrees, getWorktreeStatus, printInfo } from '../../../src/utils/index.js';
 
-const mockedValidateMainWorktree = vi.mocked(validateMainWorktree);
+const mockedRunPreChecks = vi.mocked(runPreChecks);
 const mockedGetProjectName = vi.mocked(getProjectName);
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
 const mockedGetWorktreeStatus = vi.mocked(getWorktreeStatus);
 const mockedPrintInfo = vi.mocked(printInfo);
 
 beforeEach(() => {
-  mockedValidateMainWorktree.mockReset();
+  mockedRunPreChecks.mockReset();
   mockedGetProjectName.mockReset();
   mockedGetProjectWorktrees.mockReset();
   mockedGetWorktreeStatus.mockReset();
@@ -58,7 +58,7 @@ describe('handleList', () => {
     registerListCommand(program);
     program.parse(['list'], { from: 'user' });
 
-    expect(mockedValidateMainWorktree).toHaveBeenCalled();
+    expect(mockedRunPreChecks).toHaveBeenCalled();
     expect(mockedPrintInfo).toHaveBeenCalled();
   });
 

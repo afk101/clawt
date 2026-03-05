@@ -4,7 +4,7 @@ import { MESSAGES } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import type { ListOptions } from '../types/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   getProjectName,
   getProjectWorktrees,
   getWorktreeStatus,
@@ -33,7 +33,7 @@ export function registerListCommand(program: Command): void {
  * @param {ListOptions} options - 命令选项
  */
 function handleList(options: ListOptions): void {
-  validateMainWorktree();
+  runPreChecks({ mainWorktree: true });
 
   const projectName = getProjectName();
   const worktrees = getProjectWorktrees();

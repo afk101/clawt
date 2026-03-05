@@ -33,7 +33,7 @@ vi.mock('../../../src/constants/index.js', () => ({
 }));
 
 vi.mock('../../../src/utils/index.js', () => ({
-  validateMainWorktree: vi.fn(),
+  runPreChecks: vi.fn(),
   getProjectName: vi.fn(),
   getProjectWorktreeDir: vi.fn(),
   getProjectWorktrees: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock('../../../src/utils/index.js', () => ({
 
 import { registerRemoveCommand } from '../../../src/commands/remove.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   getProjectName,
   getProjectWorktrees,
   removeWorktreeByPath,
@@ -89,7 +89,7 @@ const mockedResolveTargetWorktrees = vi.mocked(resolveTargetWorktrees);
 const mockedGetCurrentBranch = vi.mocked(getCurrentBranch);
 
 beforeEach(() => {
-  vi.mocked(validateMainWorktree).mockReset();
+  vi.mocked(runPreChecks).mockReset();
   mockedGetProjectName.mockReturnValue('test-project');
   mockedGetProjectWorktrees.mockReset();
   mockedRemoveWorktreeByPath.mockReset();

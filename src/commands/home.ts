@@ -1,8 +1,7 @@
 import type { Command } from 'commander';
 import { MESSAGES } from '../constants/index.js';
 import {
-  validateMainWorktree,
-  requireProjectConfig,
+  runPreChecks,
   ensureOnMainWorkBranch,
   getCurrentBranch,
   getMainWorkBranch,
@@ -27,8 +26,7 @@ export function registerHomeCommand(program: Command): void {
  * 执行 home 命令：切换回主工作分支
  */
 async function handleHome(): Promise<void> {
-  validateMainWorktree();
-  requireProjectConfig();
+  runPreChecks({ mainWorktree: true, headExists: true, projectConfig: true });
 
   const mainBranch = getMainWorkBranch();
   const currentBranch = getCurrentBranch();

@@ -4,7 +4,7 @@ import { ClawtError } from '../errors/index.js';
 import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
 import type { MergeOptions } from '../types/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   getProjectName,
   getGitTopLevel,
   getProjectWorktrees,
@@ -135,7 +135,7 @@ function cleanupWorktreeAndBranch(worktreePath: string, branchName: string): voi
  * @param {MergeOptions} options - 命令选项
  */
 async function handleMerge(options: MergeOptions): Promise<void> {
-  validateMainWorktree();
+  runPreChecks({ mainWorktree: true, headExists: true });
 
   const mainWorktreePath = getGitTopLevel();
 

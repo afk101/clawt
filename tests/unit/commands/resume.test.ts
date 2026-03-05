@@ -17,7 +17,7 @@ vi.mock('../../../src/constants/index.js', () => ({
 }));
 
 vi.mock('../../../src/utils/index.js', () => ({
-  validateMainWorktree: vi.fn(),
+  runPreChecks: vi.fn(),
   validateClaudeCodeInstalled: vi.fn(),
   getProjectWorktrees: vi.fn(),
   launchInteractiveClaude: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock('../../../src/utils/index.js', () => ({
 
 import { registerResumeCommand } from '../../../src/commands/resume.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   validateClaudeCodeInstalled,
   getProjectWorktrees,
   launchInteractiveClaude,
@@ -45,7 +45,7 @@ import {
   getConfigValue,
 } from '../../../src/utils/index.js';
 
-const mockedValidateMainWorktree = vi.mocked(validateMainWorktree);
+const mockedRunPreChecks = vi.mocked(runPreChecks);
 const mockedValidateClaudeCodeInstalled = vi.mocked(validateClaudeCodeInstalled);
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
 const mockedLaunchInteractiveClaude = vi.mocked(launchInteractiveClaude);
@@ -57,7 +57,7 @@ const mockedConfirmAction = vi.mocked(confirmAction);
 const mockedGetConfigValue = vi.mocked(getConfigValue);
 
 beforeEach(() => {
-  mockedValidateMainWorktree.mockReset();
+  mockedRunPreChecks.mockReset();
   mockedValidateClaudeCodeInstalled.mockReset();
   mockedGetProjectWorktrees.mockReset();
   mockedLaunchInteractiveClaude.mockReset();
@@ -90,7 +90,7 @@ describe('handleResume', () => {
     registerResumeCommand(program);
     await program.parseAsync(['resume', '-b', 'feature'], { from: 'user' });
 
-    expect(mockedValidateMainWorktree).toHaveBeenCalled();
+    expect(mockedRunPreChecks).toHaveBeenCalled();
     expect(mockedValidateClaudeCodeInstalled).toHaveBeenCalled();
     expect(mockedResolveTargetWorktrees).toHaveBeenCalled();
     expect(mockedPromptGroupedMultiSelectBranches).not.toHaveBeenCalled();

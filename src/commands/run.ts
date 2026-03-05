@@ -4,7 +4,7 @@ import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
 import type { RunOptions, WorktreeInfo } from '../types/index.js';
 import {
-  validateMainWorktree,
+  runPreChecks,
   validateClaudeCodeInstalled,
   createWorktrees,
   createWorktreesByBranches,
@@ -119,7 +119,7 @@ function handleDryRunFromFile(options: RunOptions): void {
  * @param {RunOptions} options - 命令选项
  */
 async function handleRun(options: RunOptions): Promise<void> {
-  validateMainWorktree();
+  runPreChecks({ mainWorktree: true, headExists: true });
 
   // dry-run 模式跳过项目配置前置校验
   if (!options.dryRun) {
