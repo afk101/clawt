@@ -44,3 +44,9 @@ export const PANEL_DATE_SEPARATOR_PREFIX = '════';
 
 /** 固定占用行数（配置分支信息 + 快照摘要 + 顶部分隔线 + 底部分隔线 + 底栏） */
 export const PANEL_FIXED_ROWS = 5;
+
+/** 终端最大显示宽度限制 */
+export const PANEL_SEPARATOR_MAX_WIDTH = 60;
+
+/** 日期分隔线高亮颜色（橙色） */
+export const PANEL_DATE_COLOR = '#FF8C00';

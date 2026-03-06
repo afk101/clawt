@@ -20,9 +20,11 @@ import {
 } from '../constants/index.js';
 import { PANEL_NOT_TTY, PANEL_PRESS_ENTER_TO_RETURN } from '../constants/messages/index.js';
 import { runCommandInherited } from './shell.js';
-import { buildPanelFrame, buildGroupedWorktreeLines, buildDisplayOrder, calculateVisibleRows } from './interactive-panel-render.js';
+import { buildPanelFrame } from './interactive-panel-render.js';
 import { truncateToTerminalWidth } from './progress-render.js';
 import type { StatusResult } from '../types/index.js';
+import { KeyboardController } from './keyboard-controller.js';
+import { PanelStateManager } from './interactive-panel-state.js';
 
 /**
  * 交互式状态面板
@@ -31,14 +33,10 @@ import type { StatusResult } from '../types/index.js';
  * 参照 ProgressRenderer 的生命周期模式实现。
  */
 export class InteractivePanel {
-  /** 当前状态数据 */
-  private statusResult: StatusResult | null;
-  /** 当前选中的显示位置索引（对应 displayOrder 数组的下标） */
-  private selectedDisplayIndex: number;
-  /** 显示顺序到原始索引的映射（按日期分组后的排列顺序） */
-  private displayOrder: number[];
-  /** 滚动偏移（基于行数） */
-  private scrollOffset: number;
+  /** 状态管理器 */
+  private stateManager: PanelStateManager;
+  /** 键盘控制器 */
+  private keyboardController: KeyboardController;
   /** 数据刷新定时器引用 */
   private refreshTimer: ReturnType<typeof setInterval> | null;
   /** 倒计时定时器引用 */
@@ -53,8 +51,6 @@ export class InteractivePanel {
   private resizeHandler: (() => void) | null;
   /** exit 兜底处理器 */
   private exitHandler: (() => void) | null;
-  /** stdin 数据处理器引用（用于清理） */
-  private stdinDataHandler: ((data: Buffer) => void) | null;
   /** 操作锁（防止操作期间响应按键） */
   private isOperating: boolean;
   /** Promise resolve 函数（stop 时调用以完成 start 返回的 Promise） */
@@ -67,10 +63,8 @@ export class InteractivePanel {
    * @param {() => StatusResult} collectStatusFn - 数据收集函数
    */
   constructor(collectStatusFn: () => StatusResult) {
-    this.statusResult = null;
-    this.selectedDisplayIndex = 0;
-    this.displayOrder = [];
-    this.scrollOffset = 0;
+    this.stateManager = new PanelStateManager();
+    this.keyboardController = new KeyboardController(this.handleKeypress.bind(this));
     this.refreshTimer = null;
     this.countdownTimer = null;
     this.refreshCountdown = PANEL_REFRESH_INTERVAL_MS / 1000;
@@ -78,7 +72,6 @@ export class InteractivePanel {
     this.isTTY = !!process.stdout.isTTY;
     this.resizeHandler = null;
     this.exitHandler = null;
-    this.stdinDataHandler = null;
     this.isOperating = false;
     this.resolveStart = null;
     this.collectStatusFn = collectStatusFn;
@@ -100,14 +93,13 @@ export class InteractivePanel {
       this.resolveStart = resolve;
 
       // 收集初始数据
-      this.statusResult = this.collectStatusFn();
-      this.displayOrder = buildDisplayOrder(this.statusResult.worktrees);
+      this.stateManager.updateData(this.collectStatusFn());
 
       // 初始化终端
       this.initTerminal();
 
       // 启动键盘监听
-      this.startKeyboardListener();
+      this.keyboardController.start();
 
       // 启动自动刷新
       this.startAutoRefresh();
@@ -128,7 +120,7 @@ export class InteractivePanel {
     this.clearTimers();
 
     // 停止键盘监听
-    this.stopKeyboardListener();
+    this.keyboardController.stop();
 
     // 恢复终端
     this.restoreTerminal();
@@ -163,6 +155,8 @@ export class InteractivePanel {
     // 监听终端宽度变化，立即触发重绘
     this.resizeHandler = () => {
       if (!this.stopped && !this.isOperating) {
+        // 在调整大小时也调整滚动
+        this.stateManager.adjustScrollForSelection();
         this.render();
       }
     };
@@ -187,36 +181,6 @@ export class InteractivePanel {
   }
 
   /**
-   * 启动键盘监听
-   * 将 stdin 设为 raw 模式以捕获每个按键
-   */
-  private startKeyboardListener(): void {
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
-    }
-    process.stdin.resume();
-
-    this.stdinDataHandler = (data: Buffer) => {
-      this.handleKeypress(data);
-    };
-    process.stdin.on('data', this.stdinDataHandler);
-  }
-
-  /**
-   * 停止键盘监听，恢复 stdin 状态
-   */
-  private stopKeyboardListener(): void {
-    if (this.stdinDataHandler) {
-      process.stdin.removeListener('data', this.stdinDataHandler);
-      this.stdinDataHandler = null;
-    }
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(false);
-    }
-    process.stdin.pause();
-  }
-
-  /**
    * 处理键盘输入
    * @param {Buffer} data - 按键数据
    */
@@ -234,13 +198,17 @@ export class InteractivePanel {
 
     // 方向键上
     if (str === KEY_ARROW_UP) {
-      this.navigateUp();
+      if (this.stateManager.navigateUp()) {
+        this.render();
+      }
       return;
     }
 
     // 方向键下
     if (str === KEY_ARROW_DOWN) {
-      this.navigateDown();
+      if (this.stateManager.navigateDown()) {
+        this.render();
+      }
       return;
     }
 
@@ -289,85 +257,6 @@ export class InteractivePanel {
   }
 
   /**
-   * 向上导航，选中显示顺序中的上一个 worktree
-   */
-  private navigateUp(): void {
-    if (!this.statusResult || this.displayOrder.length === 0) return;
-
-    if (this.selectedDisplayIndex > 0) {
-      this.selectedDisplayIndex--;
-      this.adjustScrollForSelection();
-      this.render();
-    }
-  }
-
-  /**
-   * 向下导航，选中显示顺序中的下一个 worktree
-   */
-  private navigateDown(): void {
-    if (!this.statusResult || this.displayOrder.length === 0) return;
-
-    if (this.selectedDisplayIndex < this.displayOrder.length - 1) {
-      this.selectedDisplayIndex++;
-      this.adjustScrollForSelection();
-      this.render();
-    }
-  }
-
-  /**
-   * 获取当前选中的原始 worktree 索引
-   * @returns {number} 原始 worktrees 数组中的索引
-   */
-  private getSelectedOriginalIndex(): number {
-    return this.displayOrder[this.selectedDisplayIndex];
-  }
-
-  /**
-   * 调整滚动偏移以确保选中项在可见区域内
-   */
-  private adjustScrollForSelection(): void {
-    if (!this.statusResult || this.displayOrder.length === 0) return;
-
-    const originalIndex = this.getSelectedOriginalIndex();
-    const rows = process.stdout.rows || 24;
-    const visibleRows = calculateVisibleRows(rows);
-    const panelLines = buildGroupedWorktreeLines(this.statusResult.worktrees, originalIndex);
-
-    // 找到选中 worktree 对应的第一行和最后一行
-    let firstLine = -1;
-    let lastLine = -1;
-    for (let i = 0; i < panelLines.length; i++) {
-      if (panelLines[i].worktreeIndex === originalIndex) {
-        if (firstLine === -1) firstLine = i;
-        lastLine = i;
-      }
-    }
-
-    if (firstLine === -1) return;
-
-    // 向前查找该 worktree 所属日期分组的分隔线行，滚动时一并显示
-    let groupStart = firstLine;
-    while (groupStart > 0 && panelLines[groupStart - 1].type === 'separator') {
-      groupStart--;
-    }
-
-    // 如果选中项（含日期分隔线）在可见区域之上，向上滚动
-    if (groupStart < this.scrollOffset) {
-      this.scrollOffset = groupStart;
-    }
-
-    // 如果选中项的最后一行在可见区域之下，向下滚动
-    if (lastLine >= this.scrollOffset + visibleRows) {
-      this.scrollOffset = lastLine - visibleRows + 1;
-    }
-
-    // 终端极小时向下滚动可能把日期分组标题推出屏幕，优先保证分组标题可见
-    if (this.scrollOffset > groupStart) {
-      this.scrollOffset = groupStart;
-    }
-  }
-
-  /**
    * 启动自动刷新：数据刷新定时器 + 倒计时定时器
    */
   private startAutoRefresh(): void {
@@ -412,15 +301,13 @@ export class InteractivePanel {
     if (this.stopped || this.isOperating) return;
 
     // 记录当前选中分支名
-    const originalIndex = this.displayOrder[this.selectedDisplayIndex];
-    const previousBranch = this.statusResult?.worktrees[originalIndex]?.branch;
+    const previousBranch = this.stateManager.getSelectedBranch();
 
-    // 重新收集数据
-    this.statusResult = this.collectStatusFn();
-    this.displayOrder = buildDisplayOrder(this.statusResult.worktrees);
+    // 重新收集数据并更新状态
+    this.stateManager.updateData(this.collectStatusFn(), previousBranch || undefined);
 
-    // 恢复选中位置
-    this.restoreSelection(previousBranch);
+    // 在重绘前必须确保滚动状态正常
+    this.stateManager.adjustScrollForSelection();
 
     // 重置倒计时
     this.refreshCountdown = PANEL_REFRESH_INTERVAL_MS / 1000;
@@ -429,43 +316,20 @@ export class InteractivePanel {
   }
 
   /**
-   * 按分支名恢复选中位置（基于显示顺序）
-   * @param {string | undefined} previousBranch - 之前选中的分支名
-   */
-  private restoreSelection(previousBranch: string | undefined): void {
-    if (!this.statusResult || !previousBranch || this.displayOrder.length === 0) {
-      this.selectedDisplayIndex = 0;
-      return;
-    }
-
-    // 在显示顺序中查找之前选中的分支
-    const newDisplayIndex = this.displayOrder.findIndex(
-      (origIdx) => this.statusResult!.worktrees[origIdx]?.branch === previousBranch,
-    );
-    if (newDisplayIndex >= 0) {
-      this.selectedDisplayIndex = newDisplayIndex;
-    } else {
-      // 分支已不存在，调整到安全范围
-      this.selectedDisplayIndex = Math.min(this.selectedDisplayIndex, Math.max(0, this.displayOrder.length - 1));
-    }
-
-    this.adjustScrollForSelection();
-  }
-
-  /**
    * 渲染一帧面板内容
    * 使用同步输出防止闪烁
    */
   private render(): void {
-    if (this.stopped || this.isOperating || !this.statusResult) return;
+    const statusResult = this.stateManager.getStatusResult();
+    if (this.stopped || this.isOperating || !statusResult) return;
 
     const cols = process.stdout.columns || DEFAULT_TERMINAL_COLUMNS;
     const rows = process.stdout.rows || 24;
 
     const frameLines = buildPanelFrame(
-      this.statusResult,
-      this.getSelectedOriginalIndex(),
-      this.scrollOffset,
+      statusResult,
+      this.stateManager.getSelectedOriginalIndex(),
+      this.stateManager.getScrollOffset(),
       rows,
       cols,
       this.refreshCountdown,
@@ -491,7 +355,8 @@ export class InteractivePanel {
    * @param {() => void} action - 要执行的操作
    */
   private async executeOperation(action: () => void): Promise<void> {
-    if (!this.statusResult || this.displayOrder.length === 0) return;
+    const statusResult = this.stateManager.getStatusResult();
+    if (!statusResult || this.stateManager.getSelectedOriginalIndex() === -1) return;
 
     this.isOperating = true;
 
@@ -502,7 +367,7 @@ export class InteractivePanel {
     this.restoreTerminal();
 
     // 恢复 stdin 以便子命令交互
-    this.stopKeyboardListener();
+    this.keyboardController.stop();
 
     // 执行操作
     action();
@@ -515,7 +380,7 @@ export class InteractivePanel {
 
     // 重新进入面板模式
     this.initTerminal();
-    this.startKeyboardListener();
+    this.keyboardController.start();
 
     this.isOperating = false;
 
@@ -528,52 +393,43 @@ export class InteractivePanel {
   }
 
   /**
-   * 获取当前选中的分支名
-   * @returns {string} 当前选中的分支名
-   */
-  private getSelectedBranch(): string {
-    const originalIndex = this.getSelectedOriginalIndex();
-    return this.statusResult!.worktrees[originalIndex].branch;
-  }
-
-  /**
    * 执行验证操作
    */
   private handleValidate(): void {
-    const branch = this.getSelectedBranch();
-    runCommandInherited(`clawt validate -b ${branch}`);
+    const branch = this.stateManager.getSelectedBranch();
+    if (branch) runCommandInherited(`clawt validate -b ${branch}`);
   }
 
   /**
    * 执行合并操作
    */
   private handleMerge(): void {
-    const branch = this.getSelectedBranch();
-    runCommandInherited(`clawt merge -b ${branch}`);
+    const branch = this.stateManager.getSelectedBranch();
+    if (branch) runCommandInherited(`clawt merge -b ${branch}`);
   }
 
   /**
    * 执行删除操作
    */
   private handleDelete(): void {
-    const branch = this.getSelectedBranch();
-    runCommandInherited(`clawt remove -b ${branch}`);
+    const branch = this.stateManager.getSelectedBranch();
+    if (branch) runCommandInherited(`clawt remove -b ${branch}`);
   }
 
   /**
    * 执行恢复操作
    */
   private handleResume(): void {
-    const branch = this.getSelectedBranch();
-    runCommandInherited(`clawt resume -b ${branch}`);
+    const branch = this.stateManager.getSelectedBranch();
+    if (branch) runCommandInherited(`clawt resume -b ${branch}`);
   }
 
   /**
    * 执行同步操作
    */
   private handleSync(): void {
-    const branch = this.getSelectedBranch();
-    runCommandInherited(`clawt sync -b ${branch}`);
+    const branch = this.stateManager.getSelectedBranch();
+    if (branch) runCommandInherited(`clawt sync -b ${branch}`);
   }
 
   /**

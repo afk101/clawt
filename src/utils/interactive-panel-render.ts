@@ -6,6 +6,8 @@ import {
   UNSELECTED_INDICATOR,
   PANEL_DATE_SEPARATOR_PREFIX,
   PANEL_FIXED_ROWS,
+  PANEL_SEPARATOR_MAX_WIDTH,
+  PANEL_DATE_COLOR,
   UNKNOWN_DATE_GROUP,
   VALIDATE_BRANCH_PREFIX,
 } from '../constants/index.js';
@@ -21,6 +23,10 @@ import {
   PANEL_CONFIGURED_BRANCH_DELETED,
   PANEL_CONFIGURED_BRANCH_MISMATCH,
   PANEL_NOT_INITIALIZED,
+  PANEL_UNKNOWN_DATE,
+  PANEL_SYNCED_WITH_MAIN,
+  PANEL_COMMITS_AHEAD,
+  PANEL_COMMITS_BEHIND,
 } from '../constants/messages/index.js';
 import type { StatusResult, WorktreeDetailedStatus, MainWorktreeStatus } from '../types/index.js';
 import { formatRelativeTime, groupWorktreesByDate, formatRelativeDate } from './index.js';
@@ -43,7 +49,7 @@ export interface PanelLine {
  * @returns {string} 格式化的分隔线
  */
 function buildSeparatorWithHint(cols: number, hint: string): string {
-  const maxWidth = Math.min(cols, 60);
+  const maxWidth = Math.min(cols, PANEL_SEPARATOR_MAX_WIDTH);
   if (!hint) {
     return chalk.gray('─'.repeat(maxWidth));
   }
@@ -207,10 +213,10 @@ export function renderDateSeparator(dateKey: string): string {
   // 左侧空格与指示器 '▶ ' 等宽对齐
   const leftPad = '  ';
   if (dateKey === UNKNOWN_DATE_GROUP) {
-    return `${leftPad}${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)} ${chalk.bold.hex('#FF8C00')('未知日期')} ${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)}`;
+    return `${leftPad}${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)} ${chalk.bold.hex(PANEL_DATE_COLOR)(PANEL_UNKNOWN_DATE)} ${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)}`;
   }
   const relativeDate = formatRelativeDate(dateKey);
-  return `${leftPad}${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)} ${chalk.bold.hex('#FF8C00')(dateKey)}${chalk.hex('#FF8C00')(`（${relativeDate}）`)} ${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)}`;
+  return `${leftPad}${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)} ${chalk.bold.hex(PANEL_DATE_COLOR)(dateKey)}${chalk.hex(PANEL_DATE_COLOR)(`（${relativeDate}）`)} ${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)}`;
 }
 
 /**
@@ -239,14 +245,14 @@ export function renderWorktreeBlock(wt: WorktreeDetailedStatus, isSelected: bool
 
   // 本地提交数
   if (wt.commitsAhead > 0) {
-    lines.push(`${indent}${chalk.yellow(`${wt.commitsAhead} 个本地提交`)}`);
+    lines.push(`${indent}${chalk.yellow(PANEL_COMMITS_AHEAD(wt.commitsAhead))}`);
   }
 
   // 与主分支的同步状态
   if (wt.commitsBehind > 0) {
-    lines.push(`${indent}${chalk.yellow(`落后主分支 ${wt.commitsBehind} 个提交`)}`);
+    lines.push(`${indent}${chalk.yellow(PANEL_COMMITS_BEHIND(wt.commitsBehind))}`);
   } else {
-    lines.push(`${indent}${chalk.green('与主分支同步')}`);
+    lines.push(`${indent}${chalk.green(PANEL_SYNCED_WITH_MAIN)}`);
   }
 
   // 分支创建时间

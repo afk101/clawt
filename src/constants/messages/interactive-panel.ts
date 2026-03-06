@@ -87,3 +87,15 @@ export const PANEL_CONFIGURED_BRANCH_MISMATCH = (branchName: string): string =>
 
 /** 面板配置分支信息（未初始化） */
 export const PANEL_NOT_INITIALIZED = chalk.gray('未初始化（执行 clawt init 设置主工作分支）');
+
+/** 交互面板日期分隔线：未知日期文案 */
+export const PANEL_UNKNOWN_DATE = '未知日期';
+
+/** 交互面板：与主分支同步 */
+export const PANEL_SYNCED_WITH_MAIN = '与主分支同步';
+
+/** 交互面板：本地提交数量提示 */
+export const PANEL_COMMITS_AHEAD = (count: number): string => `${count} 个本地提交`;
+
+/** 交互面板：落后主分支提交数量提示 */
+export const PANEL_COMMITS_BEHIND = (count: number): string => `落后主分支 ${count} 个提交`;
