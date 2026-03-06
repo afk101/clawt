@@ -230,3 +230,22 @@ export function formatLocalISOString(date: Date): string {
 
   return `${iso}${sign}${hours}:${minutes}`;
 }
+
+/**
+ * 生成任务模板文件名，格式：clawt-tasks-YYYY-MM-DD-HH-mm-ss.md
+ * @param {string} prefix - 文件名前缀
+ * @returns {string} 带时间戳的文件名
+ */
+export function generateTaskFilename(prefix: string): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const timestamp = [
+    now.getFullYear(),
+    pad(now.getMonth() + 1),
+    pad(now.getDate()),
+    pad(now.getHours()),
+    pad(now.getMinutes()),
+    pad(now.getSeconds()),
+  ].join('-');
+  return `${prefix}-${timestamp}.md`;
+}

@@ -46,3 +46,4 @@ export {
   PANEL_DATE_COLOR,
 } from './interactive-panel.js';
 export { PRE_CHECK_CREATE, PRE_CHECK_RUN, PRE_CHECK_DRY_RUN, PRE_CHECK_MERGE, PRE_CHECK_SYNC, PRE_CHECK_RESUME } from './pre-checks.js';
+export { TASK_TEMPLATE_OUTPUT_DIR, TASK_TEMPLATE_FILENAME_PREFIX, TASK_TEMPLATE_CONTENT } from './tasks-template.js';

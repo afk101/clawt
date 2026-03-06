@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString } from '../../../src/utils/formatter.js';
+import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString, generateTaskFilename } from '../../../src/utils/formatter.js';
 import { createWorktreeStatus } from '../../helpers/fixtures.js';
 
 describe('formatWorktreeStatus', () => {
@@ -265,5 +265,30 @@ describe('formatLocalISOString', () => {
     const result = formatLocalISOString(date);
     // 毫秒值应出现在结果中
     expect(result).toContain('.123');
+  });
+});
+
+describe('generateTaskFilename', () => {
+  it('生成格式为 prefix-YYYY-MM-DD-HH-mm-ss.md 的文件名', () => {
+    const result = generateTaskFilename('clawt-tasks');
+    expect(result).toMatch(/^clawt-tasks-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.md$/);
+  });
+
+  it('使用自定义前缀', () => {
+    const result = generateTaskFilename('my-prefix');
+    expect(result).toMatch(/^my-prefix-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}\.md$/);
+  });
+
+  it('文件名以 .md 结尾', () => {
+    const result = generateTaskFilename('test');
+    expect(result).toMatch(/\.md$/);
+  });
+
+  it('时间戳各段使用两位数字（年份除外）', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-05T03:07:09'));
+    const result = generateTaskFilename('clawt-tasks');
+    expect(result).toBe('clawt-tasks-2026-01-05-03-07-09.md');
+    vi.useRealTimers();
   });
 });

@@ -54,7 +54,7 @@ export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled
 export type { PreCheckOptions } from './validation.js';
 export { createWorktrees, getProjectWorktrees, getProjectWorktreeDir, cleanupWorktrees, getWorktreeStatus, createWorktreesByBranches } from './worktree.js';
 export { loadConfig, writeDefaultConfig, writeConfig, saveConfig, getConfigValue, ensureClawtDirs, parseConcurrency } from './config.js';
-export { printSuccess, printError, printWarning, printInfo, printHint, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString } from './formatter.js';
+export { printSuccess, printError, printWarning, printInfo, printHint, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString, generateTaskFilename } from './formatter.js';
 export { ensureDir, removeEmptyDir, calculateDirSize } from './fs.js';
 export { multilineInput } from './prompt.js';
 export { launchInteractiveClaude, hasClaudeSessionHistory, launchInteractiveClaudeInNewTerminal } from './claude.js';

@@ -85,3 +85,9 @@ export interface InitOptions {
   /** 指定主工作分支名（可选，默认使用当前分支） */
   branch?: string;
 }
+
+/** tasks init 命令选项 */
+export interface TasksInitOptions {
+  /** 输出文件路径（可选，默认 tasks.md） */
+  path?: string;
+}
