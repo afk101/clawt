@@ -68,6 +68,7 @@ export type { WorktreeResolveMessages, WorktreeMultiResolveMessages } from './wo
 export { ProgressRenderer } from './progress.js';
 export { parseTaskFile, loadTaskFile, parseTasksFromOptions } from './task-file.js';
 export { executeBatchTasks } from './task-executor.js';
+export { saveSessionId, loadSessionId, removeSessionId, persistSessionIds } from './session.js';
 export { createLineBuffer, parseStreamLine, parseStreamEvent, formatActivityText, truncateText } from './stream-parser.js';
 export type { ParsedActivity, StreamEvent, LineBuffer } from './stream-parser.js';
 export { detectTerminalApp, openCommandInNewTerminalTab } from './terminal.js';

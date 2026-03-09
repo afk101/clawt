@@ -52,6 +52,12 @@ export interface RemoveOptions {
 export interface ResumeOptions {
   /** 要恢复的分支名（可选，不传则列出所有分支供选择） */
   branch?: string;
+  /** 非交互式追问内容（需配合 -b 指定分支） */
+  prompt?: string;
+  /** 从任务文件批量追问（通过 branch 名匹配已有 worktree） */
+  file?: string;
+  /** 批量追问最大并发数，0 表示不限制（Commander 传入为字符串） */
+  concurrency?: string;
 }
 
 /** sync 命令选项 */

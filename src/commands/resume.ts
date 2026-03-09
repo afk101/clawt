@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { logger } from '../logger/index.js';
+import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
 import type { ResumeOptions } from '../types/index.js';
 import type { WorktreeInfo } from '../types/index.js';
@@ -12,10 +13,17 @@ import {
   hasClaudeSessionHistory,
   resolveTargetWorktrees,
   promptGroupedMultiSelectBranches,
+  findExactMatch,
   printInfo,
   printSuccess,
+  printWarning,
   confirmAction,
   getConfigValue,
+  parseConcurrency,
+  loadTaskFile,
+  executeBatchTasks,
+  loadSessionId,
+  persistSessionIds,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
 
@@ -36,6 +44,9 @@ export function registerResumeCommand(program: Command): void {
     .command('resume')
     .description('在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复）')
     .option('-b, --branch <branchName>', '要恢复的分支名（支持模糊匹配，不传则列出所有分支）')
+    .option('--prompt <content>', '非交互式追问（需配合 -b 指定分支）')
+    .option('-f, --file <path>', '从任务文件批量追问（通过 branch 名匹配已有 worktree）')
+    .option('-c, --concurrency <n>', '批量追问最大并发数，0 表示不限制')
     .action(async (options: ResumeOptions) => {
       await handleResume(options);
     });
@@ -49,6 +60,25 @@ export function registerResumeCommand(program: Command): void {
 async function handleResume(options: ResumeOptions): Promise<void> {
   await runPreChecks(PRE_CHECK_RESUME);
 
+  // 非交互式追问逻辑分支
+  if (options.prompt && options.file) {
+    throw new ClawtError(MESSAGES.RESUME_PROMPT_FILE_CONFLICT);
+  }
+
+  if (options.prompt) {
+    if (!options.branch) {
+      throw new ClawtError(MESSAGES.RESUME_PROMPT_REQUIRES_BRANCH);
+    }
+    const worktrees = getProjectWorktrees();
+    const worktree = resolveWorktreeByBranch(options.branch, worktrees);
+    return handleNonInteractiveSingleResume(worktree, options.prompt);
+  }
+
+  if (options.file) {
+    return handleNonInteractiveBatchResume(options.file, options);
+  }
+
+  // 原有交互式逻辑
   logger.info(`resume 命令执行，分支过滤: ${options.branch ?? '(无)'}`);
   const worktrees = getProjectWorktrees();
 
@@ -80,6 +110,80 @@ async function handleResume(options: ResumeOptions): Promise<void> {
     // 选中多个 → 逐个在新终端 Tab 中启动（不受 resumeInPlace 影响）
     await handleBatchResume(targetWorktrees);
   }
+}
+
+/**
+ * 精确匹配分支对应的 worktree
+ * 找不到时抛出包含可用分支列表的错误
+ * @param {string} branch - 目标分支名
+ * @param {WorktreeInfo[]} worktrees - 可用的 worktree 列表
+ * @returns {WorktreeInfo} 匹配的 worktree
+ * @throws {ClawtError} 未找到匹配分支时抛出
+ */
+function resolveWorktreeByBranch(branch: string, worktrees: WorktreeInfo[]): WorktreeInfo {
+  const match = findExactMatch(worktrees, branch);
+  if (!match) {
+    const available = worktrees.map((wt) => wt.branch);
+    throw new ClawtError(MESSAGES.RESUME_WORKTREE_NOT_FOUND(branch, available));
+  }
+  return match;
+}
+
+/**
+ * 非交互式单分支追问
+ * 读取历史 session_id，调用 executeBatchTasks 执行追问，并更新 session_id
+ * @param {WorktreeInfo} worktree - 目标 worktree
+ * @param {string} prompt - 追问内容
+ */
+async function handleNonInteractiveSingleResume(worktree: WorktreeInfo, prompt: string): Promise<void> {
+  const sessionId = loadSessionId(worktree.branch);
+
+  if (sessionId) {
+    printInfo(MESSAGES.RESUME_SESSION_LOADED(worktree.branch));
+  } else {
+    printWarning(MESSAGES.RESUME_NO_SESSION_WARNING(worktree.branch));
+  }
+
+  const sessionIds = [sessionId ?? undefined] as string[];
+  const results = await executeBatchTasks([worktree], [prompt], 0, sessionIds);
+  persistSessionIds(results);
+}
+
+/**
+ * 非交互式批量追问
+ * 从任务文件解析追问内容，按 branch 名精确匹配已有 worktree，批量执行
+ * @param {string} filePath - 追问任务文件路径
+ * @param {ResumeOptions} options - 命令选项（含并发数配置）
+ */
+async function handleNonInteractiveBatchResume(filePath: string, options: ResumeOptions): Promise<void> {
+  // 解析追问文件，branch 为必填字段
+  const entries = loadTaskFile(filePath, { branchRequired: true });
+  printSuccess(MESSAGES.RESUME_FOLLOW_UP_FILE_LOADED(entries.length, filePath));
+
+  // 获取所有已有 worktree
+  const allWorktrees = getProjectWorktrees();
+
+  // 按 branch 名精确匹配 worktree，构建执行参数
+  const worktrees: WorktreeInfo[] = [];
+  const tasks: string[] = [];
+  const sessionIds: string[] = [];
+
+  for (const entry of entries) {
+    const worktree = resolveWorktreeByBranch(entry.branch!, allWorktrees);
+    worktrees.push(worktree);
+    tasks.push(entry.task);
+
+    const sessionId = loadSessionId(worktree.branch);
+    sessionIds.push(sessionId ?? (undefined as unknown as string));
+  }
+
+  // 解析并发数
+  const concurrency = parseConcurrency(options.concurrency, getConfigValue('maxConcurrency'));
+
+  logger.info(`resume 命令（批量追问模式）执行，任务数: ${entries.length}，并发数: ${concurrency || '不限制'}`);
+
+  const results = await executeBatchTasks(worktrees, tasks, concurrency, sessionIds);
+  persistSessionIds(results);
 }
 
 /**
