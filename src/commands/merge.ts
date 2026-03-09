@@ -33,6 +33,8 @@ import {
   gitCheckout,
   resolveTargetWorktree,
   getMainWorkBranch,
+  getCurrentBranch,
+  handleMergeConflict,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -46,6 +48,7 @@ export function registerMergeCommand(program: Command): void {
     .description('合并某个已验证的 worktree 分支到主 worktree')
     .option('-b, --branch <branchName>', '要合并的分支名（支持模糊匹配，不传则列出所有分支供选择）')
     .option('-m, --message <commitMessage>', '提交信息（目标 worktree 工作区有修改时必填）')
+    .option('--auto', '遇到冲突直接调用 AI 解决，不再询问')
     .action(async (options: MergeOptions) => {
       await handleMerge(options);
     });
@@ -182,19 +185,31 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   }
 
   // 步骤 5：回到主 worktree 进行合并
+  let mergeHadConflict = false;
   try {
     gitMerge(branch, mainWorktreePath);
   } catch (error) {
     // 检查是否有冲突
     if (hasMergeConflict(mainWorktreePath)) {
-      throw new ClawtError(MESSAGES.MERGE_CONFLICT);
+      mergeHadConflict = true;
+    } else {
+      throw error;
     }
-    throw error;
   }
 
-  // 步骤 6：冲突检测（二次确认）
-  if (hasMergeConflict(mainWorktreePath)) {
-    throw new ClawtError(MESSAGES.MERGE_CONFLICT);
+  // 步骤 5.5：冲突检测（二次确认）
+  if (!mergeHadConflict && hasMergeConflict(mainWorktreePath)) {
+    mergeHadConflict = true;
+  }
+
+  // 步骤 5.6：如果有冲突，尝试 AI 辅助解决
+  if (mergeHadConflict) {
+    const currentBranch = getCurrentBranch(mainWorktreePath);
+    const resolved = await handleMergeConflict(currentBranch, branch, mainWorktreePath, options.auto);
+    if (!resolved) {
+      // AI 未能完全解决冲突，流程中止（handleMergeConflict 内部已输出提示）
+      return;
+    }
   }
 
   // 步骤 7：根据配置决定是否自动 pull 和 push

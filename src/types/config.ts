@@ -18,6 +18,8 @@ export interface ClawtConfig {
   aliases: Record<string, string>;
   /** 是否启用自动更新检查 */
   autoUpdate: boolean;
+  /** merge 冲突时的解决模式：ask（询问）、auto（自动 AI 解决）、manual（手动解决） */
+  conflictResolveMode: string;
 }
 
 /** 单个配置项的完整定义（默认值 + 描述） */

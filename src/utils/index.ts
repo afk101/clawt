@@ -48,6 +48,10 @@ export {
   getBranchCreatedAt,
   gitCheckout,
   createBranch,
+  getConflictFiles,
+  gitAddFiles,
+  gitMergeContinue,
+  gitMergeAbort,
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled, validateHeadExists, validateWorkingDirClean, runPreChecks } from './validation.js';
@@ -59,7 +63,7 @@ export { ensureDir, removeEmptyDir, calculateDirSize } from './fs.js';
 export { multilineInput } from './prompt.js';
 export { launchInteractiveClaude, hasClaudeSessionHistory, launchInteractiveClaudeInNewTerminal } from './claude.js';
 export { getSnapshotPath, hasSnapshot, getSnapshotModifiedTime, readSnapshotTreeHash, readSnapshot, writeSnapshot, removeSnapshot, removeProjectSnapshots, getProjectSnapshotBranches } from './validate-snapshot.js';
-export { findExactMatch, findFuzzyMatches, promptSelectBranch, promptMultiSelectBranches, promptGroupedMultiSelectBranches, resolveTargetWorktree, resolveTargetWorktrees, groupWorktreesByDate, buildGroupedChoices, buildGroupMembershipMap, formatRelativeDate, getWorktreeCreatedDate, getWorktreeCreatedTime } from './worktree-matcher.js';
+export { findExactMatch, findFuzzyMatches, promptGroupedMultiSelectBranches, resolveTargetWorktree, resolveTargetWorktrees, groupWorktreesByDate, buildGroupedChoices, buildGroupMembershipMap, formatRelativeDate, getWorktreeCreatedDate, getWorktreeCreatedTime } from './worktree-matcher.js';
 export type { WorktreeResolveMessages, WorktreeMultiResolveMessages } from './worktree-matcher.js';
 export { ProgressRenderer } from './progress.js';
 export { parseTaskFile, loadTaskFile, parseTasksFromOptions } from './task-file.js';
@@ -79,4 +83,5 @@ export { migrateChangesViaPatch, computeCurrentTreeHash, saveCurrentSnapshotTree
 export { InteractivePanel } from './interactive-panel.js';
 export { buildPanelFrame, buildGroupedWorktreeLines, buildDisplayOrder, renderDateSeparator, renderWorktreeBlock, renderSnapshotSummary, renderFooter, calculateVisibleRows } from './interactive-panel-render.js';
 export type { PanelLine } from './interactive-panel-render.js';
+export { buildConflictResolvePrompt, invokeClaudeForConflictResolve, resolveConflictsWithAI, determineConflictResolveMode, handleMergeConflict } from './conflict-resolver.js';
 

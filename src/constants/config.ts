@@ -47,6 +47,11 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     defaultValue: true,
     description: '是否启用自动更新检查（每 24 小时检查一次 npm registry）',
   },
+  conflictResolveMode: {
+    defaultValue: 'ask',
+    description: 'merge 冲突时的解决模式：ask（询问是否使用 AI）、auto（自动 AI 解决）、manual（手动解决）',
+    allowedValues: ['ask', 'auto', 'manual'] as const,
+  },
 };
 
 /**

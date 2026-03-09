@@ -36,6 +36,8 @@ export interface MergeOptions {
   branch?: string;
   /** 提交信息（目标 worktree 工作区有修改时必填） */
   message?: string;
+  /** 遇到冲突直接调用 AI 解决，不再询问 */
+  auto?: boolean;
 }
 
 /** remove 命令选项 */

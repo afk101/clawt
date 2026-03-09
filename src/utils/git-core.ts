@@ -367,3 +367,45 @@ export function gitApplyCachedCheck(patchContent: Buffer, cwd?: string): boolean
     return false;
   }
 }
+
+/**
+ * 获取冲突文件列表
+ * 通过 git status --porcelain 解析 UU/AA/DD 等冲突标记
+ * @param {string} [cwd] - 工作目录
+ * @returns {string[]} 冲突文件路径列表
+ */
+export function getConflictFiles(cwd?: string): string[] {
+  const status = getStatusPorcelain(cwd);
+  if (!status) return [];
+  return status
+    .split('\n')
+    .filter((line) => /^(UU|AA|DD|DU|UD|AU|UA)/.test(line))
+    .map((line) => line.slice(3));
+}
+
+/**
+ * git add 指定文件
+ * @param {string[]} files - 文件路径列表
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitAddFiles(files: string[], cwd?: string): void {
+  if (files.length === 0) return;
+  const fileArgs = files.map((f) => `"${f}"`).join(' ');
+  execCommand(`git add ${fileArgs}`, { cwd });
+}
+
+/**
+ * git merge --continue（非交互式）
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitMergeContinue(cwd?: string): void {
+  execCommand('git merge --continue --no-edit', { cwd });
+}
+
+/**
+ * git merge --abort
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitMergeAbort(cwd?: string): void {
+  execCommand('git merge --abort', { cwd });
+}

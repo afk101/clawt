@@ -67,7 +67,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   hasCommitWithMessage: vi.fn(),
   gitMergeBase: vi.fn(),
   gitResetSoftTo: vi.fn(),
-  getCurrentBranch: vi.fn(),
+  getCurrentBranch: vi.fn().mockReturnValue('main'),
   gitResetHard: vi.fn(),
   gitCleanForce: vi.fn(),
   gitCheckout: vi.fn(),
@@ -77,6 +77,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   ensureOnMainWorkBranch: vi.fn(),
   guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   guardMainWorkBranchExists: vi.fn(),
+  handleMergeConflict: vi.fn(),
 }));
 
 import { registerMergeCommand } from '../../../src/commands/merge.js';
@@ -101,6 +102,7 @@ import {
   cleanupWorktrees,
   hasCommitWithMessage,
   resolveTargetWorktree,
+  handleMergeConflict,
 } from '../../../src/utils/index.js';
 
 const mockedGetProjectName = vi.mocked(getProjectName);
@@ -123,6 +125,7 @@ const mockedConfirmAction = vi.mocked(confirmAction);
 const mockedCleanupWorktrees = vi.mocked(cleanupWorktrees);
 const mockedHasCommitWithMessage = vi.mocked(hasCommitWithMessage);
 const mockedResolveTargetWorktree = vi.mocked(resolveTargetWorktree);
+const mockedHandleMergeConflict = vi.mocked(handleMergeConflict);
 
 const worktree = { path: '/path/feature', branch: 'feature' };
 
@@ -147,6 +150,8 @@ beforeEach(() => {
   mockedPrintWarning.mockReset();
   mockedRemoveSnapshot.mockReset();
   mockedCleanupWorktrees.mockReset();
+  mockedHandleMergeConflict.mockReset();
+  mockedHandleMergeConflict.mockResolvedValue(true); // 默认 AI 解决成功
 });
 
 describe('registerMergeCommand', () => {
@@ -229,11 +234,29 @@ describe('handleMerge', () => {
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
-  it('合并冲突时抛出错误', async () => {
+  it('合并冲突时调用 handleMergeConflict', async () => {
     mockedIsWorkingDirClean.mockReturnValue(true);
     mockedHasLocalCommits.mockReturnValue(true);
     mockedGitMerge.mockImplementation(() => { throw new Error('merge conflict'); });
     mockedHasMergeConflict.mockReturnValue(true);
+    mockedHandleMergeConflict.mockResolvedValue(true);
+    mockedConfirmAction.mockResolvedValue(false);
+
+    const program = new Command();
+    program.exitOverride();
+    registerMergeCommand(program);
+    await program.parseAsync(['merge', '-b', 'feature'], { from: 'user' });
+
+    expect(mockedHandleMergeConflict).toHaveBeenCalledWith('main', 'feature', '/repo', undefined);
+    expect(mockedPrintSuccess).toHaveBeenCalled();
+  });
+
+  it('合并冲突且 handleMergeConflict 抛出时向上传播错误', async () => {
+    mockedIsWorkingDirClean.mockReturnValue(true);
+    mockedHasLocalCommits.mockReturnValue(true);
+    mockedGitMerge.mockImplementation(() => { throw new Error('merge conflict'); });
+    mockedHasMergeConflict.mockReturnValue(true);
+    mockedHandleMergeConflict.mockRejectedValue(new Error('请手动解决冲突'));
 
     const program = new Command();
     program.exitOverride();
@@ -242,6 +265,39 @@ describe('handleMerge', () => {
     await expect(
       program.parseAsync(['merge', '-b', 'feature'], { from: 'user' }),
     ).rejects.toThrow();
+  });
+
+  it('合并冲突且 AI 部分解决时提前返回', async () => {
+    mockedIsWorkingDirClean.mockReturnValue(true);
+    mockedHasLocalCommits.mockReturnValue(true);
+    mockedGitMerge.mockImplementation(() => { throw new Error('merge conflict'); });
+    mockedHasMergeConflict.mockReturnValue(true);
+    mockedHandleMergeConflict.mockResolvedValue(false);
+
+    const program = new Command();
+    program.exitOverride();
+    registerMergeCommand(program);
+    await program.parseAsync(['merge', '-b', 'feature'], { from: 'user' });
+
+    // AI 未完全解决，不应继续到 pull/push 和 success
+    expect(mockedGitPull).not.toHaveBeenCalled();
+    expect(mockedPrintSuccess).not.toHaveBeenCalled();
+  });
+
+  it('--auto 参数传递给 handleMergeConflict', async () => {
+    mockedIsWorkingDirClean.mockReturnValue(true);
+    mockedHasLocalCommits.mockReturnValue(true);
+    mockedGitMerge.mockImplementation(() => { throw new Error('merge conflict'); });
+    mockedHasMergeConflict.mockReturnValue(true);
+    mockedHandleMergeConflict.mockResolvedValue(true);
+    mockedConfirmAction.mockResolvedValue(false);
+
+    const program = new Command();
+    program.exitOverride();
+    registerMergeCommand(program);
+    await program.parseAsync(['merge', '-b', 'feature', '--auto'], { from: 'user' });
+
+    expect(mockedHandleMergeConflict).toHaveBeenCalledWith('main', 'feature', '/repo', true);
   });
 
   it('autoPullPush=true 时执行 pull 和 push', async () => {
@@ -303,7 +359,7 @@ describe('handleMerge', () => {
     });
     mockedGitPull.mockImplementation(() => { throw new Error('pull failed'); });
     // merge 成功后的调用顺序：
-    // 1. 步骤 6 二次确认 hasMergeConflict → false
+    // 1. 步骤 5.5 二次确认 hasMergeConflict → false（merge 成功无冲突）
     // 2. pull catch 中 hasMergeConflict → true（触发 printWarning 并 return）
     mockedHasMergeConflict.mockReturnValueOnce(false)
       .mockReturnValueOnce(true);

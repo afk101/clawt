@@ -40,4 +40,19 @@ export const MERGE_MESSAGES = {
   MERGE_SELECT_BRANCH: '请选择要合并的分支',
   /** merge 模糊匹配到多个结果提示 */
   MERGE_MULTIPLE_MATCHES: (name: string) => `"${name}" 匹配到多个分支，请选择：`,
+  /** 询问是否使用 AI 辅助解决冲突 */
+  MERGE_CONFLICT_ASK_AI: '检测到合并冲突，是否使用 Claude Code 自动解决？',
+  /** AI 冲突解决开始 */
+  MERGE_CONFLICT_AI_START: (fileCount: number) =>
+    `正在使用 Claude Code 分析并解决 ${fileCount} 个冲突文件...`,
+  /** AI 冲突解决成功 */
+  MERGE_CONFLICT_AI_SUCCESS: '✓ Claude Code 已成功解决所有冲突',
+  /** AI 冲突解决后仍有未解决的冲突 */
+  MERGE_CONFLICT_AI_PARTIAL: (remaining: number) =>
+    `Claude Code 已处理冲突文件，但仍有 ${remaining} 个文件存在冲突\n  请手动处理剩余冲突后执行 git add . && git merge --continue`,
+  /** AI 冲突解决失败 */
+  MERGE_CONFLICT_AI_FAILED: (errorMsg: string) =>
+    `Claude Code 解决冲突失败: ${errorMsg}\n  请手动处理：\n  解决冲突后执行 git add . && git merge --continue`,
+  /** --auto 模式下的冲突手动解决（配置为 manual） */
+  MERGE_CONFLICT_MANUAL: '合并存在冲突，请手动处理：\n  解决冲突后执行 git add . && git merge --continue',
 } as const;
