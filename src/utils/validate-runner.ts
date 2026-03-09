@@ -54,17 +54,17 @@ async function executeSingleCommand(command: string, mainWorktreePath: string): 
 
   if (result.error) {
     // 进程启动失败（如命令不存在）
-    printError(MESSAGES.VALIDATE_RUN_ERROR(command, result.error.message));
-    const clipboardContent = MESSAGES.VALIDATE_CLIPBOARD_SINGLE_ERROR(command, result.error.message);
+    printError(MESSAGES.VALIDATE_RUN_ERROR(command, result.error));
+    const clipboardContent = MESSAGES.VALIDATE_CLIPBOARD_SINGLE_ERROR(command, result.error);
     handleErrorClipboard(clipboardContent);
     return;
   }
 
-  if (result.status === 0) {
+  if (result.exitCode === 0) {
     printSuccess(MESSAGES.VALIDATE_RUN_SUCCESS(command));
   } else {
-    printError(MESSAGES.VALIDATE_RUN_FAILED(command, result.status));
-    const clipboardContent = buildSingleErrorClipboard(command, result.stderr, result.status);
+    printError(MESSAGES.VALIDATE_RUN_FAILED(command, result.exitCode));
+    const clipboardContent = buildSingleErrorClipboard(command, result.stderr, result.exitCode);
     handleErrorClipboard(clipboardContent);
   }
 }

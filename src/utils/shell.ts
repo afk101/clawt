@@ -14,9 +14,9 @@ export interface ParallelCommandResult {
 /** 带 stderr 捕获的命令执行结果 */
 export interface CommandResultWithStderr {
   /** 进程退出码 */
-  status: number;
-  /** 进程启动失败时的错误对象 */
-  error?: Error;
+  exitCode: number;
+  /** 进程启动失败时的错误信息 */
+  error?: string;
   /** 捕获的 stderr 输出内容 */
   stderr: string;
 }
@@ -175,20 +175,18 @@ export function runParallelCommands(
 }
 
 /**
- * 异步执行命令，捕获 stderr 同时实时回显到终端
+ * 以 shell 模式启动子进程，捕获 stderr 同时实时回显到终端
  * stdout 直接继承父进程（实时输出），stderr 通过 pipe 捕获并同步回显
  * @param {string} command - 要执行的命令字符串
  * @param {object} options - 可选配置
  * @param {string} options.cwd - 工作目录
- * @returns {Promise<CommandResultWithStderr>} 包含退出码和 stderr 内容的结果
+ * @returns {Promise<{ exitCode: number, error?: string, stderr: string }>} 退出码、错误信息和 stderr 内容
  */
-export function runCommandWithStderrCapture(
+function spawnWithStderrCapture(
   command: string,
   options?: { cwd?: string },
-): Promise<CommandResultWithStderr> {
+): Promise<{ exitCode: number; error?: string; stderr: string }> {
   return new Promise((resolve) => {
-    logger.debug(`执行命令(stderr捕获): ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
-
     const child = spawn(command, {
       cwd: options?.cwd,
       stdio: ['inherit', 'inherit', 'pipe'],
@@ -206,19 +204,34 @@ export function runCommandWithStderrCapture(
 
     child.on('error', (err) => {
       resolve({
-        status: 1,
-        error: err,
+        exitCode: 1,
+        error: err.message,
         stderr: Buffer.concat(stderrChunks).toString('utf-8'),
       });
     });
 
     child.on('close', (code) => {
       resolve({
-        status: code ?? 1,
+        exitCode: code ?? 1,
         stderr: Buffer.concat(stderrChunks).toString('utf-8'),
       });
     });
   });
+}
+
+/**
+ * 异步执行命令，捕获 stderr 同时实时回显到终端
+ * @param {string} command - 要执行的命令字符串
+ * @param {object} options - 可选配置
+ * @param {string} options.cwd - 工作目录
+ * @returns {Promise<CommandResultWithStderr>} 包含退出码和 stderr 内容的结果
+ */
+export function runCommandWithStderrCapture(
+  command: string,
+  options?: { cwd?: string },
+): Promise<CommandResultWithStderr> {
+  logger.debug(`执行命令(stderr捕获): ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
+  return spawnWithStderrCapture(command, options);
 }
 
 /**
@@ -232,42 +245,10 @@ export function runParallelCommandsWithStderrCapture(
   commands: string[],
   options?: { cwd?: string },
 ): Promise<ParallelCommandResultWithStderr[]> {
-  const promises = commands.map((command) => {
-    return new Promise<ParallelCommandResultWithStderr>((resolve) => {
-      logger.debug(`并行启动命令(stderr捕获): ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
-
-      const child = spawn(command, {
-        cwd: options?.cwd,
-        stdio: ['inherit', 'inherit', 'pipe'],
-        shell: true,
-      });
-
-      const stderrChunks: Buffer[] = [];
-
-      child.stderr?.on('data', (chunk: Buffer) => {
-        // 实时回显到终端
-        process.stderr.write(chunk);
-        // 累积到 buffer
-        stderrChunks.push(chunk);
-      });
-
-      child.on('error', (err) => {
-        resolve({
-          command,
-          exitCode: 1,
-          error: err.message,
-          stderr: Buffer.concat(stderrChunks).toString('utf-8'),
-        });
-      });
-
-      child.on('close', (code) => {
-        resolve({
-          command,
-          exitCode: code ?? 1,
-          stderr: Buffer.concat(stderrChunks).toString('utf-8'),
-        });
-      });
-    });
+  const promises = commands.map(async (command): Promise<ParallelCommandResultWithStderr> => {
+    logger.debug(`并行启动命令(stderr捕获): ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
+    const result = await spawnWithStderrCapture(command, options);
+    return { command, ...result };
   });
 
   return Promise.all(promises);
