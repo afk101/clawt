@@ -3,57 +3,101 @@ import {
   printInfo,
   printSuccess,
   printError,
+  printWarning,
   printSeparator,
-  runCommandInherited,
   parseParallelCommands,
-  runParallelCommands,
 } from './index.js';
-import type { ParallelCommandResult } from './index.js';
+import { runCommandWithStderrCapture, runParallelCommandsWithStderrCapture } from './shell.js';
+import type { ParallelCommandResultWithStderr } from './shell.js';
+import { copyToClipboard } from './clipboard.js';
 
 /**
- * 执行单个命令（同步方式，保持原有行为不变）
+ * 处理命令执行失败后的剪贴板复制逻辑
+ * 将格式化的错误信息复制到系统剪贴板，并输出操作结果提示
+ * @param {string} clipboardContent - 要复制到剪贴板的完整错误信息
+ */
+function handleErrorClipboard(clipboardContent: string): void {
+  const success = copyToClipboard(clipboardContent);
+  if (success) {
+    printInfo(MESSAGES.VALIDATE_RUN_ERROR_COPIED);
+  } else {
+    printWarning(MESSAGES.VALIDATE_RUN_ERROR_COPY_FAILED);
+  }
+}
+
+/**
+ * 构建单命令失败时的剪贴板内容
+ * @param {string} command - 失败的命令
+ * @param {string} stderr - 捕获的 stderr 内容
+ * @param {number} exitCode - 进程退出码
+ * @returns {string} 格式化后的剪贴板内容
+ */
+function buildSingleErrorClipboard(command: string, stderr: string, exitCode: number): string {
+  if (stderr.trim()) {
+    return MESSAGES.VALIDATE_CLIPBOARD_SINGLE_ERROR(command, stderr.trim());
+  }
+  return `${command} 指令执行出错，退出码: ${exitCode}`;
+}
+
+/**
+ * 执行单个命令（异步方式，捕获 stderr 并在失败时复制到剪贴板）
  * @param {string} command - 要执行的命令字符串
  * @param {string} mainWorktreePath - 主 worktree 路径
  */
-function executeSingleCommand(command: string, mainWorktreePath: string): void {
+async function executeSingleCommand(command: string, mainWorktreePath: string): Promise<void> {
   printInfo(MESSAGES.VALIDATE_RUN_START(command));
   printSeparator();
 
-  const result = runCommandInherited(command, { cwd: mainWorktreePath });
+  const result = await runCommandWithStderrCapture(command, { cwd: mainWorktreePath });
 
   printSeparator();
 
   if (result.error) {
     // 进程启动失败（如命令不存在）
     printError(MESSAGES.VALIDATE_RUN_ERROR(command, result.error.message));
+    const clipboardContent = MESSAGES.VALIDATE_CLIPBOARD_SINGLE_ERROR(command, result.error.message);
+    handleErrorClipboard(clipboardContent);
     return;
   }
 
-  const exitCode = result.status ?? 1;
-  if (exitCode === 0) {
+  if (result.status === 0) {
     printSuccess(MESSAGES.VALIDATE_RUN_SUCCESS(command));
   } else {
-    printError(MESSAGES.VALIDATE_RUN_FAILED(command, exitCode));
+    printError(MESSAGES.VALIDATE_RUN_FAILED(command, result.status));
+    const clipboardContent = buildSingleErrorClipboard(command, result.stderr, result.status);
+    handleErrorClipboard(clipboardContent);
   }
 }
 
 /**
- * 汇总输出并行命令的执行结果
- * @param {ParallelCommandResult[]} results - 各命令的执行结果数组
+ * 汇总输出并行命令的执行结果，并将失败命令的错误信息复制到剪贴板
+ * @param {ParallelCommandResultWithStderr[]} results - 各命令的执行结果数组
  */
-function reportParallelResults(results: ParallelCommandResult[]): void {
+function reportParallelResults(results: ParallelCommandResultWithStderr[]): void {
   printSeparator();
 
   const successCount = results.filter((r) => r.exitCode === 0 && !r.error).length;
   const failedCount = results.length - successCount;
+  const errorClipboardParts: string[] = [];
 
   for (const result of results) {
     if (result.error) {
       printError(MESSAGES.VALIDATE_PARALLEL_CMD_ERROR(result.command, result.error));
+      // 收集错误信息用于剪贴板
+      errorClipboardParts.push(
+        MESSAGES.VALIDATE_CLIPBOARD_PARALLEL_ERROR(result.command, result.error),
+      );
     } else if (result.exitCode === 0) {
       printSuccess(MESSAGES.VALIDATE_PARALLEL_CMD_SUCCESS(result.command));
     } else {
       printError(MESSAGES.VALIDATE_PARALLEL_CMD_FAILED(result.command, result.exitCode));
+      // 收集错误信息用于剪贴板
+      const errorContent = result.stderr.trim()
+        ? result.stderr.trim()
+        : `退出码: ${result.exitCode}`;
+      errorClipboardParts.push(
+        MESSAGES.VALIDATE_CLIPBOARD_PARALLEL_ERROR(result.command, errorContent),
+      );
     }
   }
 
@@ -61,6 +105,9 @@ function reportParallelResults(results: ParallelCommandResult[]): void {
     printSuccess(MESSAGES.VALIDATE_PARALLEL_RUN_ALL_SUCCESS(results.length));
   } else {
     printError(MESSAGES.VALIDATE_PARALLEL_RUN_SUMMARY(successCount, failedCount));
+    // 将所有失败命令的错误信息拼接后一次性复制到剪贴板
+    const clipboardContent = errorClipboardParts.join(MESSAGES.VALIDATE_CLIPBOARD_SEPARATOR);
+    handleErrorClipboard(clipboardContent);
   }
 }
 
@@ -78,7 +125,7 @@ async function executeParallelCommands(commands: string[], mainWorktreePath: str
 
   printSeparator();
 
-  const results = await runParallelCommands(commands, { cwd: mainWorktreePath });
+  const results = await runParallelCommandsWithStderrCapture(commands, { cwd: mainWorktreePath });
 
   reportParallelResults(results);
 }
@@ -96,8 +143,8 @@ export async function executeRunCommand(command: string, mainWorktreePath: strin
   const commands = parseParallelCommands(command);
 
   if (commands.length <= 1) {
-    // 单命令（包括含 && 的串行命令），走原有同步路径
-    executeSingleCommand(commands[0] || command, mainWorktreePath);
+    // 单命令（包括含 && 的串行命令），走异步路径并捕获 stderr
+    await executeSingleCommand(commands[0] || command, mainWorktreePath);
   } else {
     // 多命令，并行执行
     await executeParallelCommands(commands, mainWorktreePath);
