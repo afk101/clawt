@@ -100,7 +100,10 @@ process.on('unhandledRejection', (reason) => {
 async function main(): Promise<void> {
   await program.parseAsync(process.argv);
 
-  if (config.autoUpdate) {
+  // completion 子命令的 stdout 会被 shell 的 source 捕获并执行，
+  // 更新提示会污染 stdout 导致 shell 报错，因此跳过更新检查
+  const isCompletionCommand = process.argv[2] === 'completion';
+  if (config.autoUpdate && !isCompletionCommand) {
     await checkForUpdates(version);
   }
 }

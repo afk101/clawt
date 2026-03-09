@@ -405,7 +405,7 @@ export function gitAddFiles(files: string[], cwd?: string): void {
  * @param {string} [cwd] - 工作目录
  */
 export function gitMergeContinue(cwd?: string): void {
-  execCommand('git merge --continue --no-edit', { cwd });
+  execCommand('GIT_EDITOR=true git merge --continue', { cwd });
 }
 
 /**

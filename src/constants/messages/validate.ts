@@ -71,4 +71,16 @@ export const VALIDATE_MESSAGES = {
   /** validate 成功（含验证分支信息） */
   VALIDATE_SUCCESS_WITH_BRANCH: (branch: string, validateBranch: string) =>
     `✓ 已切换到验证分支 ${validateBranch} 并应用分支 ${branch} 的变更\n  可以开始验证了`,
+  /** 错误信息已复制到剪贴板提示 */
+  VALIDATE_RUN_ERROR_COPIED: '✂ 错误信息已复制到剪贴板',
+  /** 剪贴板复制失败提示 */
+  VALIDATE_RUN_ERROR_COPY_FAILED: '⚠ 错误信息复制到剪贴板失败',
+  /** 单命令（含 && 链）剪贴板错误格式 */
+  VALIDATE_CLIPBOARD_SINGLE_ERROR: (command: string, stderr: string) =>
+    `${command} 指令执行出错，错误信息：\n${stderr}`,
+  /** 并行命令中单个命令的剪贴板错误格式 */
+  VALIDATE_CLIPBOARD_PARALLEL_ERROR: (command: string, stderr: string) =>
+    `${command} 指令执行出错，错误信息：\n${stderr}`,
+  /** 多个错误之间的分隔符 */
+  VALIDATE_CLIPBOARD_SEPARATOR: '\n\n---\n\n',
 } as const;
