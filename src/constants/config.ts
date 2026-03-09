@@ -52,6 +52,10 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     description: 'merge 冲突时的解决模式：ask（询问是否使用 AI）、auto（自动 AI 解决）、manual（手动解决）',
     allowedValues: ['ask', 'auto', 'manual'] as const,
   },
+  conflictResolveTimeoutMs: {
+    defaultValue: 300000,
+    description: 'Claude Code 冲突解决超时时间（毫秒），默认 300000（5 分钟）',
+  },
 };
 
 /**

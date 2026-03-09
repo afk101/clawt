@@ -19,7 +19,9 @@ export interface ClawtConfig {
   /** 是否启用自动更新检查 */
   autoUpdate: boolean;
   /** merge 冲突时的解决模式：ask（询问）、auto（自动 AI 解决）、manual（手动解决） */
-  conflictResolveMode: string;
+  conflictResolveMode: 'ask' | 'auto' | 'manual';
+  /** Claude Code 冲突解决超时时间（毫秒），默认 300000（5 分钟） */
+  conflictResolveTimeoutMs: number;
 }
 
 /** 单个配置项的完整定义（默认值 + 描述） */

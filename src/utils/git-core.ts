@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import { execCommand, execCommandWithInput } from './shell.js';
 import { logger } from '../logger/index.js';
 
@@ -385,13 +385,19 @@ export function getConflictFiles(cwd?: string): string[] {
 
 /**
  * git add 指定文件
+ * 使用 execFileSync 数组参数形式避免文件名中特殊字符导致的注入风险
  * @param {string[]} files - 文件路径列表
  * @param {string} [cwd] - 工作目录
  */
 export function gitAddFiles(files: string[], cwd?: string): void {
   if (files.length === 0) return;
-  const fileArgs = files.map((f) => `"${f}"`).join(' ');
-  execCommand(`git add ${fileArgs}`, { cwd });
+  const args = ['add', '--', ...files];
+  logger.debug(`执行命令: git ${args.join(' ')}${cwd ? ` (cwd: ${cwd})` : ''}`);
+  execFileSync('git', args, {
+    cwd,
+    encoding: 'utf-8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
 }
 
 /**

@@ -1,11 +1,15 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { getConfigValue } from './config.js';
 import { getConflictFiles, gitAddFiles, gitMergeContinue } from './git.js';
 import { printInfo, printSuccess, printWarning } from './formatter.js';
 import { confirmAction } from './formatter.js';
-import { MESSAGES, CONFLICT_RESOLVE_PROMPT } from '../constants/index.js';
+import { MESSAGES } from '../constants/index.js';
+import { CONFLICT_RESOLVE_PROMPT } from '../constants/ai-prompts.js';
+
+/** 默认 Claude Code 冲突解决超时时间（毫秒） */
+const DEFAULT_CONFLICT_RESOLVE_TIMEOUT_MS = 300000;
 
 /**
  * 构建发送给 Claude Code 的冲突解决 prompt
@@ -17,24 +21,36 @@ export function buildConflictResolvePrompt(): string {
 }
 
 /**
+ * 获取冲突解决超时时间（毫秒）
+ * 优先使用配置项，未配置时使用默认值
+ * @returns {number} 超时时间（毫秒）
+ */
+function getConflictResolveTimeout(): number {
+  const configValue = getConfigValue('conflictResolveTimeoutMs');
+  if (typeof configValue === 'number' && configValue > 0) {
+    return configValue;
+  }
+  return DEFAULT_CONFLICT_RESOLVE_TIMEOUT_MS;
+}
+
+/**
  * 调用 Claude Code CLI 以非交互模式解决冲突
+ * 使用 execFileSync 数组参数形式避免 shell 注入
  * @param {string} prompt - AI prompt
  * @param {string} cwd - 工作目录
  * @returns {string} Claude Code 的输出
  */
 export function invokeClaudeForConflictResolve(prompt: string, cwd: string): string {
-  // 使用 shell 拼接以保留引号和参数完整性
-  const escapedPrompt = prompt.replace(/'/g, "'\\''");
-  const fullCommand = `claude -p '${escapedPrompt}' --permission-mode bypassPermissions`;
+  const args = ['-p', prompt, '--permission-mode', 'bypassPermissions'];
 
   logger.info(`调用 Claude Code 解决冲突，命令: claude -p "..." --permission-mode bypassPermissions`);
 
   try {
-    const output = execSync(fullCommand, {
+    const output = execFileSync('claude', args, {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 300000, // 5 分钟超时
+      timeout: getConflictResolveTimeout(),
     });
     return output;
   } catch (error: unknown) {
@@ -68,9 +84,16 @@ export function resolveConflictsWithAI(
 
   printInfo(MESSAGES.MERGE_CONFLICT_AI_START(conflictFiles.length));
 
-  // 构建 prompt 并调用 Claude Code
+  // 构建 prompt 并调用 Claude Code，捕获异常提供恢复提示
   const prompt = buildConflictResolvePrompt();
-  invokeClaudeForConflictResolve(prompt, cwd);
+  try {
+    invokeClaudeForConflictResolve(prompt, cwd);
+  } catch (error) {
+    // AI 调用失败时输出友好提示，告知用户可手动解决或重试
+    const errMsg = error instanceof ClawtError ? error.message : String(error);
+    printWarning(errMsg);
+    return false;
+  }
 
   // 检查冲突是否已解决
   const remainingConflicts = getConflictFiles(cwd);

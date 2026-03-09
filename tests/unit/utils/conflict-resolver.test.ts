@@ -18,22 +18,25 @@ vi.mock('../../../src/errors/index.js', () => ({
 
 // mock node:child_process
 vi.mock('node:child_process', () => ({
-  execSync: vi.fn(),
+  execFileSync: vi.fn(),
 }));
 
-// mock constants
+// mock constants（使用与 src/constants/messages/merge.ts 一致的消息文本）
 vi.mock('../../../src/constants/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
   return {
     ...actual,
     MESSAGES: {
       ...actual.MESSAGES,
-      MERGE_CONFLICT_ASK_AI: '是否使用 AI 解决冲突？',
-      MERGE_CONFLICT_AI_START: (n: number) => `正在解决 ${n} 个冲突...`,
-      MERGE_CONFLICT_AI_SUCCESS: 'AI 解决冲突成功',
-      MERGE_CONFLICT_AI_PARTIAL: (n: number) => `还有 ${n} 个未解决`,
-      MERGE_CONFLICT_AI_FAILED: (msg: string) => `AI 失败: ${msg}`,
-      MERGE_CONFLICT_MANUAL: '请手动解决冲突',
+      MERGE_CONFLICT_ASK_AI: '检测到合并冲突，是否使用 Claude Code 自动解决？',
+      MERGE_CONFLICT_AI_START: (fileCount: number) =>
+        `正在使用 Claude Code 分析并解决 ${fileCount} 个冲突文件...`,
+      MERGE_CONFLICT_AI_SUCCESS: '✓ Claude Code 已成功解决所有冲突',
+      MERGE_CONFLICT_AI_PARTIAL: (remaining: number) =>
+        `Claude Code 已处理冲突文件，但仍有 ${remaining} 个文件存在冲突\n  请手动处理剩余冲突后执行 git add . && git merge --continue`,
+      MERGE_CONFLICT_AI_FAILED: (errorMsg: string) =>
+        `Claude Code 解决冲突失败: ${errorMsg}\n  请手动处理：\n  解决冲突后执行 git add . && git merge --continue`,
+      MERGE_CONFLICT_MANUAL: '合并存在冲突，请手动处理：\n  解决冲突后执行 git add . && git merge --continue',
     },
   };
 });
@@ -59,7 +62,7 @@ vi.mock('../../../src/utils/git.js', () => ({
   gitMergeContinue: vi.fn(),
 }));
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import {
   buildConflictResolvePrompt,
   invokeClaudeForConflictResolve,
@@ -72,7 +75,7 @@ import { confirmAction, printInfo, printSuccess, printWarning } from '../../../s
 import { getConflictFiles, gitAddFiles, gitMergeContinue } from '../../../src/utils/git.js';
 import { ClawtError } from '../../../src/errors/index.js';
 
-const mockedExecSync = vi.mocked(execSync);
+const mockedExecFileSync = vi.mocked(execFileSync);
 const mockedGetConfigValue = vi.mocked(getConfigValue);
 const mockedConfirmAction = vi.mocked(confirmAction);
 const mockedGetConflictFiles = vi.mocked(getConflictFiles);
@@ -100,24 +103,21 @@ describe('buildConflictResolvePrompt', () => {
 });
 
 describe('invokeClaudeForConflictResolve', () => {
-  it('成功调用写死的 claude 命令并返回输出', () => {
-    mockedExecSync.mockReturnValue('冲突已解决');
+  it('成功调用 execFileSync 并返回输出', () => {
+    mockedExecFileSync.mockReturnValue('冲突已解决');
 
     const result = invokeClaudeForConflictResolve('test prompt', '/repo');
 
     expect(result).toBe('冲突已解决');
-    expect(mockedExecSync).toHaveBeenCalledWith(
-      expect.stringContaining("claude -p"),
+    expect(mockedExecFileSync).toHaveBeenCalledWith(
+      'claude',
+      ['-p', 'test prompt', '--permission-mode', 'bypassPermissions'],
       expect.objectContaining({ cwd: '/repo' }),
-    );
-    expect(mockedExecSync).toHaveBeenCalledWith(
-      expect.stringContaining('--permission-mode bypassPermissions'),
-      expect.anything(),
     );
   });
 
   it('Claude Code 执行失败时抛出 ClawtError', () => {
-    mockedExecSync.mockImplementation(() => { throw new Error('command failed'); });
+    mockedExecFileSync.mockImplementation(() => { throw new Error('command failed'); });
 
     expect(() => invokeClaudeForConflictResolve('test prompt', '/repo')).toThrow(ClawtError);
   });
@@ -136,7 +136,7 @@ describe('resolveConflictsWithAI', () => {
     mockedGetConflictFiles
       .mockReturnValueOnce(['src/a.ts']) // 初始冲突文件
       .mockReturnValueOnce([]); // AI 解决后无冲突
-    mockedExecSync.mockReturnValue('resolved');
+    mockedExecFileSync.mockReturnValue('resolved');
 
     const result = resolveConflictsWithAI('main', 'feature', '/repo');
 
@@ -150,13 +150,25 @@ describe('resolveConflictsWithAI', () => {
     mockedGetConflictFiles
       .mockReturnValueOnce(['src/a.ts', 'src/b.ts']) // 初始 2 个冲突
       .mockReturnValueOnce(['src/b.ts']); // AI 后还剩 1 个
-    mockedExecSync.mockReturnValue('partial');
+    mockedExecFileSync.mockReturnValue('partial');
 
     const result = resolveConflictsWithAI('main', 'feature', '/repo');
 
     expect(result).toBe(false);
     expect(mockedGitAddFiles).toHaveBeenCalledWith(['src/a.ts'], '/repo');
     expect(mockedPrintWarning).toHaveBeenCalled();
+  });
+
+  it('AI 调用失败时输出警告并返回 false', () => {
+    mockedGetConflictFiles.mockReturnValueOnce(['src/a.ts']);
+    mockedExecFileSync.mockImplementation(() => { throw new Error('timeout'); });
+
+    const result = resolveConflictsWithAI('main', 'feature', '/repo');
+
+    expect(result).toBe(false);
+    expect(mockedPrintWarning).toHaveBeenCalled();
+    expect(mockedGitAddFiles).not.toHaveBeenCalled();
+    expect(mockedGitMergeContinue).not.toHaveBeenCalled();
   });
 });
 
@@ -205,7 +217,7 @@ describe('handleMergeConflict', () => {
     mockedGetConflictFiles
       .mockReturnValueOnce(['src/a.ts'])
       .mockReturnValueOnce([]);
-    mockedExecSync.mockReturnValue('resolved');
+    mockedExecFileSync.mockReturnValue('resolved');
 
     const result = await handleMergeConflict('main', 'feature', '/repo', true);
 
@@ -219,7 +231,7 @@ describe('handleMergeConflict', () => {
     mockedGetConflictFiles
       .mockReturnValueOnce(['src/a.ts'])
       .mockReturnValueOnce([]);
-    mockedExecSync.mockReturnValue('resolved');
+    mockedExecFileSync.mockReturnValue('resolved');
 
     const result = await handleMergeConflict('main', 'feature', '/repo');
 
