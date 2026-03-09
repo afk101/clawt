@@ -1,5 +1,6 @@
-export { execCommand, spawnProcess, killAllChildProcesses, execCommandWithInput, runCommandInherited, parseParallelCommands, runParallelCommands } from './shell.js';
-export type { ParallelCommandResult } from './shell.js';
+export { execCommand, spawnProcess, killAllChildProcesses, execCommandWithInput, runCommandInherited, parseParallelCommands, runParallelCommands, runCommandWithStderrCapture, runParallelCommandsWithStderrCapture } from './shell.js';
+export type { ParallelCommandResult, CommandResultWithStderr, ParallelCommandResultWithStderr } from './shell.js';
+export { copyToClipboard } from './clipboard.js';
 export {
   getGitCommonDir,
   getGitTopLevel,
