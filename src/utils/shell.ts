@@ -60,9 +60,12 @@ export function spawnProcess(
   options?: { cwd?: string; stdio?: StdioOptions },
 ): ChildProcess {
   logger.debug(`启动子进程: ${command} ${args.join(' ')}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
+  // 移除 CLAUDECODE 环境变量，避免子进程被 Claude Code 检测为嵌套会话
+  const { CLAUDECODE: _, ...cleanEnv } = process.env;
   return spawn(command, args, {
     cwd: options?.cwd,
     stdio: options?.stdio ?? ['pipe', 'pipe', 'pipe'],
+    env: cleanEnv,
   });
 }
 
