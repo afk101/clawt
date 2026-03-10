@@ -2,13 +2,14 @@ import { execSync, execFileSync, spawn, spawnSync, type ChildProcess, type Spawn
 import { logger } from '../logger/index.js';
 
 /**
- * 获取清除了 CLAUDECODE 标记的环境变量副本
- * 避免 clawt 启动的 claude 子进程被检测为嵌套会话
- * @returns {NodeJS.ProcessEnv} 清除 CLAUDECODE 后的环境变量
+ * 获取移除了 CLAUDECODE 嵌套会话标记的环境变量副本
+ * 仅用于 claude -p 等非交互式子进程，避免被 Claude Code 误判为嵌套会话而拒绝启动
+ * 不适用于交互式启动 Claude Code（如 clawt resume），交互式场景应保留原始环境变量
+ * @returns {NodeJS.ProcessEnv} 移除 CLAUDECODE 后的环境变量
  */
-export function getCleanEnv(): NodeJS.ProcessEnv {
-  const { CLAUDECODE: _, ...cleanEnv } = process.env;
-  return cleanEnv;
+export function getEnvWithoutNestedSessionFlag(): NodeJS.ProcessEnv {
+  const { CLAUDECODE: _, ...env } = process.env;
+  return env;
 }
 
 /** 并行命令执行的单个结果 */
@@ -73,7 +74,7 @@ export function spawnProcess(
   return spawn(command, args, {
     cwd: options?.cwd,
     stdio: options?.stdio ?? ['pipe', 'pipe', 'pipe'],
-    env: getCleanEnv(),
+    env: getEnvWithoutNestedSessionFlag(),
   });
 }
 

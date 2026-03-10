@@ -7,7 +7,7 @@ import { printInfo, printSuccess, printWarning } from './formatter.js';
 import { confirmAction } from './formatter.js';
 import { MESSAGES } from '../constants/index.js';
 import { CONFLICT_RESOLVE_PROMPT } from '../constants/ai-prompts.js';
-import { getCleanEnv } from './shell.js';
+import { getEnvWithoutNestedSessionFlag } from './shell.js';
 
 /** 默认 Claude Code 冲突解决超时时间（毫秒） */
 const DEFAULT_CONFLICT_RESOLVE_TIMEOUT_MS = 300000;
@@ -52,7 +52,7 @@ export function invokeClaudeForConflictResolve(prompt: string, cwd: string): str
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: getConflictResolveTimeout(),
-      env: getCleanEnv(),
+      env: getEnvWithoutNestedSessionFlag(),
     });
     return output;
   } catch (error: unknown) {
