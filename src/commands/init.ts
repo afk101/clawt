@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { Command as Cmd } from 'commander';
 import { logger } from '../logger/index.js';
 import { MESSAGES, PROJECT_CONFIG_DEFINITIONS } from '../constants/index.js';
-import type { InitOptions, ProjectConfig } from '../types/index.js';
+import type { InitOptions, InitShowOptions, ProjectConfig } from '../types/index.js';
 import {
   runPreChecks,
   validateHeadExists,
@@ -12,6 +12,7 @@ import {
   requireProjectConfig,
   printSuccess,
   interactiveConfigEditor,
+  safeStringify,
 } from '../utils/index.js';
 
 /**
@@ -27,22 +28,30 @@ export function registerInitCommand(program: Command): void {
       await handleInit(options);
     });
 
-  // 注册 show 子命令：交互式查看和修改项目配置
+  // 注册 show 子命令：交互式查看和修改项目配置（支持 --json 格式输出）
   initCmd.addCommand(
     new Cmd('show')
-      .description('交互式查看和修改项目配置')
-      .action(async () => {
-        await handleInitShow();
+      .description('交互式查看和修改项目配置（支持 --json 格式输出）')
+      .option('--json', '以 JSON 格式输出')
+      .action(async (options: InitShowOptions) => {
+        await handleInitShow(options);
       }),
   );
 }
 
 /**
  * 处理 init show 子命令：交互式面板展示和修改项目配置
+ * @param {InitShowOptions} options - 子命令选项
  */
-async function handleInitShow(): Promise<void> {
+async function handleInitShow(options: InitShowOptions): Promise<void> {
   await runPreChecks({ requireMainWorktree: true, requireProjectConfig: true });
   const config = requireProjectConfig();
+
+  // --json 模式：直接输出 JSON 格式配置，跳过交互式流程
+  if (options.json) {
+    printInitShowAsJson(config);
+    return;
+  }
 
   logger.info('init show 命令执行，进入交互式项目配置');
 
@@ -57,6 +66,14 @@ async function handleInitShow(): Promise<void> {
   saveProjectConfig(updatedConfig);
 
   printSuccess(MESSAGES.INIT_SET_SUCCESS(key as string, String(newValue)));
+}
+
+/**
+ * 以 JSON 格式输出项目配置
+ * @param {ProjectConfig} config - 项目配置对象
+ */
+function printInitShowAsJson(config: ProjectConfig): void {
+  console.log(safeStringify({ ...config }));
 }
 
 /**

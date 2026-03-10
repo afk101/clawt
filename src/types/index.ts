@@ -1,5 +1,5 @@
 export type { ClawtConfig, ConfigItemDefinition, ConfigDefinitions } from './config.js';
-export type { CreateOptions, RunOptions, ValidateOptions, MergeOptions, RemoveOptions, ResumeOptions, SyncOptions, ListOptions, StatusOptions, ProjectsOptions, InitOptions, TasksInitOptions } from './command.js';
+export type { CreateOptions, RunOptions, ValidateOptions, MergeOptions, RemoveOptions, ResumeOptions, SyncOptions, ListOptions, StatusOptions, ProjectsOptions, InitOptions, InitShowOptions, TasksInitOptions } from './command.js';
 export type { WorktreeInfo, WorktreeStatus } from './worktree.js';
 export type { ClaudeCodeResult } from './claudeCode.js';
 export type { TaskResult, TaskSummary } from './taskResult.js';

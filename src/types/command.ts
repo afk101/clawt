@@ -94,6 +94,12 @@ export interface InitOptions {
   branch?: string;
 }
 
+/** init show 子命令选项 */
+export interface InitShowOptions {
+  /** 以 JSON 格式输出 */
+  json?: boolean;
+}
+
 /** tasks init 命令选项 */
 export interface TasksInitOptions {
   /** 输出文件路径（可选，默认 tasks.md） */
