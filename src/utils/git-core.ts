@@ -13,12 +13,52 @@ export function getGitCommonDir(cwd?: string): string {
 }
 
 /**
+ * 判断当前是否在主 worktree 中
+ * 条件：git rev-parse --git-common-dir === ".git"
+ * @param {string} [cwd] - 工作目录
+ * @returns {boolean} 是否在主 worktree 中
+ */
+export function isMainWorktree(cwd?: string): boolean {
+  try {
+    return getGitCommonDir(cwd) === '.git';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 判断当前是否在 git 仓库中
+ * @param {string} [cwd] - 工作目录
+ * @returns {boolean} 是否在 git 仓库中
+ */
+export function isInsideGitRepo(cwd?: string): boolean {
+  try {
+    execCommand('git rev-parse --is-inside-work-tree', { cwd });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 获取 git 仓库根目录的绝对路径
  * @param {string} cwd - 工作目录
  * @returns {string} 仓库根目录路径
  */
 export function getGitTopLevel(cwd?: string): string {
   return execCommand('git rev-parse --show-toplevel', { cwd });
+}
+
+/**
+ * 获取主 worktree 的绝对路径
+ * 通过 git worktree list --porcelain 解析第一行（始终为主 worktree）
+ * @param {string} [cwd] - 工作目录
+ * @returns {string} 主 worktree 的绝对路径
+ */
+export function getMainWorktreePath(cwd?: string): string {
+  const output = execCommand('git worktree list --porcelain', { cwd });
+  const firstLine = output.split('\n')[0] || '';
+  return firstLine.replace('worktree ', '');
 }
 
 /**

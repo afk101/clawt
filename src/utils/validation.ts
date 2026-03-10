@@ -26,7 +26,7 @@ export interface PreCheckOptions {
 /**
  * 校验当前目录是否为主 worktree 的根目录
  * 条件：git rev-parse --git-common-dir === ".git"
- * @throws {ClawtError} 不在主 worktree 根目录时抛出
+ * @throws {ClawtError} 不在主 worktree 根目录时抛出（包括不在 git 仓库中的情况）
  */
 export function validateMainWorktree(): void {
   try {

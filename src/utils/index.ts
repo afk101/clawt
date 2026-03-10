@@ -3,7 +3,10 @@ export type { ParallelCommandResult, CommandResultWithStderr, ParallelCommandRes
 export { copyToClipboard } from './clipboard.js';
 export {
   getGitCommonDir,
+  isMainWorktree,
+  isInsideGitRepo,
   getGitTopLevel,
+  getMainWorktreePath,
   getProjectName,
   checkBranchExists,
   createWorktree,
