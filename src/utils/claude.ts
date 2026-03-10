@@ -6,6 +6,7 @@ import { APPEND_SYSTEM_PROMPT, CLAUDE_PROJECTS_DIR } from '../constants/index.js
 import { getConfigValue } from './config.js';
 import { printInfo, printWarning } from './formatter.js';
 import { openCommandInNewTerminalTab } from './terminal.js';
+import { getCleanEnv } from './shell.js';
 import type { WorktreeInfo } from '../types/index.js';
 
 /**
@@ -78,6 +79,7 @@ export function launchInteractiveClaude(worktree: WorktreeInfo, options: LaunchC
   const result = spawnSync(cmd, args, {
     cwd: worktree.path,
     stdio: 'inherit',
+    env: getCleanEnv(),
   });
 
   if (result.error) {

@@ -1,6 +1,16 @@
 import { execSync, execFileSync, spawn, spawnSync, type ChildProcess, type SpawnSyncReturns, type StdioOptions } from 'node:child_process';
 import { logger } from '../logger/index.js';
 
+/**
+ * 获取清除了 CLAUDECODE 标记的环境变量副本
+ * 避免 clawt 启动的 claude 子进程被检测为嵌套会话
+ * @returns {NodeJS.ProcessEnv} 清除 CLAUDECODE 后的环境变量
+ */
+export function getCleanEnv(): NodeJS.ProcessEnv {
+  const { CLAUDECODE: _, ...cleanEnv } = process.env;
+  return cleanEnv;
+}
+
 /** 并行命令执行的单个结果 */
 export interface ParallelCommandResult {
   /** 执行的命令字符串 */
@@ -60,12 +70,10 @@ export function spawnProcess(
   options?: { cwd?: string; stdio?: StdioOptions },
 ): ChildProcess {
   logger.debug(`启动子进程: ${command} ${args.join(' ')}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
-  // 移除 CLAUDECODE 环境变量，避免子进程被 Claude Code 检测为嵌套会话
-  const { CLAUDECODE: _, ...cleanEnv } = process.env;
   return spawn(command, args, {
     cwd: options?.cwd,
     stdio: options?.stdio ?? ['pipe', 'pipe', 'pipe'],
-    env: cleanEnv,
+    env: getCleanEnv(),
   });
 }
 
