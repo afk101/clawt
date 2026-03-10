@@ -26,12 +26,6 @@ export const RESUME_MESSAGES = {
   /** 未找到对应 worktree */
   RESUME_WORKTREE_NOT_FOUND: (branch: string, available: string[]) =>
     `未找到分支 "${branch}" 对应的 worktree\n  可用分支：\n${available.map((b) => `    - ${b}`).join('\n')}`,
-  /** 无历史 session_id 警告 */
-  RESUME_NO_SESSION_WARNING: (branch: string) => `分支 "${branch}" 无历史 session_id，将作为新对话执行`,
-  /** 已加载历史 session_id */
-  RESUME_SESSION_LOADED: (branch: string) => `分支 "${branch}" 已加载历史 session_id`,
   /** 追问文件加载完成 */
   RESUME_FOLLOW_UP_FILE_LOADED: (count: number, path: string) => `从 ${path} 加载了 ${count} 个追问任务`,
-  /** session_id 已更新 */
-  RESUME_SESSION_UPDATED: (count: number) => `已更新 ${count} 个 session_id`,
 } as const;

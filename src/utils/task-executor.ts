@@ -24,27 +24,21 @@ interface ClaudeTaskHandle {
  */
 type ActivityCallback = (activityText: string) => void;
 
-/** executeClaudeTask 的可选配置 */
-interface ExecuteClaudeTaskOptions {
-  /** 追问时的 session_id，有值时追加 --resume 参数 */
-  sessionId?: string;
-}
-
 /**
  * 在指定 worktree 中执行 Claude Code 任务，使用 stream-json 格式获取实时事件
  * @param {WorktreeInfo} worktree - worktree 信息
  * @param {string} task - 任务描述
  * @param {ActivityCallback} [onActivity] - 活动更新回调（可选）
- * @param {ExecuteClaudeTaskOptions} [options] - 可选配置
+ * @param {boolean} [continueSession] - 是否继续该 worktree 目录下最新的会话
  * @returns {ClaudeTaskHandle} 包含子进程引用和结果 Promise
  */
-function executeClaudeTask(worktree: WorktreeInfo, task: string, onActivity?: ActivityCallback, options?: ExecuteClaudeTaskOptions): ClaudeTaskHandle {
+function executeClaudeTask(worktree: WorktreeInfo, task: string, onActivity?: ActivityCallback, continueSession?: boolean): ClaudeTaskHandle {
   // 旧版使用 --output-format json，现改为 stream-json --verbose 以支持实时活动信息
   const args = ['-p', task, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'bypassPermissions'];
 
-  // 追问模式：追加 --resume <session_id>
-  if (options?.sessionId) {
-    args.push('--resume', options.sessionId);
+  // 追问模式：追加 --continue 继续该目录下最新会话
+  if (continueSession) {
+    args.push('--continue');
   }
 
   const child = spawnProcess(
@@ -212,7 +206,7 @@ function updateRendererStatus(renderer: ProgressRenderer, index: number, result:
  * @param {number} startTime - 任务批次启动时间戳
  * @param {() => boolean} isInterrupted - 检查是否已中断的函数
  * @param {ChildProcess[]} childProcesses - 共享子进程数组，执行过程中动态追加
- * @param {string[]} [sessionIds] - 各任务对应的 session_id（追问模式，可选）
+ * @param {boolean} [continueSession] - 是否继续已有会话（追问模式）
  * @returns {Promise<TaskResult[]>} 所有任务结果
  */
 async function executeWithConcurrency(
@@ -223,7 +217,7 @@ async function executeWithConcurrency(
   startTime: number,
   isInterrupted: () => boolean,
   childProcesses: ChildProcess[],
-  sessionIds?: string[],
+  continueSession?: boolean,
 ): Promise<TaskResult[]> {
   const total = tasks.length;
   const results: TaskResult[] = new Array(total);
@@ -248,10 +242,9 @@ async function executeWithConcurrency(
       // 标记为运行中
       renderer.markRunning(index);
 
-      const sessionId = sessionIds?.[index];
       const handle = executeClaudeTask(wt, task, (activityText) => {
         renderer.updateActivityText(index, activityText);
-      }, sessionId ? { sessionId } : undefined);
+      }, continueSession);
       childProcesses.push(handle.child);
 
       handle.promise.then((result) => {
@@ -289,7 +282,7 @@ async function executeWithConcurrency(
  * @param {number} startTime - 任务批次启动时间戳
  * @param {() => boolean} isInterrupted - 检查是否已中断的函数
  * @param {ChildProcess[]} childProcesses - 共享子进程数组，启动时追加
- * @param {string[]} [sessionIds] - 各任务对应的 session_id（追问模式，可选）
+ * @param {boolean} [continueSession] - 是否继续已有会话（追问模式）
  * @returns {Promise<TaskResult[]>} 所有任务结果
  */
 async function executeAllParallel(
@@ -299,15 +292,14 @@ async function executeAllParallel(
   startTime: number,
   isInterrupted: () => boolean,
   childProcesses: ChildProcess[],
-  sessionIds?: string[],
+  continueSession?: boolean,
 ): Promise<TaskResult[]> {
   const handles = worktrees.map((wt, index) => {
     const task = tasks[index];
     logger.info(`启动任务 ${index + 1}: ${task} (worktree: ${wt.path})`);
-    const sessionId = sessionIds?.[index];
     const handle = executeClaudeTask(wt, task, (activityText) => {
       renderer.updateActivityText(index, activityText);
-    }, sessionId ? { sessionId } : undefined);
+    }, continueSession);
     childProcesses.push(handle.child);
 
     return handle;
@@ -334,14 +326,14 @@ async function executeAllParallel(
  * @param {WorktreeInfo[]} worktrees - worktree 列表
  * @param {string[]} tasks - 任务描述列表
  * @param {number} concurrency - 最大并发数，0 表示不限制
- * @param {string[]} [sessionIds] - 各任务对应的 session_id（追问模式，可选）
+ * @param {boolean} [continueSession] - 是否继续已有会话（追问模式，追加 --continue）
  * @returns {Promise<TaskResult[]>} 所有任务的执行结果
  */
 export async function executeBatchTasks(
   worktrees: WorktreeInfo[],
   tasks: string[],
   concurrency: number,
-  sessionIds?: string[],
+  continueSession?: boolean,
 ): Promise<TaskResult[]> {
   const count = tasks.length;
 
@@ -397,8 +389,8 @@ export async function executeBatchTasks(
 
   // 根据并发限制选择执行模式
   const results = concurrency > 0
-    ? await executeWithConcurrency(worktrees, tasks, concurrency, renderer, startTime, isInterrupted, childProcesses, sessionIds)
-    : await executeAllParallel(worktrees, tasks, renderer, startTime, isInterrupted, childProcesses, sessionIds);
+    ? await executeWithConcurrency(worktrees, tasks, concurrency, renderer, startTime, isInterrupted, childProcesses, continueSession)
+    : await executeAllParallel(worktrees, tasks, renderer, startTime, isInterrupted, childProcesses, continueSession);
 
   // 正常完成，停止进度面板并移除 SIGINT 监听器
   renderer.stop();

@@ -75,7 +75,6 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
     parseTasksFromOptions: vi.fn(),
     createWorktreesByBranches: vi.fn(),
     printDryRunPreview: vi.fn(),
-    persistSessionIds: vi.fn(),
     requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
     ensureOnMainWorkBranch: vi.fn().mockResolvedValue(undefined),
     guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
@@ -153,7 +152,6 @@ import {
   loadTaskFile,
   parseTasksFromOptions,
   validateClaudeCodeInstalled,
-  persistSessionIds,
 } from '../../../src/utils/index.js';
 import { spawnProcess } from '../../../src/utils/shell.js';
 import { printInfo as formatterPrintInfo } from '../../../src/utils/formatter.js';
@@ -173,7 +171,6 @@ const mockedGetConfigValue = vi.mocked(getConfigValue);
 const mockedLoadTaskFile = vi.mocked(loadTaskFile);
 const mockedParseTasksFromOptions = vi.mocked(parseTasksFromOptions);
 const mockedValidateClaudeCodeInstalled = vi.mocked(validateClaudeCodeInstalled);
-const mockedPersistSessionIds = vi.mocked(persistSessionIds);
 
 /**
  * 创建模拟子进程
@@ -220,7 +217,6 @@ beforeEach(() => {
   mockedLoadTaskFile.mockReset();
   mockedParseTasksFromOptions.mockReset();
   mockedValidateClaudeCodeInstalled.mockReset();
-  mockedPersistSessionIds.mockReset();
   // sanitizeBranchName 默认返回输入值
   mockedSanitizeBranchName.mockImplementation((name: string) => name);
   // generateBranchNames 默认使用真实逻辑
@@ -512,49 +508,6 @@ describe('handleRun', () => {
     await expect(
       program.parseAsync(['run', '--tasks', 'task1'], { from: 'user' }),
     ).rejects.toThrow();
-  });
-
-  it('--tasks 执行后调用 persistSessionIds 持久化 session_id', async () => {
-    const worktrees = [{ path: '/path/feat-1', branch: 'feat-1' }];
-    mockedCreateWorktrees.mockReturnValue(worktrees);
-
-    const jsonOutput = JSON.stringify({
-      is_error: false,
-      duration_ms: 5000,
-      total_cost_usd: 0.05,
-      session_id: 'test-session-id',
-    });
-    mockedSpawnProcess.mockReturnValueOnce(createMockChildProcess(jsonOutput, 0));
-
-    const program = new Command();
-    program.exitOverride();
-    registerRunCommand(program);
-    await program.parseAsync(['run', '-b', 'feat', '--tasks', 'task1'], { from: 'user' });
-
-    expect(mockedPersistSessionIds).toHaveBeenCalled();
-  });
-
-  it('-f 执行后调用 persistSessionIds 持久化 session_id', async () => {
-    mockedLoadTaskFile.mockReturnValue([
-      { branch: 'feat-login', task: '实现登录功能' },
-    ]);
-    const worktrees = [{ path: '/path/feat-login', branch: 'feat-login' }];
-    mockedCreateWorktreesByBranches.mockReturnValue(worktrees);
-
-    const jsonOutput = JSON.stringify({
-      is_error: false,
-      duration_ms: 5000,
-      total_cost_usd: 0.05,
-      session_id: 'file-session-id',
-    });
-    mockedSpawnProcess.mockReturnValueOnce(createMockChildProcess(jsonOutput, 0));
-
-    const program = new Command();
-    program.exitOverride();
-    registerRunCommand(program);
-    await program.parseAsync(['run', '-f', 'tasks.md'], { from: 'user' });
-
-    expect(mockedPersistSessionIds).toHaveBeenCalled();
   });
 });
 

@@ -29,11 +29,7 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       RESUME_PROMPT_REQUIRES_BRANCH: '--prompt 必须配合 -b 指定目标分支',
       RESUME_PROMPT_FILE_CONFLICT: '--prompt 和 -f 不能同时使用',
       RESUME_WORKTREE_NOT_FOUND: (branch: string, available: string[]) => `未找到分支 "${branch}" 对应的 worktree`,
-      RESUME_NO_SESSION_WARNING: (branch: string) => `分支 "${branch}" 无历史 session_id`,
-      RESUME_SESSION_LOADED: (branch: string) => `分支 "${branch}" 已加载历史 session_id`,
       RESUME_FOLLOW_UP_FILE_LOADED: (count: number, path: string) => `从 ${path} 加载了 ${count} 个追问任务`,
-      RESUME_SESSION_UPDATED: (count: number) => `已更新 ${count} 个 session_id`,
-      TASK_FILE_LOADED: (count: number, path: string) => `从 ${path} 加载了 ${count} 个任务`,
       CONCURRENCY_INFO: (concurrency: number, total: number) => `并发限制: ${concurrency}，共 ${total} 个任务`,
     },
   };
@@ -57,14 +53,11 @@ vi.mock('../../../src/utils/index.js', () => ({
   parseConcurrency: vi.fn().mockReturnValue(0),
   loadTaskFile: vi.fn(),
   executeBatchTasks: vi.fn().mockResolvedValue([]),
-  loadSessionId: vi.fn(),
-  persistSessionIds: vi.fn(),
 }));
 
 import { registerResumeCommand } from '../../../src/commands/resume.js';
 import {
   runPreChecks,
-  validateClaudeCodeInstalled,
   getProjectWorktrees,
   launchInteractiveClaude,
   launchInteractiveClaudeInNewTerminal,
@@ -72,20 +65,14 @@ import {
   resolveTargetWorktrees,
   promptGroupedMultiSelectBranches,
   findExactMatch,
-  printInfo,
-  printSuccess,
-  printWarning,
   confirmAction,
   getConfigValue,
   parseConcurrency,
   loadTaskFile,
   executeBatchTasks,
-  loadSessionId,
-  persistSessionIds,
 } from '../../../src/utils/index.js';
 
 const mockedRunPreChecks = vi.mocked(runPreChecks);
-const mockedValidateClaudeCodeInstalled = vi.mocked(validateClaudeCodeInstalled);
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
 const mockedLaunchInteractiveClaude = vi.mocked(launchInteractiveClaude);
 const mockedLaunchInteractiveClaudeInNewTerminal = vi.mocked(launchInteractiveClaudeInNewTerminal);
@@ -98,12 +85,9 @@ const mockedGetConfigValue = vi.mocked(getConfigValue);
 const mockedParseConcurrency = vi.mocked(parseConcurrency);
 const mockedLoadTaskFile = vi.mocked(loadTaskFile);
 const mockedExecuteBatchTasks = vi.mocked(executeBatchTasks);
-const mockedLoadSessionId = vi.mocked(loadSessionId);
-const mockedPersistSessionIds = vi.mocked(persistSessionIds);
 
 beforeEach(() => {
   mockedRunPreChecks.mockReset();
-  mockedValidateClaudeCodeInstalled.mockReset();
   mockedGetProjectWorktrees.mockReset();
   mockedLaunchInteractiveClaude.mockReset();
   mockedLaunchInteractiveClaudeInNewTerminal.mockReset();
@@ -118,8 +102,6 @@ beforeEach(() => {
   mockedLoadTaskFile.mockReset();
   mockedExecuteBatchTasks.mockReset();
   mockedExecuteBatchTasks.mockResolvedValue([]);
-  mockedLoadSessionId.mockReset();
-  mockedPersistSessionIds.mockReset();
 });
 
 describe('registerResumeCommand', () => {
@@ -291,7 +273,6 @@ describe('handleResume — 非交互式追问', () => {
     const worktree = { path: '/path/feature', branch: 'feature' };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedFindExactMatch.mockReturnValue(worktree);
-    mockedLoadSessionId.mockReturnValue('session-abc');
     mockedExecuteBatchTasks.mockResolvedValue([]);
 
     const program = new Command();
@@ -300,14 +281,13 @@ describe('handleResume — 非交互式追问', () => {
     await program.parseAsync(['resume', '-b', 'feature', '--prompt', '加上单元测试'], { from: 'user' });
 
     expect(mockedFindExactMatch).toHaveBeenCalled();
-    expect(mockedLoadSessionId).toHaveBeenCalledWith('feature');
+    // 使用 --continue 模式
     expect(mockedExecuteBatchTasks).toHaveBeenCalledWith(
       [worktree],
       ['加上单元测试'],
       0,
-      ['session-abc'],
+      true,
     );
-    expect(mockedPersistSessionIds).toHaveBeenCalled();
     // 不应走交互式流程
     expect(mockedResolveTargetWorktrees).not.toHaveBeenCalled();
     expect(mockedLaunchInteractiveClaude).not.toHaveBeenCalled();
@@ -331,23 +311,6 @@ describe('handleResume — 非交互式追问', () => {
     await expect(
       program.parseAsync(['resume', '-b', 'feature', '--prompt', '追问', '-f', 'tasks.md'], { from: 'user' }),
     ).rejects.toThrow('--prompt 和 -f 不能同时使用');
-  });
-
-  it('--prompt 无历史 session_id 时打印警告并继续', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
-    mockedGetProjectWorktrees.mockReturnValue([worktree]);
-    mockedFindExactMatch.mockReturnValue(worktree);
-    mockedLoadSessionId.mockReturnValue(null);
-    mockedExecuteBatchTasks.mockResolvedValue([]);
-
-    const program = new Command();
-    program.exitOverride();
-    registerResumeCommand(program);
-    await program.parseAsync(['resume', '-b', 'feature', '--prompt', '继续工作'], { from: 'user' });
-
-    const mockedPrintWarning = vi.mocked((await import('../../../src/utils/index.js')).printWarning);
-    expect(mockedPrintWarning).toHaveBeenCalledWith(expect.stringContaining('无历史 session_id'));
-    expect(mockedExecuteBatchTasks).toHaveBeenCalled();
   });
 
   it('--prompt 指定的分支不存在时报错', async () => {
@@ -378,9 +341,6 @@ describe('handleResume — 非交互式追问', () => {
     mockedFindExactMatch
       .mockReturnValueOnce(worktrees[0])
       .mockReturnValueOnce(worktrees[1]);
-    mockedLoadSessionId
-      .mockReturnValueOnce('session-a')
-      .mockReturnValueOnce('session-b');
     mockedExecuteBatchTasks.mockResolvedValue([]);
 
     const program = new Command();
@@ -389,13 +349,13 @@ describe('handleResume — 非交互式追问', () => {
     await program.parseAsync(['resume', '-f', 'follow-up.md'], { from: 'user' });
 
     expect(mockedLoadTaskFile).toHaveBeenCalledWith('follow-up.md', { branchRequired: true });
+    // 使用 --continue 模式
     expect(mockedExecuteBatchTasks).toHaveBeenCalledWith(
       worktrees,
       ['追问任务A', '追问任务B'],
       0,
-      ['session-a', 'session-b'],
+      true,
     );
-    expect(mockedPersistSessionIds).toHaveBeenCalled();
   });
 
   it('-f 批量追问分支不存在时报错', async () => {
@@ -423,7 +383,6 @@ describe('handleResume — 非交互式追问', () => {
     ]);
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedFindExactMatch.mockReturnValue(worktree);
-    mockedLoadSessionId.mockReturnValue('session-a');
     mockedParseConcurrency.mockReturnValue(2);
     mockedExecuteBatchTasks.mockResolvedValue([]);
 
@@ -436,7 +395,7 @@ describe('handleResume — 非交互式追问', () => {
       [worktree],
       ['追问'],
       2,
-      ['session-a'],
+      true,
     );
   });
 });

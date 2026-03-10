@@ -54,11 +54,6 @@ vi.mock('../../../src/utils/validate-branch.js', () => ({
   deleteValidateBranch: vi.fn(),
 }));
 
-// mock session
-vi.mock('../../../src/utils/session.js', () => ({
-  removeSessionId: vi.fn(),
-}));
-
 import { existsSync, readdirSync } from 'node:fs';
 import {
   getProjectName,
@@ -74,10 +69,7 @@ import {
 import { sanitizeBranchName, validateBranchesNotExist } from '../../../src/utils/branch.js';
 import { ensureDir, removeEmptyDir } from '../../../src/utils/fs.js';
 import { createWorktrees, createWorktreesByBranches, getProjectWorktrees, cleanupWorktrees, getWorktreeStatus } from '../../../src/utils/worktree.js';
-import { removeSessionId } from '../../../src/utils/session.js';
 import { createWorktreeInfo } from '../../helpers/fixtures.js';
-
-const mockedRemoveSessionId = vi.mocked(removeSessionId);
 
 const mockedExistsSync = vi.mocked(existsSync);
 const mockedReaddirSync = vi.mocked(readdirSync);
@@ -171,9 +163,6 @@ describe('cleanupWorktrees', () => {
     cleanupWorktrees(worktrees);
     expect(mockedRemoveWorktreeByPath).toHaveBeenCalledTimes(2);
     expect(mockedDeleteBranch).toHaveBeenCalledTimes(2);
-    expect(mockedRemoveSessionId).toHaveBeenCalledTimes(2);
-    expect(mockedRemoveSessionId).toHaveBeenCalledWith('a');
-    expect(mockedRemoveSessionId).toHaveBeenCalledWith('b');
     expect(gitWorktreePrune).toHaveBeenCalled();
     expect(removeEmptyDir).toHaveBeenCalled();
   });

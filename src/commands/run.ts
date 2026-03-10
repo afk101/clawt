@@ -20,7 +20,6 @@ import {
   parseTasksFromOptions,
   executeBatchTasks,
   printDryRunPreview,
-  persistSessionIds,
 } from '../utils/index.js';
 
 /**
@@ -92,8 +91,7 @@ async function handleRunFromFile(options: RunOptions): Promise<void> {
 
   logger.info(`run 命令（文件模式）执行，任务数: ${entries.length}，并发数: ${concurrency || '不限制'}`);
 
-  const results = await executeBatchTasks(worktrees, tasks, concurrency);
-  persistSessionIds(results);
+  await executeBatchTasks(worktrees, tasks, concurrency);
 }
 
 /**
@@ -195,6 +193,5 @@ async function handleRun(options: RunOptions): Promise<void> {
   // 创建 worktree
   const worktrees = createWorktrees(options.branch, count);
 
-  const results = await executeBatchTasks(worktrees, tasks, concurrency);
-  persistSessionIds(results);
+  await executeBatchTasks(worktrees, tasks, concurrency);
 }

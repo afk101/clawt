@@ -22,8 +22,6 @@ import {
   parseConcurrency,
   loadTaskFile,
   executeBatchTasks,
-  loadSessionId,
-  persistSessionIds,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
 
@@ -131,22 +129,12 @@ function resolveWorktreeByBranch(branch: string, worktrees: WorktreeInfo[]): Wor
 
 /**
  * 非交互式单分支追问
- * 读取历史 session_id，调用 executeBatchTasks 执行追问，并更新 session_id
+ * 通过 --continue 继续该 worktree 目录下最新的会话
  * @param {WorktreeInfo} worktree - 目标 worktree
  * @param {string} prompt - 追问内容
  */
 async function handleNonInteractiveSingleResume(worktree: WorktreeInfo, prompt: string): Promise<void> {
-  const sessionId = loadSessionId(worktree.branch);
-
-  if (sessionId) {
-    printInfo(MESSAGES.RESUME_SESSION_LOADED(worktree.branch));
-  } else {
-    printWarning(MESSAGES.RESUME_NO_SESSION_WARNING(worktree.branch));
-  }
-
-  const sessionIds = [sessionId ?? undefined] as string[];
-  const results = await executeBatchTasks([worktree], [prompt], 0, sessionIds);
-  persistSessionIds(results);
+  await executeBatchTasks([worktree], [prompt], 0, true);
 }
 
 /**
@@ -166,15 +154,11 @@ async function handleNonInteractiveBatchResume(filePath: string, options: Resume
   // 按 branch 名精确匹配 worktree，构建执行参数
   const worktrees: WorktreeInfo[] = [];
   const tasks: string[] = [];
-  const sessionIds: string[] = [];
 
   for (const entry of entries) {
     const worktree = resolveWorktreeByBranch(entry.branch!, allWorktrees);
     worktrees.push(worktree);
     tasks.push(entry.task);
-
-    const sessionId = loadSessionId(worktree.branch);
-    sessionIds.push(sessionId ?? (undefined as unknown as string));
   }
 
   // 解析并发数
@@ -182,8 +166,7 @@ async function handleNonInteractiveBatchResume(filePath: string, options: Resume
 
   logger.info(`resume 命令（批量追问模式）执行，任务数: ${entries.length}，并发数: ${concurrency || '不限制'}`);
 
-  const results = await executeBatchTasks(worktrees, tasks, concurrency, sessionIds);
-  persistSessionIds(results);
+  await executeBatchTasks(worktrees, tasks, concurrency, true);
 }
 
 /**

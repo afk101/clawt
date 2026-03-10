@@ -24,9 +24,3 @@ export const UPDATE_CHECK_PATH = join(CLAWT_HOME, 'update-check.json');
 
 /** 项目配置目录 ~/.clawt/projects/ */
 export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');
-
-/** session_id 持久化目录 ~/.clawt/sessions/ */
-export const SESSIONS_DIR = join(CLAWT_HOME, 'sessions');
-
-/** session 文件扩展名 */
-export const SESSION_FILE_EXTENSION = '.session';

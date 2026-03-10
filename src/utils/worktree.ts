@@ -6,7 +6,6 @@ import { createWorktree as gitCreateWorktree, getProjectName, gitWorktreeList, r
 import { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 import { ensureDir, removeEmptyDir } from './fs.js';
 import { createValidateBranch, deleteValidateBranch } from './validate-branch.js';
-import { removeSessionId } from './session.js';
 import type { WorktreeInfo, WorktreeStatus } from '../types/index.js';
 
 /**
@@ -128,7 +127,6 @@ export function cleanupWorktrees(worktrees: WorktreeInfo[]): void {
       removeWorktreeByPath(wt.path);
       deleteBranch(wt.branch);
       deleteValidateBranch(wt.branch);
-      removeSessionId(wt.branch);
       logger.info(`已清理 worktree 和分支: ${wt.branch}`);
     } catch (error) {
       logger.error(`清理 worktree 失败: ${wt.path} - ${error}`);
