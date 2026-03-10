@@ -269,10 +269,11 @@ describe('handleResume — resumeInPlace 配置', () => {
 });
 
 describe('handleResume — 非交互式追问', () => {
-  it('--prompt + -b 执行非交互式单分支追问', async () => {
+  it('--prompt + -b 有历史会话时传 [true]', async () => {
     const worktree = { path: '/path/feature', branch: 'feature' };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedFindExactMatch.mockReturnValue(worktree);
+    mockedHasClaudeSessionHistory.mockReturnValue(true);
     mockedExecuteBatchTasks.mockResolvedValue([]);
 
     const program = new Command();
@@ -281,16 +282,39 @@ describe('handleResume — 非交互式追问', () => {
     await program.parseAsync(['resume', '-b', 'feature', '--prompt', '加上单元测试'], { from: 'user' });
 
     expect(mockedFindExactMatch).toHaveBeenCalled();
-    // 使用 --continue 模式
+    expect(mockedHasClaudeSessionHistory).toHaveBeenCalledWith(worktree.path);
+    // 有历史会话时使用 --continue 模式
     expect(mockedExecuteBatchTasks).toHaveBeenCalledWith(
       [worktree],
       ['加上单元测试'],
       0,
-      true,
+      [true],
     );
     // 不应走交互式流程
     expect(mockedResolveTargetWorktrees).not.toHaveBeenCalled();
     expect(mockedLaunchInteractiveClaude).not.toHaveBeenCalled();
+  });
+
+  it('--prompt + -b 无历史会话时传 [false]', async () => {
+    const worktree = { path: '/path/feature', branch: 'feature' };
+    mockedGetProjectWorktrees.mockReturnValue([worktree]);
+    mockedFindExactMatch.mockReturnValue(worktree);
+    mockedHasClaudeSessionHistory.mockReturnValue(false);
+    mockedExecuteBatchTasks.mockResolvedValue([]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerResumeCommand(program);
+    await program.parseAsync(['resume', '-b', 'feature', '--prompt', '加上单元测试'], { from: 'user' });
+
+    expect(mockedHasClaudeSessionHistory).toHaveBeenCalledWith(worktree.path);
+    // 无历史会话时不传 --continue
+    expect(mockedExecuteBatchTasks).toHaveBeenCalledWith(
+      [worktree],
+      ['加上单元测试'],
+      0,
+      [false],
+    );
   });
 
   it('--prompt 无 -b 时报错', async () => {
@@ -341,6 +365,7 @@ describe('handleResume — 非交互式追问', () => {
     mockedFindExactMatch
       .mockReturnValueOnce(worktrees[0])
       .mockReturnValueOnce(worktrees[1]);
+    mockedHasClaudeSessionHistory.mockReturnValue(true);
     mockedExecuteBatchTasks.mockResolvedValue([]);
 
     const program = new Command();
@@ -349,12 +374,14 @@ describe('handleResume — 非交互式追问', () => {
     await program.parseAsync(['resume', '-f', 'follow-up.md'], { from: 'user' });
 
     expect(mockedLoadTaskFile).toHaveBeenCalledWith('follow-up.md', { branchRequired: true });
-    // 使用 --continue 模式
+    // 按 worktree 独立检查会话历史
+    expect(mockedHasClaudeSessionHistory).toHaveBeenCalledWith('/path/feat-a');
+    expect(mockedHasClaudeSessionHistory).toHaveBeenCalledWith('/path/feat-b');
     expect(mockedExecuteBatchTasks).toHaveBeenCalledWith(
       worktrees,
       ['追问任务A', '追问任务B'],
       0,
-      true,
+      [true, true],
     );
   });
 
@@ -383,6 +410,7 @@ describe('handleResume — 非交互式追问', () => {
     ]);
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedFindExactMatch.mockReturnValue(worktree);
+    mockedHasClaudeSessionHistory.mockReturnValue(true);
     mockedParseConcurrency.mockReturnValue(2);
     mockedExecuteBatchTasks.mockResolvedValue([]);
 
@@ -395,7 +423,44 @@ describe('handleResume — 非交互式追问', () => {
       [worktree],
       ['追问'],
       2,
-      true,
+      [true],
+    );
+  });
+
+  it('-f 批量追问按 worktree 独立检查会话历史', async () => {
+    const worktrees = [
+      { path: '/path/feat-a', branch: 'feat-a' },
+      { path: '/path/feat-b', branch: 'feat-b' },
+      { path: '/path/feat-c', branch: 'feat-c' },
+    ];
+    mockedLoadTaskFile.mockReturnValue([
+      { branch: 'feat-a', task: '任务A' },
+      { branch: 'feat-b', task: '任务B' },
+      { branch: 'feat-c', task: '任务C' },
+    ]);
+    mockedGetProjectWorktrees.mockReturnValue(worktrees);
+    mockedFindExactMatch
+      .mockReturnValueOnce(worktrees[0])
+      .mockReturnValueOnce(worktrees[1])
+      .mockReturnValueOnce(worktrees[2]);
+    // feat-a 有历史会话，feat-b 无，feat-c 有
+    mockedHasClaudeSessionHistory
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    mockedExecuteBatchTasks.mockResolvedValue([]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerResumeCommand(program);
+    await program.parseAsync(['resume', '-f', 'follow-up.md'], { from: 'user' });
+
+    // continueFlags 应按 worktree 独立反映各自的会话历史状态
+    expect(mockedExecuteBatchTasks).toHaveBeenCalledWith(
+      worktrees,
+      ['任务A', '任务B', '任务C'],
+      0,
+      [true, false, true],
     );
   });
 });

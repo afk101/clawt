@@ -16,7 +16,6 @@ import {
   findExactMatch,
   printInfo,
   printSuccess,
-  printWarning,
   confirmAction,
   getConfigValue,
   parseConcurrency,
@@ -129,12 +128,14 @@ function resolveWorktreeByBranch(branch: string, worktrees: WorktreeInfo[]): Wor
 
 /**
  * 非交互式单分支追问
- * 通过 --continue 继续该 worktree 目录下最新的会话
+ * 检查 worktree 是否有历史会话，有则通过 --continue 继续最新会话
  * @param {WorktreeInfo} worktree - 目标 worktree
  * @param {string} prompt - 追问内容
  */
 async function handleNonInteractiveSingleResume(worktree: WorktreeInfo, prompt: string): Promise<void> {
-  await executeBatchTasks([worktree], [prompt], 0, true);
+  // 检查是否有历史会话，有则追加 --continue
+  const hasPrevious = hasClaudeSessionHistory(worktree.path);
+  await executeBatchTasks([worktree], [prompt], 0, [hasPrevious]);
 }
 
 /**
@@ -154,11 +155,14 @@ async function handleNonInteractiveBatchResume(filePath: string, options: Resume
   // 按 branch 名精确匹配 worktree，构建执行参数
   const worktrees: WorktreeInfo[] = [];
   const tasks: string[] = [];
+  const continueFlags: boolean[] = [];
 
   for (const entry of entries) {
     const worktree = resolveWorktreeByBranch(entry.branch!, allWorktrees);
     worktrees.push(worktree);
     tasks.push(entry.task);
+    // 按 worktree 独立检查是否有历史会话
+    continueFlags.push(hasClaudeSessionHistory(worktree.path));
   }
 
   // 解析并发数
@@ -166,7 +170,7 @@ async function handleNonInteractiveBatchResume(filePath: string, options: Resume
 
   logger.info(`resume 命令（批量追问模式）执行，任务数: ${entries.length}，并发数: ${concurrency || '不限制'}`);
 
-  await executeBatchTasks(worktrees, tasks, concurrency, true);
+  await executeBatchTasks(worktrees, tasks, concurrency, continueFlags);
 }
 
 /**

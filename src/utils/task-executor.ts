@@ -9,6 +9,7 @@ import { printSuccess, printWarning, printInfo, printDoubleSeparator, confirmAct
 import { ProgressRenderer } from './progress.js';
 import { createLineBuffer, parseStreamLine, parseStreamEvent, truncateText } from './stream-parser.js';
 import { RESULT_PREVIEW_MAX_LENGTH } from '../constants/index.js';
+import { ClawtError } from '../errors/index.js';
 
 /** executeClaudeTask 的返回结构，包含子进程引用和结果 Promise */
 interface ClaudeTaskHandle {
@@ -206,7 +207,7 @@ function updateRendererStatus(renderer: ProgressRenderer, index: number, result:
  * @param {number} startTime - 任务批次启动时间戳
  * @param {() => boolean} isInterrupted - 检查是否已中断的函数
  * @param {ChildProcess[]} childProcesses - 共享子进程数组，执行过程中动态追加
- * @param {boolean} [continueSession] - 是否继续已有会话（追问模式）
+ * @param {boolean[]} [continueFlags] - 按索引对应每个任务是否继续已有会话（追问模式，追加 --continue）
  * @returns {Promise<TaskResult[]>} 所有任务结果
  */
 async function executeWithConcurrency(
@@ -217,7 +218,7 @@ async function executeWithConcurrency(
   startTime: number,
   isInterrupted: () => boolean,
   childProcesses: ChildProcess[],
-  continueSession?: boolean,
+  continueFlags?: boolean[],
 ): Promise<TaskResult[]> {
   const total = tasks.length;
   const results: TaskResult[] = new Array(total);
@@ -244,7 +245,7 @@ async function executeWithConcurrency(
 
       const handle = executeClaudeTask(wt, task, (activityText) => {
         renderer.updateActivityText(index, activityText);
-      }, continueSession);
+      }, continueFlags?.[index]);
       childProcesses.push(handle.child);
 
       handle.promise.then((result) => {
@@ -282,7 +283,7 @@ async function executeWithConcurrency(
  * @param {number} startTime - 任务批次启动时间戳
  * @param {() => boolean} isInterrupted - 检查是否已中断的函数
  * @param {ChildProcess[]} childProcesses - 共享子进程数组，启动时追加
- * @param {boolean} [continueSession] - 是否继续已有会话（追问模式）
+ * @param {boolean[]} [continueFlags] - 按索引对应每个任务是否继续已有会话（追问模式，追加 --continue）
  * @returns {Promise<TaskResult[]>} 所有任务结果
  */
 async function executeAllParallel(
@@ -292,14 +293,14 @@ async function executeAllParallel(
   startTime: number,
   isInterrupted: () => boolean,
   childProcesses: ChildProcess[],
-  continueSession?: boolean,
+  continueFlags?: boolean[],
 ): Promise<TaskResult[]> {
   const handles = worktrees.map((wt, index) => {
     const task = tasks[index];
     logger.info(`启动任务 ${index + 1}: ${task} (worktree: ${wt.path})`);
     const handle = executeClaudeTask(wt, task, (activityText) => {
       renderer.updateActivityText(index, activityText);
-    }, continueSession);
+    }, continueFlags?.[index]);
     childProcesses.push(handle.child);
 
     return handle;
@@ -326,16 +327,24 @@ async function executeAllParallel(
  * @param {WorktreeInfo[]} worktrees - worktree 列表
  * @param {string[]} tasks - 任务描述列表
  * @param {number} concurrency - 最大并发数，0 表示不限制
- * @param {boolean} [continueSession] - 是否继续已有会话（追问模式，追加 --continue）
+ * @param {boolean[]} [continueFlags] - 按索引对应每个任务是否继续已有会话（追问模式，追加 --continue）
  * @returns {Promise<TaskResult[]>} 所有任务的执行结果
+ * @throws {ClawtError} continueFlags 长度与任务数不一致时抛出
  */
 export async function executeBatchTasks(
   worktrees: WorktreeInfo[],
   tasks: string[],
   concurrency: number,
-  continueSession?: boolean,
+  continueFlags?: boolean[],
 ): Promise<TaskResult[]> {
   const count = tasks.length;
+
+  // 校验 continueFlags 长度与 worktrees 一致，防止调用方传入不匹配的数组
+  if (continueFlags && continueFlags.length !== count) {
+    throw new ClawtError(
+      `continueFlags 长度 (${continueFlags.length}) 与任务数 (${count}) 不一致`,
+    );
+  }
 
   // 有并发限制时输出提示
   if (concurrency > 0) {
@@ -389,8 +398,8 @@ export async function executeBatchTasks(
 
   // 根据并发限制选择执行模式
   const results = concurrency > 0
-    ? await executeWithConcurrency(worktrees, tasks, concurrency, renderer, startTime, isInterrupted, childProcesses, continueSession)
-    : await executeAllParallel(worktrees, tasks, renderer, startTime, isInterrupted, childProcesses, continueSession);
+    ? await executeWithConcurrency(worktrees, tasks, concurrency, renderer, startTime, isInterrupted, childProcesses, continueFlags)
+    : await executeAllParallel(worktrees, tasks, renderer, startTime, isInterrupted, childProcesses, continueFlags);
 
   // 正常完成，停止进度面板并移除 SIGINT 监听器
   renderer.stop();
