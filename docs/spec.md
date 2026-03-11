@@ -357,7 +357,7 @@ async function interactiveConfigEditor<T extends object>(
    ✗ 该项目尚未初始化，请先执行 clawt init -b<branchName>设置主工作分支
    ```
    其他命令（list、resume、config、status、alias、projects、completion）不受影响，无需添加该校验。
-   > **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` → `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、merge）**无需再显式调用 `requireProjectConfig()`**，避免重复校验。sync、remove 和 cover 命令因不依赖主 worktree 的分支状态而不调用 `ensureOnMainWorkBranch`，需自行显式调用 `requireProjectConfig()`。reset 和 home 命令同理，也需自行调用 `requireProjectConfig()`。
+   > **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` → `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、sync、merge）**无需再显式调用 `requireProjectConfig()`**，避免重复校验。其中 sync 命令的 `PRE_CHECK_SYNC` 同时包含 `requireProjectConfig` 和 `ensureOnClawtMainWorkBranch`（因为 sync 需要在主工作分支上发起合并操作）。remove 和 cover 命令因不依赖主 worktree 的分支状态而不调用 `ensureOnMainWorkBranch`，需自行显式调用 `requireProjectConfig()`。reset 和 home 命令同理，也需自行调用 `requireProjectConfig()`。
 3. **主分支名统一从项目级配置获取**：所有需要获取主分支名的场景（sync 中合并主分支、merge 中计算 merge-base、切回主分支等），统一使用项目级配置中的 `clawtMainWorkBranch`，不再通过 `getCurrentBranch(mainWorktreePath)` 动态获取。因为在新架构下，主 worktree 可能处于验证分支上，`getCurrentBranch` 会返回验证分支名而非真正的主工作分支名。
 4. **测试文件全量更新**：本次重构涉及的所有命令（init、create、run、validate、sync、remove、merge、reset），其对应的测试文件必须同步更新，确保覆盖新增的验证分支逻辑、项目级配置逻辑和变更后的流程。
 

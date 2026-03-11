@@ -184,7 +184,7 @@ clawt status [--json] [-i | --interactive]
 - `getWorktreeCreatedTime()` 工具函数（在 `src/utils/worktree-matcher.ts`），通过 `fs.statSync().birthtime` 获取 worktree 目录的创建时间，返回 ISO 8601 格式字符串或 null
 - `getSnapshotModifiedTime()` 工具函数（在 `src/utils/validate-snapshot.ts`），通过 `fs.statSync` 获取快照文件的修改时间（mtime），返回 UTC 时区的 ISO 8601 格式字符串（`toISOString()` 格式）或 null
 - `formatRelativeTime()` 格式化函数（在 `src/utils/formatter.ts`），将 ISO 8601 日期字符串转换为中文相对时间描述（如"3 天前"、"2 小时前"、"刚刚"），无效日期时返回 null
-- `getCommitCountBehind()` 工具函数（在 `src/utils/git.ts`），通过 `git rev-list --count <branch>..HEAD` 计算落后提交数
+- `getCommitCountBehind()` 工具函数（在 `src/utils/git-branch.ts`），通过 `git rev-list --count <branch>..HEAD` 计算落后提交数
 - `getProjectSnapshotBranches()` 工具函数（在 `src/utils/validate-snapshot.ts`），通过扫描快照目录下的 `.tree` 文件提取分支名列表
 - `loadProjectConfig()` 加载项目配置，读取 `clawtMainWorkBranch` 字段
 - `checkBranchExists()` 检测分支是否存在

@@ -112,13 +112,13 @@ clawt init show
 
 #### 前置校验
 
-除 `clawt init` 以外的所有核心命令（create、run、validate、sync、remove、merge、reset），执行时都会校验项目级配置是否存在。如果未执行过 `clawt init`，命令会直接报错并提示用户先初始化：
+除 `clawt init` 以外的所有核心命令（create、run、validate、cover、sync、remove、merge、reset、home），执行时都会校验项目级配置是否存在。如果未执行过 `clawt init`，命令会直接报错并提示用户先初始化：
 
 ```
 ✗ 该项目尚未初始化，请先执行 clawt init -b<branchName>设置主工作分支
 ```
 
-> **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` -> `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、sync、remove、merge）无需再显式调用 `requireProjectConfig()`，避免重复校验。仅 reset 命令因不调用 `ensureOnMainWorkBranch`，需要自行调用 `requireProjectConfig()`。
+> **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` -> `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、sync、merge）无需再显式调用 `requireProjectConfig()`，避免重复校验。remove、cover、reset、home 命令因不调用 `ensureOnMainWorkBranch`，需要自行显式调用 `requireProjectConfig()`。
 
 #### 路径常量
 
