@@ -1,5 +1,6 @@
 import { execSync, execFileSync, spawn, spawnSync, type ChildProcess, type SpawnSyncReturns, type StdioOptions } from 'node:child_process';
 import { logger } from '../logger/index.js';
+import { EXEC_MAX_BUFFER } from '../constants/git.js';
 
 /**
  * 获取移除了 CLAUDECODE 嵌套会话标记的环境变量副本
@@ -52,6 +53,7 @@ export function execCommand(command: string, options?: { cwd?: string }): string
     cwd: options?.cwd,
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
+    maxBuffer: EXEC_MAX_BUFFER,
   });
   return result.trim();
 }
@@ -107,6 +109,7 @@ export function execCommandWithInput(command: string, args: string[], options: {
     input: options.input,
     encoding: 'utf-8',
     stdio: ['pipe', 'pipe', 'pipe'],
+    maxBuffer: EXEC_MAX_BUFFER,
   });
   return result.trim();
 }

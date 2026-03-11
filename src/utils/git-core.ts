@@ -2,6 +2,7 @@ import { basename } from 'node:path';
 import { execSync, execFileSync } from 'node:child_process';
 import { execCommand, execCommandWithInput } from './shell.js';
 import { logger } from '../logger/index.js';
+import { EXEC_MAX_BUFFER } from '../constants/git.js';
 
 /**
  * 获取 git common dir（用于判断是否为主 worktree）
@@ -258,6 +259,7 @@ export function gitDiffCachedBinary(cwd?: string): Buffer {
   return execSync('git diff --cached --binary', {
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
+    maxBuffer: EXEC_MAX_BUFFER,
   });
 }
 
@@ -291,6 +293,7 @@ export function gitDiffBinaryAgainstBranch(branchName: string, cwd?: string): Bu
   return execSync(`git diff HEAD...${branchName} --binary`, {
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
+    maxBuffer: EXEC_MAX_BUFFER,
   });
 }
 
@@ -390,6 +393,7 @@ export function gitDiffTree(baseTreeHash: string, targetTreeHash: string, cwd?: 
   return execSync(`git diff-tree -p --binary ${baseTreeHash} ${targetTreeHash}`, {
     cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
+    maxBuffer: EXEC_MAX_BUFFER,
   });
 }
 
