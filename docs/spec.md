@@ -394,6 +394,7 @@ async function interactiveConfigEditor<T extends object>(
 - Worktree 创建为串行执行（Git worktree 不支持并行写入）
 - Claude Code 任务为并行执行（各自独立进程）
 - 任务完成检测：监听子进程 `close` 事件，事件驱动
+- 命令执行缓冲区：所有 `execSync` / `execFileSync` 调用统一使用 `EXEC_MAX_BUFFER`（200MB，定义在 `src/constants/git.ts`），避免大分支 diff 输出超过 Node.js 默认 1MB 限制触发 `ENOBUFS` 错误
 
 ### 8.2 兼容性
 
