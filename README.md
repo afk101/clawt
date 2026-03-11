@@ -50,9 +50,10 @@ clawt status -i
 clawt init                # 以当前分支作为主工作分支进行初始化
 clawt init -b <branch>    # 指定主工作分支名
 clawt init show           # 交互式查看和修改项目配置
+clawt init show --json    # 以 JSON 格式输出项目配置
 ```
 
-设置项目的主工作分支。重复执行会更新主工作分支配置。`init show` 提供交互式面板，可查看和修改项目配置项（如 validate 成功后自动执行的命令）。
+设置项目的主工作分支。重复执行会更新主工作分支配置。`init show` 提供交互式面板，可查看和修改项目配置项（如 validate 成功后自动执行的命令）。`init show --json` 可以直接输出当前项目配置的 JSON 格式。
 
 ### `clawt run` — 创建 worktree 并执行任务
 
@@ -117,9 +118,16 @@ clawt run -b <branch> --tasks "任务1" --tasks "任务2" --dry-run
 ```bash
 clawt resume -b <branch>   # 指定分支
 clawt resume                # 交互式多选（按创建日期分组）
+
+# 非交互式追问
+clawt resume -b <branch> --prompt "追问内容"
+clawt resume -f tasks.md    # 从任务文件批量追问
+clawt resume -f tasks.md -c 2  # 限制并发数
 ```
 
 不传 `-b` 时，分支列表按创建日期分组显示，支持全局全选和按组全选。选 1 个默认在新终端 Tab 中恢复（设置 `resumeInPlace: true` 可改为在当前终端就地恢复），选多个自动在独立终端 Tab 中批量恢复（仅 macOS）。
+
+`--prompt` 用于对指定分支进行非交互式追问，`-f` 从任务文件批量追问多个分支（通过 branch 名匹配已有 worktree）。两者互斥。
 
 如果目标 worktree 存在历史会话，会自动继续上次对话（`--continue`）。
 
@@ -175,6 +183,7 @@ clawt sync -b <branch>
 ```bash
 clawt merge -b <branch> -m "feat: 提交信息"   # 有未提交修改时需要 -m
 clawt merge -b <branch>                        # 已提交过可省略 -m
+clawt merge -b <branch> --auto                 # 遇到冲突直接调用 AI 解决
 ```
 
 ### `clawt remove` — 移除 worktree
@@ -224,6 +233,15 @@ clawt home
 ```
 
 如果当前已在主工作分支上，会提示无需切换。
+
+### `clawt tasks` — 任务文件管理
+
+```bash
+clawt tasks init             # 生成任务模板文件（默认输出到 clawt/tasks/ 目录）
+clawt tasks init [path]      # 指定输出路径
+```
+
+快速生成 `clawt run -f` 所需的任务文件模板，包含格式说明注释和示例任务块。
 
 ### `clawt projects` — 跨项目 worktree 概览
 
@@ -315,12 +333,15 @@ clawt alias remove l
 | `resumeInPlace` | `false` | resume 单选时在当前终端就地恢复，`false` 则在新 Tab 中打开 |
 | `aliases` | `{}` | 命令别名映射（如 `{"l": "list", "r": "run"}`） |
 | `autoUpdate` | `true` | 自动检查新版本（每 24 小时检查一次 npm registry） |
+| `conflictResolveMode` | `"ask"` | merge 冲突时的解决模式：`ask`（询问是否使用 AI）、`auto`（自动 AI 解决）、`manual`（手动解决） |
+| `conflictResolveTimeoutMs` | `300000` | Claude Code 冲突解决超时时间（毫秒），默认 5 分钟 |
 
 ## 全局选项
 
 | 选项 | 说明 |
 | ---- | ---- |
 | `--debug` | 输出调试信息 |
+| `-y, --yes` | 跳过所有交互式确认，适用于脚本/CI 环境 |
 
 ## 日志
 

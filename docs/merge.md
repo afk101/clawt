@@ -16,6 +16,7 @@ clawt merge [-m <commitMessage>]
 | ---- | ---- | ------------------------------------------------------------------------ |
 | `-b` | 否   | 要合并的分支名（支持模糊匹配，不传则列出所有分支供选择）                   |
 | `-m` | 否   | 提交信息（目标 worktree 工作区有修改时必填）                               |
+| `--auto` | 否   | 遇到冲突直接调用 AI 解决，不再询问                                        |
 
 **运行流程：**
 
@@ -81,10 +82,23 @@ clawt merge [-m <commitMessage>]
    git merge <branchName>
    ```
 8. **冲突检测**（双层机制）
-   - **try-catch 层**：`git merge` 抛出异常时，先检查是否有冲突，有冲突则报错退出，否则重新抛出原始异常
+   - **try-catch 层**：`git merge` 抛出异常时，先检查是否有冲突，有冲突则标记冲突状态，否则重新抛出原始异常
    - **二次确认层**：即使 merge 未抛异常，也再次检查是否有合并冲突
-   - **有冲突** → 提示 `合并存在冲突，请手动处理：\n  解决冲突后执行 git add . && git merge --continue`，退出
+   - **有冲突** → 进入 AI 辅助冲突解决流程（见下文），解决失败则退出
    - **无冲突** → 继续
+
+8.5. **AI 辅助冲突解决**
+
+   当检测到合并冲突时，通过 `handleMergeConflict()` 函数处理。冲突解决行为由全局配置项 `conflictResolveMode` 和 `--auto` 选项共同控制：
+
+   | `conflictResolveMode` | `--auto` | 行为 |
+   | --- | --- | --- |
+   | `ask`（默认） | 否 | 询问用户是否使用 AI 解决冲突 |
+   | `ask` | 是 | 直接调用 AI 解决，不询问 |
+   | `auto` | — | 直接调用 AI 解决，不询问 |
+   | `manual` | — | 输出冲突提示信息，用户手动解决 |
+
+   AI 解决冲突时，调用 Claude Code CLI 在主 worktree 中分析并解决冲突文件，超时时间由配置项 `conflictResolveTimeoutMs` 控制（默认 5 分钟）。AI 解决成功后自动执行 `git add . && git merge --continue` 完成合并。
 9. **推送（受 `autoPullPush` 配置控制）**
    - `autoPullPush` 为 `false` → 输出提示 `已跳过自动 pull/push，请手动执行 git pull && git push`
    - `autoPullPush` 为 `true` → 执行 `git pull` + `git push`：

@@ -8,6 +8,15 @@ clawt resume -b <branchName>
 
 # 不指定分支名（列出所有分支供多选）
 clawt resume
+
+# 非交互式追问（指定分支 + 追问内容）
+clawt resume -b <branchName> --prompt "追问内容"
+
+# 从任务文件批量追问（通过 branch 名匹配已有 worktree）
+clawt resume -f tasks.md
+
+# 批量追问时限制并发数
+clawt resume -f tasks.md -c 2
 ```
 
 **参数：**
@@ -15,15 +24,38 @@ clawt resume
 | 参数 | 必填 | 说明                                                  |
 | ---- | ---- | ----------------------------------------------------- |
 | `-b` | 否   | 要恢复的分支名（支持模糊匹配，不传则列出所有分支供多选） |
+| `--prompt` | 否 | 非交互式追问内容（需配合 `-b` 指定分支，与 `-f` 互斥） |
+| `-f, --file` | 否 | 从任务文件批量追问（通过 branch 名匹配已有 worktree，与 `--prompt` 互斥） |
+| `-c, --concurrency` | 否 | 批量追问最大并发数，`0` 表示不限制 |
 
 **使用场景：**
 
 当用户之前通过 `clawt run` 或 `clawt create` 创建了 worktree 但会话已结束，希望在该 worktree 中重新打开 Claude Code 交互式界面继续工作。支持一次选中多个分支，自动在独立终端 Tab 中批量恢复。
 
+此外还支持**非交互式追问模式**：通过 `--prompt` 对指定分支进行追问，或通过 `-f` 从任务文件批量追问多个分支。追问模式下会自动检测是否有历史会话，有则追加 `--continue` 继续上次对话。
+
+**互斥约束：**
+
+- `--prompt` 和 `-f` **不能同时使用**
+- `--prompt` 必须配合 `-b` 指定分支
+
 **运行流程：**
 
 1. **前置校验**（`PRE_CHECK_RESUME`）：主 worktree 校验 (2.1) + HEAD 存在性校验 + Claude Code CLI 可用性校验
-2. **解析目标 worktree**：根据是否传入 `-b` 参数以及 worktree 数量，采用不同的解析策略：
+2. **非交互式追问分支**：
+   - **`--prompt` 和 `-f` 互斥校验**：两者同时传入则报错退出
+   - **`--prompt` 模式**（单分支追问）：
+     - 必须配合 `-b` 指定分支，否则报错退出
+     - 通过精确匹配查找目标 worktree，找不到则列出可用分支报错
+     - 检查目标 worktree 是否有历史会话，有则追加 `--continue`
+     - 调用 `executeBatchTasks` 执行单任务追问
+   - **`-f` 模式**（批量追问）：
+     - 从任务文件解析追问条目（branch 为必填字段）
+     - 按 branch 名精确匹配已有 worktree，构建执行参数
+     - 按 worktree 独立检查是否有历史会话
+     - 解析并发数（`-c` 参数 > 全局配置 `maxConcurrency`）
+     - 调用 `executeBatchTasks` 批量执行追问
+3. **交互式恢复逻辑**（未传 `--prompt` 和 `-f` 时）：解析目标 worktree：根据是否传入 `-b` 参数以及 worktree 数量，采用不同的解析策略：
    - **未传 `-b` 参数**：
      - 获取当前项目所有 worktree
      - 无可用 worktree → 报错退出

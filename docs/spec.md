@@ -36,6 +36,7 @@
   - [5.19 初始化项目级配置](./init.md)
   - [5.20 切换回主工作分支](./home.md)
   - [5.21 将验证分支修改覆盖回目标 Worktree](./cover-validate.md)
+  - [5.22 任务文件管理](./tasks.md)
 - [6. 验证架构规则](#6-验证架构规则)
 - [7. 错误处理规范](#7-错误处理规范)
 - [8. 非功能性需求](#8-非功能性需求)
@@ -293,15 +294,17 @@ async function interactiveConfigEditor<T extends object>(
 | `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出和 `-i` 交互式面板模式）| 5.14     |
 | `clawt alias`         | 管理命令别名（列出 / 设置 / 移除）                       | 5.15     |
 | `clawt completion`    | 为终端提供 shell 自动补全功能（bash/zsh）              | 5.16     |
-| `clawt projects`      | 展示所有项目的 worktree 概览，或查看指定项目的 worktree 详情 | 5.17     |
+| `clawt projects`      | 展示所有项目的 worktree 概览，或查看指定项目的 worktree 详情 | 5.18     |
 | `clawt home`          | 快速切换回主工作分支                                      | 5.20     |
 | `clawt cover`         | 将验证分支上的修改覆盖回目标 worktree（自动推导目标分支）     | 5.21     |
+| `clawt tasks`         | 任务文件管理（生成任务模板文件等）                             | 5.22     |
 
 **全局选项：**
 
 | 选项      | 说明                                     |
 | --------- | ---------------------------------------- |
 | `--debug` | 输出详细调试信息到终端（启用 Console transport） |
+| `-y, --yes` | 跳过所有交互式确认，适用于脚本/CI 环境 |
 
 所有命令执行前，都必须先执行**主 worktree 校验**（见 [2.1](#21-主-worktree-的定义与定位规则)）。
 
@@ -331,6 +334,7 @@ async function interactiveConfigEditor<T extends object>(
 - [5.19 初始化项目级配置](./init.md)
 - [5.20 切换回主工作分支](./home.md)
 - [5.21 将验证分支修改覆盖回目标 Worktree](./cover-validate.md)
+- [5.22 任务文件管理](./tasks.md)
 
 ---
 

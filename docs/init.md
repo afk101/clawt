@@ -9,8 +9,11 @@ clawt init
 # 设置主工作分支（指定分支名）
 clawt init -b <branchName>
 
-# 查看当前项目的 init 配置
+# 交互式查看和修改项目配置
 clawt init show
+
+# 以 JSON 格式输出项目配置
+clawt init show --json
 ```
 
 **参数：**
@@ -19,6 +22,7 @@ clawt init show
 | --- | --- | --- |
 | `-b` | 否 | 指定主工作分支名。不传则使用当前分支 |
 | `show` | 否 | 交互式查看和修改项目配置 |
+| `show --json` | 否 | 以 JSON 格式输出项目配置（跳过交互式流程） |
 
 **功能说明：**
 
@@ -44,7 +48,8 @@ clawt init show
 2. **项目配置校验**（`requireProjectConfig`）：读取 `~/.clawt/projects/<projectName>/config.json`
    - 配置不存在 → 抛出错误 `项目尚未初始化，请先执行 clawt init 设置主工作分支`
    - 配置缺少 `clawtMainWorkBranch` 字段 → 抛出错误 `项目配置缺少主工作分支信息，请重新执行 clawt init 设置主工作分支`
-   - 配置存在且合法 → 进入交互式面板
+   - 配置存在且合法 → 继续
+2.5. **`--json` 模式判断**：如果指定了 `--json` 选项，直接以 JSON 格式输出当前项目配置，跳过交互式流程并返回
 3. **交互式配置编辑**：调用 `interactiveConfigEditor`（`src/utils/config-strategy.ts`），基于 `PROJECT_CONFIG_DEFINITIONS` 构建配置项列表（详见 [project-config.md](./project-config.md)）
    - 列出所有项目配置项，显示名称、当前值和描述
    - 用户选择配置项后，根据值类型自动选择输入方式（与全局配置的交互式编辑逻辑一致）
@@ -62,6 +67,9 @@ clawt init show
 
 # show 交互式修改成功
 ✓ 项目配置 validateRunCommand 已设置为 npm test
+
+# show --json 输出
+{"clawtMainWorkBranch":"main","validateRunCommand":"npm test"}
 
 # show 未初始化（抛出错误）
 项目尚未初始化，请先执行 clawt init 设置主工作分支
