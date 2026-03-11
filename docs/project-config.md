@@ -118,7 +118,7 @@ clawt init show
 ✗ 该项目尚未初始化，请先执行 clawt init -b<branchName>设置主工作分支
 ```
 
-> **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` -> `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、sync、merge）无需再显式调用 `requireProjectConfig()`，避免重复校验。remove、cover、reset、home 命令因不调用 `ensureOnMainWorkBranch`，需要自行显式调用 `requireProjectConfig()`。
+> **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` -> `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、sync、merge）无需再显式调用 `requireProjectConfig()`，避免重复校验。validate 命令虽然在 `--clean` 模式中调用了 `ensureOnMainWorkBranch`，但其主流程和 `--clean` 流程均显式调用了 `requireProjectConfig`。remove、cover、reset、home 命令因不调用 `ensureOnMainWorkBranch`，需要自行显式调用 `requireProjectConfig()`。
 
 #### 路径常量
 

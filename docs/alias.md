@@ -31,7 +31,7 @@ clawt alias remove <alias>
 
 **约束规则：**
 
-1. **别名不能覆盖内置命令名**：别名不能与任何已注册的内置命令同名（动态检测，当前包括 `list`、`create`、`remove`、`run`、`resume`、`validate`、`cover`、`merge`、`config`、`sync`、`reset`、`status`、`alias`、`projects`、`completion`、`init`、`home`）。如果用户尝试设置与内置命令同名的别名，输出错误提示并返回
+1. **别名不能覆盖内置命令名**：别名不能与任何已注册的内置命令同名（动态检测，当前包括 `list`、`create`、`remove`、`run`、`resume`、`validate`、`cover`、`merge`、`config`、`sync`、`reset`、`status`、`alias`、`projects`、`completion`、`init`、`home`、`tasks`）。如果用户尝试设置与内置命令同名的别名，输出错误提示并返回
 2. **目标必须是内置命令**：别名的目标（`<command>`）必须是已注册的内置命令名。如果指定了不存在的目标命令，输出错误提示并返回
 3. **参数透传**：通过别名调用时，所有选项和参数会完全透传给目标命令，行为与直接调用目标命令完全一致
 

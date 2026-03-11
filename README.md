@@ -34,6 +34,7 @@ clawt status -i
 | `r` | 恢复 Claude Code 会话 | `clawt resume -b <branch>` |
 | `s` | 同步主分支代码 | `clawt sync -b <branch>` |
 | `d` | 删除 worktree | `clawt remove -b <branch>` |
+| `c` | 覆盖修改回目标 worktree | `clawt cover` |
 | `q` | 退出面板 | — |
   
 示例：  
@@ -216,7 +217,7 @@ clawt status -i       # 交互式面板模式（实时刷新，支持键盘导�
 | 快捷键 | 操作 |
 | ------ | ---- |
 | `↑` `↓` | 导航选中 worktree |
-| `v` `m` `d` `r` `s` | 验证 / 合并 / 删除 / 恢复 / 同步 |
+| `v` `m` `d` `r` `s` `c` | 验证 / 合并 / 删除 / 恢复 / 同步 / 覆盖 |
 | `f` | 手动刷新 |
 | `q` / `Ctrl+C` | 退出 |
 

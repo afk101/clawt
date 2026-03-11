@@ -321,6 +321,8 @@ Worktree 按创建日期分组（复用 `groupWorktreesByDate()`），每组前�
   - `PANEL_SHORTCUT_KEYS`（快捷键映射对象，包含 `VALIDATE`/`MERGE`/`DELETE`/`RESUME`/`SYNC`/`COVER`/`REFRESH`/`QUIT`）
   - `PANEL_DATE_SEPARATOR_PREFIX`（`════`）
   - `PANEL_FIXED_ROWS`（5，固定占用行数：配置分支信息 + 快照摘要 + 顶部分隔线 + 底部分隔线 + 底栏）
+  - `PANEL_SEPARATOR_MAX_WIDTH`（60，终端最大显示宽度限制）
+  - `PANEL_DATE_COLOR`（`#FF8C00`，日期分隔线高亮颜色，橙色）
 - 面板消息常量定义在 `src/constants/messages/interactive-panel.ts`：
   - `PANEL_FOOTER_SHORTCUTS`：底栏快捷键提示（从 `PANEL_SHORTCUT_KEYS` 自动生成）
   - `PANEL_FOOTER_COUNTDOWN(seconds)`：底栏倒计时文本

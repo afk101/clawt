@@ -12,7 +12,7 @@ clawt home
 
 **功能说明：**
 
-快速切换回项目的主工作分支。当用户在主 worktree 中处于验证分支或其他分支时，可通过 `clawt home` 一键切换回 `clawtMainWorkBranch` 所记录的主工作分支。
+切换回项目的主工作分支。当用户在主 worktree 中处于验证分支或其他分支时，可通过 `clawt home` 一键切换回 `clawtMainWorkBranch` 所记录的主工作分支。
 
 **运行流程：**
 

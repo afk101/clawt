@@ -284,20 +284,20 @@ async function interactiveConfigEditor<T extends object>(
 | `clawt merge`         | 合并某个已验证的 worktree 分支到主 worktree       | 5.6      |
 | `clawt remove`        | 移除 worktree（支持模糊匹配/多选/全部）             | 5.5      |
 | `clawt list`          | 列出当前项目所有 worktree（支持 `--json` 格式输出） | 5.8      |
-| `clawt config`        | 交互式查看和修改全局配置（等同于 `config set`）      | 5.10     |
+| `clawt config`        | 交互式查看和修改全局配置                               | 5.10     |
 | `clawt config set`    | 修改配置项（无参数进入交互式，有参数直接设置）          | 5.10     |
 | `clawt config get`    | 获取单个配置项的值                                 | 5.10     |
 | `clawt config reset`  | 将配置恢复为默认值                                | 5.10     |
 | `clawt resume`        | 在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复） | 5.11     |
-| `clawt sync`          | 将主分支最新代码同步到目标 worktree（含验证分支重建）    | 5.12     |
-| `clawt reset`         | 重置主 worktree 工作区和暂存区                       | 5.13     |
-| `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出和 `-i` 交互式面板模式）| 5.14     |
+| `clawt sync`          | 将主分支最新代码同步到目标 worktree    | 5.12     |
+| `clawt reset`         | 重置主 worktree 工作区和暂存区（保留 validate 快照）    | 5.13     |
+| `clawt status`        | 显示项目全局状态总览（支持 `--json` 格式输出）| 5.14     |
 | `clawt alias`         | 管理命令别名（列出 / 设置 / 移除）                       | 5.15     |
 | `clawt completion`    | 为终端提供 shell 自动补全功能（bash/zsh）              | 5.16     |
 | `clawt projects`      | 展示所有项目的 worktree 概览，或查看指定项目的 worktree 详情 | 5.18     |
-| `clawt home`          | 快速切换回主工作分支                                      | 5.20     |
+| `clawt home`          | 切换回主工作分支                                      | 5.20     |
 | `clawt cover`         | 将验证分支上的修改覆盖回目标 worktree（自动推导目标分支）     | 5.21     |
-| `clawt tasks`         | 任务文件管理（生成任务模板文件等）                             | 5.22     |
+| `clawt tasks`         | 任务文件管理                             | 5.22     |
 
 **全局选项：**
 
@@ -356,8 +356,8 @@ async function interactiveConfigEditor<T extends object>(
    ```
    ✗ 该项目尚未初始化，请先执行 clawt init -b<branchName>设置主工作分支
    ```
-   其他命令（list、resume、config、status、alias、projects、completion）不受影响，无需添加该校验。
-   > **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` → `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、validate、sync、merge）**无需再显式调用 `requireProjectConfig()`**，避免重复校验。其中 sync 命令的 `PRE_CHECK_SYNC` 同时包含 `requireProjectConfig` 和 `ensureOnClawtMainWorkBranch`（因为 sync 需要在主工作分支上发起合并操作）。remove 和 cover 命令因不依赖主 worktree 的分支状态而不调用 `ensureOnMainWorkBranch`，需自行显式调用 `requireProjectConfig()`。reset 和 home 命令同理，也需自行调用 `requireProjectConfig()`。
+   其他命令（list、resume、config、status、alias、projects、completion、tasks）不受影响，无需添加该校验。
+   > **实现细节**：`ensureOnMainWorkBranch()` 内部已通过 `getMainWorkBranch()` → `requireProjectConfig()` 完成了项目配置校验，因此调用了 `ensureOnMainWorkBranch` 的命令（create、run、sync、merge）**无需再显式调用 `requireProjectConfig()`**，避免重复校验。其中 sync 命令的 `PRE_CHECK_SYNC` 同时包含 `requireProjectConfig` 和 `ensureOnClawtMainWorkBranch`（因为 sync 需要在主工作分支上发起合并操作）。validate 命令虽然在 `--clean` 模式中调用了 `ensureOnMainWorkBranch`，但其主流程和 `--clean` 流程均显式调用了 `requireProjectConfig`。remove、cover、reset 和 home 命令因不依赖主 worktree 的分支状态而不调用 `ensureOnMainWorkBranch`，需自行显式调用 `requireProjectConfig()`。
 3. **主分支名统一从项目级配置获取**：所有需要获取主分支名的场景（sync 中合并主分支、merge 中计算 merge-base、切回主分支等），统一使用项目级配置中的 `clawtMainWorkBranch`，不再通过 `getCurrentBranch(mainWorktreePath)` 动态获取。因为在新架构下，主 worktree 可能处于验证分支上，`getCurrentBranch` 会返回验证分支名而非真正的主工作分支名。
 4. **测试文件全量更新**：本次重构涉及的所有命令（init、create、run、validate、sync、remove、merge、reset），其对应的测试文件必须同步更新，确保覆盖新增的验证分支逻辑、项目级配置逻辑和变更后的流程。
 
