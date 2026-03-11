@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import { ClawtError } from './errors/index.js';
 import { logger, enableConsoleTransport } from './logger/index.js';
 import { EXIT_CODES } from './constants/index.js';
-import { printError, ensureClawtDirs, loadConfig, applyAliases, checkForUpdates } from './utils/index.js';
+import { printError, ensureClawtDirs, loadConfig, applyAliases, checkForUpdates, setNonInteractive } from './utils/index.js';
 import { registerListCommand } from './commands/list.js';
 import { registerCreateCommand } from './commands/create.js';
 import { registerRemoveCommand } from './commands/remove.js';
@@ -36,12 +36,17 @@ program
   .name('clawt')
   .description('本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具')
   .version(version)
-  .option('--debug', '输出详细调试信息到终端');
+  .option('--debug', '输出详细调试信息到终端')
+  .option('-y, --yes', '跳过所有交互式确认，适用于脚本/CI 环境');
 
 // 在子命令 action 执行前检查 --debug 选项，按需启用控制台日志
 program.hook('preAction', (thisCommand) => {
   if (thisCommand.opts().debug) {
     enableConsoleTransport();
+  }
+  // 检测 --yes 选项，启用非交互模式
+  if (thisCommand.opts().yes) {
+    setNonInteractive(true);
   }
 });
 

@@ -5,6 +5,8 @@ import {
 } from '../constants/index.js';
 import type { WorktreeInfo } from '../types/index.js';
 import { groupWorktreesByDate, buildGroupedChoices, buildGroupMembershipMap } from './worktree-matcher.js';
+import { isNonInteractive } from './interactive.js';
+import { ClawtError } from '../errors/index.js';
 
 /** enquirer MultiSelect 选项条目的运行时结构 */
 export interface MultiSelectChoice {
@@ -41,6 +43,10 @@ export type GroupedChoice = { name: string; message: string } | MultiSelectSepar
  * @returns {Promise<WorktreeInfo>} 用户选择的 worktree
  */
 export async function promptSelectBranch(worktrees: WorktreeInfo[], message: string): Promise<WorktreeInfo> {
+  // 非交互模式下无法进行交互选择，要求用户通过 -b 精确指定
+  if (isNonInteractive()) {
+    throw new ClawtError('非交互模式下无法进行分支选择，请通过 -b 参数精确指定分支名');
+  }
   // @ts-expect-error enquirer 类型声明未导出 Select 类，但运行时存在
   const selectedBranch: string = await new Enquirer.Select({
     message,
@@ -62,6 +68,10 @@ export async function promptSelectBranch(worktrees: WorktreeInfo[], message: str
  * @returns {Promise<WorktreeInfo[]>} 用户选择的 worktree 列表
  */
 export async function promptMultiSelectBranches(worktrees: WorktreeInfo[], message: string): Promise<WorktreeInfo[]> {
+  // 非交互模式下无法进行交互多选，要求用户通过 -b 精确指定
+  if (isNonInteractive()) {
+    throw new ClawtError('非交互模式下无法进行分支多选，请通过 -b 参数精确指定分支名');
+  }
   // 构建 choices 列表，顶部插入全选选项
   const branchChoices = worktrees.map((wt) => ({
     name: wt.branch,
@@ -131,6 +141,10 @@ export async function promptGroupedMultiSelectBranches(
   worktrees: WorktreeInfo[],
   message: string,
 ): Promise<WorktreeInfo[]> {
+  // 非交互模式下无法进行交互多选，要求用户通过 -b 精确指定
+  if (isNonInteractive()) {
+    throw new ClawtError('非交互模式下无法进行分支多选，请通过 -b 参数精确指定分支名');
+  }
   const groups = groupWorktreesByDate(worktrees);
   const choices = buildGroupedChoices(groups);
   const groupMembershipMap = buildGroupMembershipMap(groups);

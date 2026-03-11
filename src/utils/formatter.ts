@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { MESSAGES } from '../constants/index.js';
 import { createInterface } from 'node:readline';
 import type { WorktreeStatus } from '../types/index.js';
+import { isNonInteractive } from './interactive.js';
 
 /**
  * 输出成功信息
@@ -58,11 +59,17 @@ export function printDoubleSeparator(): void {
 }
 
 /**
- * 简易 yes/no 确认（非交互式场景使用）
+ * 简易 yes/no 确认
+ * 非交互模式下根据 nonInteractiveDefault 参数自动返回默认值
  * @param {string} question - 确认问题
+ * @param {boolean} [nonInteractiveDefault=true] - 非交互模式下的默认返回值，true 表示自动确认，false 表示自动拒绝
  * @returns {Promise<boolean>} 用户是否确认
  */
-export function confirmAction(question: string): Promise<boolean> {
+export function confirmAction(question: string, nonInteractiveDefault: boolean = true): Promise<boolean> {
+  // 非交互模式下返回调用方声明的默认值
+  if (isNonInteractive()) {
+    return Promise.resolve(nonInteractiveDefault);
+  }
   return new Promise((resolve) => {
     const rl = createInterface({
       input: process.stdin,

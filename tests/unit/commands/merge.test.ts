@@ -78,6 +78,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   guardMainWorkBranchExists: vi.fn(),
   handleMergeConflict: vi.fn(),
+  isNonInteractive: vi.fn().mockReturnValue(false),
 }));
 
 import { registerMergeCommand } from '../../../src/commands/merge.js';

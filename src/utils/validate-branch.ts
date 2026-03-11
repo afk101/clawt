@@ -5,6 +5,7 @@ import { checkBranchExists, createBranch, deleteBranch, getCurrentBranch, gitChe
 import { getMainWorkBranch } from './project-config.js';
 import { printWarning, confirmAction } from './formatter.js';
 import { ClawtError } from '../errors/index.js';
+import { isNonInteractive } from './interactive.js';
 
 /**
  * 生成验证分支名
@@ -88,6 +89,16 @@ export async function rebuildValidateBranch(branchName: string, cwd?: string): P
  * @param {string} [cwd] - 工作目录
  */
 export async function handleDirtyWorkingDir(cwd?: string): Promise<void> {
+  // 非交互模式下默认执行 stash（安全策略，不丢弃代码）
+  if (isNonInteractive()) {
+    gitAddAll(cwd);
+    gitStashPush('clawt:auto-stash', cwd);
+    if (!isWorkingDirClean(cwd)) {
+      throw new ClawtError('工作区仍然不干净，请手动处理');
+    }
+    return;
+  }
+
   printWarning('当前分支有未提交的更改，请选择处理方式：\n');
 
   // @ts-expect-error enquirer 类型声明未导出 Select 类，但运行时存在
@@ -159,7 +170,8 @@ export async function ensureOnMainWorkBranch(cwd?: string): Promise<void> {
 
   // 当前在其他分支上，警告并确认后处理脏工作区再切换
   printWarning(MESSAGES.GUARD_BRANCH_MISMATCH(mainBranch, currentBranch));
-  const confirmed = await confirmAction('是否继续执行？');
+  // 非交互模式下自动确认继续
+  const confirmed = isNonInteractive() ? true : await confirmAction('是否继续执行？');
   if (!confirmed) {
     throw new ClawtError(MESSAGES.DESTRUCTIVE_OP_CANCELLED);
   }

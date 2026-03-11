@@ -162,7 +162,7 @@ export async function handleMergeConflict(
     return resolveConflictsWithAI(currentBranch, incomingBranch, cwd);
   }
 
-  // mode === 'ask'
+  // mode === 'ask'（非交互模式下默认使用 AI 解决，因为无法手动解决）
   const shouldUseAI = await confirmAction(MESSAGES.MERGE_CONFLICT_ASK_AI);
   if (!shouldUseAI) {
     throw new ClawtError(MESSAGES.MERGE_CONFLICT_MANUAL);

@@ -82,6 +82,7 @@ export { checkForUpdates } from './update-checker.js';
 export { getProjectConfigPath, loadProjectConfig, saveProjectConfig, requireProjectConfig, getMainWorkBranch, guardMainWorkBranchExists, getValidateRunCommand } from './project-config.js';
 export { getValidateBranchName, createValidateBranch, deleteValidateBranch, rebuildValidateBranch, ensureOnMainWorkBranch, handleDirtyWorkingDir } from './validate-branch.js';
 export { safeStringify } from './json.js';
+export { isNonInteractive, setNonInteractive } from './interactive.js';
 export { executeRunCommand } from './validate-runner.js';
 export { migrateChangesViaPatch, computeCurrentTreeHash, saveCurrentSnapshotTree, loadOldSnapshotToStage, switchToValidateBranch } from './validate-core.js';
 export { InteractivePanel } from './interactive-panel.js';

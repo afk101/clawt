@@ -82,8 +82,8 @@ async function handleSquashIfNeeded(
     return false;
   }
 
-  // 提示用户是否压缩
-  const shouldSquash = await confirmAction(MESSAGES.MERGE_SQUASH_PROMPT);
+  // 提示用户是否压缩（非交互模式下默认跳过，保留原始提交）
+  const shouldSquash = await confirmAction(MESSAGES.MERGE_SQUASH_PROMPT, false);
   if (!shouldSquash) {
     return false;
   }
@@ -120,7 +120,8 @@ async function shouldCleanupAfterMerge(branchName: string): Promise<boolean> {
     printInfo(`已配置自动删除，merge 成功后将自动清理 worktree 和分支: ${branchName}`);
     return true;
   }
-  return confirmAction(`是否删除对应的 worktree 和分支 (${branchName})？`);
+  // 非交互模式下自动删除
+  return confirmAction(`是否删除对应的 worktree 和分支 (${branchName})？`, true);
 }
 
 /**

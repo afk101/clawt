@@ -2,6 +2,8 @@ import chalk from 'chalk';
 import Enquirer from 'enquirer';
 import { DEFAULT_CONFIG, CONFIG_DEFINITIONS, MESSAGES } from '../constants/index.js';
 import type { ClawtConfig } from '../types/index.js';
+import { isNonInteractive } from './interactive.js';
+import { ClawtError } from '../errors/index.js';
 
 /**
  * 校验 key 是否为有效的配置项名称
@@ -132,6 +134,11 @@ export async function interactiveConfigEditor<T extends object>(
   definitions: Record<string, { description: string; allowedValues?: readonly string[] }>,
   options?: { selectPrompt?: string; disabledKeys?: Record<string, string> },
 ): Promise<{ key: keyof T; newValue: unknown }> {
+  // 非交互模式下无法进行配置编辑，引导使用 config set 命令
+  if (isNonInteractive()) {
+    throw new ClawtError('非交互模式下无法使用交互式配置编辑器，请使用 clawt config set <key> <value>');
+  }
+
   const keys = Object.keys(definitions);
   const disabledKeys = options?.disabledKeys ?? {};
   const configRecord = config as Record<string, unknown>;

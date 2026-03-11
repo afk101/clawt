@@ -56,6 +56,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   getCurrentBranch: vi.fn(),
   guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   guardMainWorkBranchExists: vi.fn(),
+  isNonInteractive: vi.fn().mockReturnValue(false),
 }));
 
 import { registerRemoveCommand } from '../../../src/commands/remove.js';

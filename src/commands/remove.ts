@@ -100,6 +100,7 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   let shouldDeleteBranch = autoDelete;
 
   if (!autoDelete) {
+    // 非交互模式下默认删除分支（删除 worktree 时分支通常也不再需要）
     shouldDeleteBranch = await confirmAction(MESSAGES.REMOVE_CONFIRM_DELETE_BRANCHES);
     if (!shouldDeleteBranch) {
       printHint(MESSAGES.REMOVE_BRANCHES_KEPT);
