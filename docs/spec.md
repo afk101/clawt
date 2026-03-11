@@ -306,6 +306,15 @@ async function interactiveConfigEditor<T extends object>(
 | `--debug` | 输出详细调试信息到终端（启用 Console transport） |
 | `-y, --yes` | 跳过所有交互式确认，适用于脚本/CI 环境 |
 
+**环境变量：**
+
+| 环境变量 | 说明 |
+| -------- | ---- |
+| `CI` | 设置为 `true` 或 `1` 时，自动启用非交互模式（等同于 `--yes`） |
+| `CLAWT_NON_INTERACTIVE` | 设置为 `true` 或 `1` 时，自动启用非交互模式（等同于 `--yes`） |
+
+> **非交互模式判断优先级：** CLI `--yes` 选项 > `CI` 环境变量 > `CLAWT_NON_INTERACTIVE` 环境变量 > 默认交互模式。实现见 `src/utils/interactive.ts`。
+
 所有命令执行前，都必须先执行**主 worktree 校验**（见 [2.1](#21-主-worktree-的定义与定位规则)）。
 
 ---
