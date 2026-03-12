@@ -1,5 +1,5 @@
 /** 任务模板默认输出目录 */
-export const TASK_TEMPLATE_OUTPUT_DIR = 'clawt/tasks';
+export const TASK_TEMPLATE_OUTPUT_DIR = '.clawt/tasks';
 
 /** 任务模板文件名前缀 */
 export const TASK_TEMPLATE_FILENAME_PREFIX = 'clawt-tasks';

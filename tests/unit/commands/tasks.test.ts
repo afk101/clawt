@@ -11,7 +11,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     TASK_INIT_SUCCESS: (path: string) => `✓ 任务模板已生成: ${path}`,
     TASK_INIT_HINT: (path: string) => `使用 clawt run -f ${path} 执行任务`,
   },
-  TASK_TEMPLATE_OUTPUT_DIR: 'clawt/tasks',
+  TASK_TEMPLATE_OUTPUT_DIR: '.clawt/tasks',
   TASK_TEMPLATE_FILENAME_PREFIX: 'clawt-tasks',
   TASK_TEMPLATE_CONTENT: '# 模板内容',
 }));
@@ -90,17 +90,17 @@ describe('handleTasksInit', () => {
     await program.parseAsync(['tasks', 'init'], { from: 'user' });
 
     expect(mockGenerateTaskFilename).toHaveBeenCalledWith('clawt-tasks');
-    // 默认路径应输出到 clawt/tasks/ 目录下
+    // 默认路径应输出到 .clawt/tasks/ 目录下
     expect(mockWriteFileSync).toHaveBeenCalledWith(
-      expect.stringContaining('clawt/tasks/clawt-tasks-2026-01-01-00-00-00.md'),
+      expect.stringContaining('.clawt/tasks/clawt-tasks-2026-01-01-00-00-00.md'),
       '# 模板内容',
       'utf-8',
     );
     expect(mockedPrintSuccess).toHaveBeenCalledWith(
-      expect.stringContaining('clawt/tasks/clawt-tasks-2026-01-01-00-00-00.md'),
+      expect.stringContaining('.clawt/tasks/clawt-tasks-2026-01-01-00-00-00.md'),
     );
     expect(mockedPrintHint).toHaveBeenCalledWith(
-      expect.stringContaining('clawt/tasks/clawt-tasks-2026-01-01-00-00-00.md'),
+      expect.stringContaining('.clawt/tasks/clawt-tasks-2026-01-01-00-00-00.md'),
     );
   });
 

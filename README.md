@@ -242,7 +242,7 @@ clawt home
 ### `clawt tasks` — 任务文件管理
 
 ```bash
-clawt tasks init             # 生成任务模板文件（默认输出到 clawt/tasks/ 目录）
+clawt tasks init             # 生成任务模板文件（默认输出到 .clawt/tasks/ 目录）
 clawt tasks init [path]      # 指定输出路径
 ```
 

@@ -20,7 +20,7 @@ export function registerTasksCommand(program: Command): void {
     .description('生成任务模板文件')
     .argument('[path]', '输出文件路径')
     .action(async (path?: string) => {
-      // 未指定路径时，默认输出到 clawt/tasks/ 目录下
+      // 未指定路径时，默认输出到 .clawt/tasks/ 目录下
       const filePath = path ?? join(TASK_TEMPLATE_OUTPUT_DIR, generateTaskFilename(TASK_TEMPLATE_FILENAME_PREFIX));
       await handleTasksInit(filePath);
     });
