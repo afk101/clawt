@@ -17,7 +17,8 @@
 ```json
 {
   "clawtMainWorkBranch": "main",
-  "validateRunCommand": "npm test"
+  "validateRunCommand": "npm test",
+  "postCreate": "npm install"
 }
 ```
 
@@ -25,6 +26,7 @@
 | --- | --- | --- | --- | --- |
 | `clawtMainWorkBranch` | `string` | 是 | `""` | 项目的主工作分支名，用于 create 时检测当前分支是否为主分支，以及 sync、merge 等命令获取主分支名 |
 | `validateRunCommand` | `string` | 否 | `undefined` | validate 成功后自动执行的命令（作为 `-r` 选项的默认值）。不传 `-r` 时，validate 命令会自动从此项读取 |
+| `postCreate` | `string` | 否 | `undefined` | worktree 创建后自动执行的初始化命令（如安装依赖、生成配置文件、编译资源等）。详见 [post-create-hook.md](./post-create-hook.md) |
 
 #### 配置项定义数据源
 
@@ -42,6 +44,10 @@ export const PROJECT_CONFIG_DEFINITIONS: ProjectConfigDefinitions = {
     defaultValue: undefined as unknown as string | undefined,
     description: 'validate 成功后自动执行的命令（-r 的默认值）',
   },
+  postCreate: {
+    defaultValue: undefined as unknown as string | undefined,
+    description: 'worktree 创建后自动执行的命令，用于安装依赖等初始化操作',
+  },
 };
 
 /** 项目默认配置（从 PROJECT_CONFIG_DEFINITIONS 自动派生） */
@@ -57,7 +63,7 @@ export const PROJECT_CONFIG_DESCRIPTIONS: Record<keyof Required<ProjectConfig>, 
 
 | 类型 | 说明 |
 | --- | --- |
-| `ProjectConfig` | 项目级配置接口，包含 `clawtMainWorkBranch`（必填）和 `validateRunCommand`（可选） |
+| `ProjectConfig` | 项目级配置接口，包含 `clawtMainWorkBranch`（必填）、`validateRunCommand`（可选）和 `postCreate`（可选） |
 | `ProjectConfigItemDefinition<T>` | 单个配置项定义，含 `defaultValue`（默认值）、`description`（描述）、可选 `allowedValues`（枚举值列表，仅对 string 类型有效） |
 | `ProjectConfigDefinitions` | 所有配置项的完整定义映射，键为 `ProjectConfig` 的所有属性名，值为对应的 `ProjectConfigItemDefinition` |
 
@@ -67,6 +73,7 @@ export const PROJECT_CONFIG_DESCRIPTIONS: Record<keyof Required<ProjectConfig>, 
 export interface ProjectConfig {
   clawtMainWorkBranch: string;
   validateRunCommand?: string;
+  postCreate?: string;
 }
 
 export interface ProjectConfigItemDefinition<T> {

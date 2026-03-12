@@ -29,10 +29,11 @@ vi.mock('../../../src/utils/formatter.js', () => ({
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
-import { launchInteractiveClaude, hasClaudeSessionHistory } from '../../../src/utils/claude.js';
+import { launchInteractiveClaude, hasClaudeSessionHistory, buildClaudeCommand } from '../../../src/utils/claude.js';
 import { getConfigValue } from '../../../src/utils/config.js';
 import { printInfo, printWarning } from '../../../src/utils/formatter.js';
 import { ClawtError } from '../../../src/errors/index.js';
+import { APPEND_SYSTEM_PROMPT } from '../../../src/constants/config.js';
 import { createWorktreeInfo } from '../../helpers/fixtures.js';
 
 const mockedSpawnSync = vi.mocked(spawnSync);
@@ -282,5 +283,79 @@ describe('launchInteractiveClaude', () => {
 
     const callArgs = mockedSpawnSync.mock.calls[0][1] as string[];
     expect(callArgs).not.toContain('--continue');
+  });
+
+  it('固定使用 APPEND_SYSTEM_PROMPT 作为系统提示', () => {
+    mockedGetConfigValue.mockReturnValue('claude');
+    mockedExistsSync.mockReturnValue(false);
+    mockedSpawnSync.mockReturnValue({
+      status: 0,
+      error: undefined,
+      stdout: '',
+      stderr: '',
+      pid: 1234,
+      output: [],
+      signal: null,
+    });
+
+    launchInteractiveClaude(worktree);
+
+    const callArgs = mockedSpawnSync.mock.calls[0][1] as string[];
+    const promptIndex = callArgs.indexOf('--append-system-prompt');
+    expect(callArgs[promptIndex + 1]).toBe(APPEND_SYSTEM_PROMPT);
+  });
+});
+
+describe('buildClaudeCommand', () => {
+  const worktree = createWorktreeInfo({
+    path: '/tmp/test-worktree',
+    branch: 'feature-test',
+  });
+
+  it('生成包含 cd 和 claude 命令的字符串', () => {
+    mockedGetConfigValue.mockReturnValue('claude');
+
+    const cmd = buildClaudeCommand(worktree, false);
+
+    expect(cmd).toContain("cd '/tmp/test-worktree'");
+    expect(cmd).toContain('claude');
+    expect(cmd).toContain('--append-system-prompt');
+  });
+
+  it('hasPreviousSession 为 true 时包含 --continue', () => {
+    mockedGetConfigValue.mockReturnValue('claude');
+
+    const cmd = buildClaudeCommand(worktree, true);
+
+    expect(cmd).toContain('--continue');
+  });
+
+  it('hasPreviousSession 为 false 时不包含 --continue', () => {
+    mockedGetConfigValue.mockReturnValue('claude');
+
+    const cmd = buildClaudeCommand(worktree, false);
+
+    expect(cmd).not.toContain('--continue');
+  });
+
+  it('固定使用 APPEND_SYSTEM_PROMPT 作为系统提示', () => {
+    mockedGetConfigValue.mockReturnValue('claude');
+
+    const cmd = buildClaudeCommand(worktree, false);
+
+    expect(cmd).toContain(APPEND_SYSTEM_PROMPT);
+  });
+
+  it('路径中的单引号被正确转义', () => {
+    mockedGetConfigValue.mockReturnValue('claude');
+    const wtWithQuote = createWorktreeInfo({
+      path: "/tmp/test's-worktree",
+      branch: 'feat',
+    });
+
+    const cmd = buildClaudeCommand(wtWithQuote, false);
+
+    // 单引号应被转义为 '\''
+    expect(cmd).toContain("test'\\''s-worktree");
   });
 });

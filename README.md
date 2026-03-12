@@ -53,7 +53,7 @@ clawt init show           # 交互式查看和修改项目配置
 clawt init show --json    # 以 JSON 格式输出项目配置
 ```
 
-设置项目的主工作分支。重复执行会更新主工作分支配置。`init show` 提供交互式面板，可查看和修改项目配置项（如 validate 成功后自动执行的命令）。`init show --json` 可以直接输出当前项目配置的 JSON 格式。
+设置项目的主工作分支。重复执行会更新主工作分支配置。`init show` 提供交互式面板，可查看和修改项目配置项（如 validate 成功后自动执行的命令、worktree 创建后自动执行的 postCreate hook 命令等）。`init show --json` 可以直接输出当前项目配置的 JSON 格式。
 
 ### `clawt run` — 创建 worktree 并执行任务
 
@@ -72,6 +72,9 @@ clawt run -f tasks.md -b feat
 
 # 试运行：仅预览将要创建的 worktree 和任务，不实际执行
 clawt run -b <branch> --tasks "任务1" --tasks "任务2" --dry-run
+
+# 跳过 postCreate hook
+clawt run -b <branch> --no-post-create
 ```
 
 **`--dry-run` 预览示例：**
@@ -138,6 +141,7 @@ clawt resume -f tasks.md -c 2  # 限制并发数
 ```bash
 clawt create -b <branch>           # 创建 1 个
 clawt create -b <branch> -n 3      # 批量创建 3 个
+clawt create -b <branch> --no-post-create  # 跳过 postCreate hook
 ```
 
 ### `clawt validate` — 在主 worktree 中验证分支变更
@@ -335,6 +339,19 @@ clawt alias remove l
 | `autoUpdate` | `true` | 自动检查新版本（每 24 小时检查一次 npm registry） |
 | `conflictResolveMode` | `"ask"` | merge 冲突时的解决模式：`ask`（询问是否使用 AI）、`auto`（自动 AI 解决）、`manual`（手动解决） |
 | `conflictResolveTimeoutMs` | `300000` | Claude Code 冲突解决超时时间（毫秒），默认 5 分钟 |
+
+## postCreate Hook
+
+worktree 创建后可自动执行任意初始化命令（如安装依赖、生成配置文件、编译资源等），`create` 和 `run` 命令均支持。
+
+**配置方式（二选一）：**
+
+1. **项目配置**：通过 `clawt init show` 设置 `postCreate` 字段（如 `npm install`）
+2. **脚本文件**：在项目根目录创建 `.clawt/postCreate.sh` 并赋予执行权限
+
+项目配置优先于脚本文件。使用 `--no-post-create` 可跳过 hook 执行。
+
+hook 以 fire-and-forget 模式后台异步并行执行，不阻塞主流程。执行结果仅写入日志。
 
 ## 全局选项
 

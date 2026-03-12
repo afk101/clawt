@@ -39,6 +39,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   printSeparator: vi.fn(),
   guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   guardMainWorkBranchExists: vi.fn(),
+  runPostCreateHooks: vi.fn().mockReturnValue(false),
 }));
 
 import { registerCreateCommand } from '../../../src/commands/create.js';

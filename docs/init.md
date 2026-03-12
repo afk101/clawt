@@ -26,7 +26,7 @@ clawt init show --json
 
 **功能说明：**
 
-初始化项目级配置，将指定分支记录为该项目的主工作分支（`clawtMainWorkBranch`）。该配置用于 `create` / `run` 时检测当前分支是否为主工作分支，并在偏离时提醒用户。`init show` 子命令提供交互式面板，可查看和修改所有项目配置项（如 `validateRunCommand`）。项目级配置的完整说明见 [project-config.md](./project-config.md)。
+初始化项目级配置，将指定分支记录为该项目的主工作分支（`clawtMainWorkBranch`）。该配置用于 `create` / `run` 时检测当前分支是否为主工作分支，并在偏离时提醒用户。`init show` 子命令提供交互式面板，可查看和修改所有项目配置项（如 `validateRunCommand`、`postCreate`）。项目级配置的完整说明见 [project-config.md](./project-config.md)。
 
 **运行流程（设置模式）：**
 
@@ -69,7 +69,7 @@ clawt init show --json
 ✓ 项目配置 validateRunCommand 已设置为 npm test
 
 # show --json 输出
-{"clawtMainWorkBranch":"main","validateRunCommand":"npm test"}
+{"clawtMainWorkBranch":"main","validateRunCommand":"npm test","postCreate":"npm install"}
 
 # show 未初始化（抛出错误）
 项目尚未初始化，请先执行 clawt init 设置主工作分支

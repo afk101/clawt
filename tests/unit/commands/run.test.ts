@@ -79,6 +79,7 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
     ensureOnMainWorkBranch: vi.fn().mockResolvedValue(undefined),
     guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
     guardMainWorkBranchExists: vi.fn(),
+    runPostCreateHooks: vi.fn(),
   };
 });
 

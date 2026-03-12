@@ -7,3 +7,4 @@ export type { WorktreeDetailedStatus, MainWorktreeStatus, SnapshotInfo, Snapshot
 export type { TaskFileEntry, ParseTaskFileOptions } from './taskFile.js';
 export type { ProjectOverview, ProjectWorktreeDetail, ProjectDetailResult, ProjectsOverviewResult } from './project.js';
 export type { ProjectConfig, ProjectConfigItemDefinition, ProjectConfigDefinitions } from './projectConfig.js';
+export type { PostCreateHookSource, PostCreateHookResult, ResolvedHook } from './postCreateHook.js';

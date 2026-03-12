@@ -3,7 +3,7 @@
 **命令：**
 
 ```bash
-clawt create -b <branchName> [-n <count>]
+clawt create -b <branchName> [-n <count>] [--no-post-create]
 ```
 
 **参数：**
@@ -12,6 +12,7 @@ clawt create -b <branchName> [-n <count>]
 | ---- | ---- | ----------------------------------------------------- |
 | `-b, --branch` | 是   | 分支名                                                |
 | `-n, --number` | 否   | 需要创建的 worktree 数量，默认 `1`                      |
+| `--post-create` | 否   | 执行 postCreate hook（默认开启，`--no-post-create` 跳过）。详见 [post-create-hook.md](./post-create-hook.md) |
 
 **运行流程：**
 
@@ -64,7 +65,8 @@ clawt create -b <branchName> [-n <count>]
      git worktree add -b <branchName>-n ~/.clawt/worktrees/<project>/<branchName>-n
      git branch clawt-validate-<branchName>-n
      ```
-9. **输出创建日志**
+9. **执行 postCreate hook**：调用 `runPostCreateHooks(worktrees, !options.postCreate)` 以 fire-and-forget 模式后台异步并行执行 postCreate hook（用户自定义的初始化操作）。`--no-post-create` 时跳过。详见 [post-create-hook.md](./post-create-hook.md)
+10. **输出创建日志**
 
 **输出格式：**
 
@@ -97,5 +99,7 @@ clawt create -b <branchName> [-n <count>]
 - 确保在主工作分支的逻辑在 `src/utils/validate-branch.ts` 的 `ensureOnMainWorkBranch` 中
 - 脏工作区交互处理逻辑在 `src/utils/validate-branch.ts` 的 `handleDirtyWorkingDir` 中
 - 相关消息常量定义在 `src/constants/messages/create.ts` 和 `src/constants/messages/common.ts` 中
+- postCreate hook 执行逻辑在 `src/hooks/post-create.ts` 中，通过 `src/utils/index.js` 统一导出 `runPostCreateHooks`
+- hook 相关消息常量定义在 `src/constants/messages/post-create.ts` 中
 
 ---
