@@ -37,6 +37,7 @@
   - [5.20 切换回主工作分支](./home.md)
   - [5.21 将验证分支修改覆盖回目标 Worktree](./cover-validate.md)
   - [5.22 任务文件管理](./tasks.md)
+  - [5.23 postCreate Hook 机制](./post-create-hook.md)
 - [6. 验证架构规则](#6-验证架构规则)
 - [7. 错误处理规范](#7-错误处理规范)
 - [8. 非功能性需求](#8-非功能性需求)
@@ -201,7 +202,7 @@ export const VALIDATE_BRANCH_PREFIX = 'clawt-validate-';
 
 ### 2.6 项目级配置
 
-每个 Git 项目独立的 clawt 配置，存放在 `~/.clawt/projects/<projectName>/config.json`。包含项目的主工作分支名（`clawtMainWorkBranch`）、validate 自动运行命令（`validateRunCommand`）等配置项。通过 `clawt init` 命令设置，核心命令执行前会校验该配置是否存在。
+每个 Git 项目独立的 clawt 配置，存放在 `~/.clawt/projects/<projectName>/config.json`。包含项目的主工作分支名（`clawtMainWorkBranch`）、validate 自动运行命令（`validateRunCommand`）、worktree 创建后自动执行的初始化命令（`postCreate`）等配置项。通过 `clawt init` 命令设置，核心命令执行前会校验该配置是否存在。
 
 详细的配置项列表、类型定义、工具函数和设置方式见 [项目级配置文档](./project-config.md)。
 
@@ -344,6 +345,7 @@ async function interactiveConfigEditor<T extends object>(
 - [5.20 切换回主工作分支](./home.md)
 - [5.21 将验证分支修改覆盖回目标 Worktree](./cover-validate.md)
 - [5.22 任务文件管理](./tasks.md)
+- [5.23 postCreate Hook 机制](./post-create-hook.md)
 
 ---
 

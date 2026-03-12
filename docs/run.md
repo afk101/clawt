@@ -24,6 +24,7 @@ clawt run -b <branchName>
 | `-f`      | 否   | 从任务文件读取任务列表（与 `--tasks` 互斥）                    |
 | `-c`      | 否   | 最大并发数，`0` 表示不限制                                    |
 | `--dry-run` | 否 | 试运行模式，仅输出预览信息不实际执行                            |
+| `--post-create` | 否 | 执行 postCreate hook（默认开启，`--no-post-create` 跳过）。详见 [post-create-hook.md](./post-create-hook.md) |
 
 **互斥约束：**
 
@@ -73,21 +74,24 @@ clawt run -b <branchName>
 1. 调用 `loadTaskFile(options.file)` 读取解析文件
 2. **有 `-b` 参数**：忽略文件中的分支名，用 `-b` 值自动编号创建 worktree（`createWorktrees(branch, count)`）
 3. **无 `-b` 参数**：使用文件中每个任务的独立分支名，先 `sanitizeBranchName` 清理后调用 `createWorktreesByBranches(branches)`
-4. 调用 `executeBatchTasks(worktrees, tasks, concurrency)` 执行
+4. **执行 postCreate hook**：调用 `runPostCreateHooks(worktrees, !options.postCreate)`，以 fire-and-forget 模式后台异步并行执行，不阻塞后续流程。详见 [post-create-hook.md](./post-create-hook.md)
+5. 调用 `executeBatchTasks(worktrees, tasks, concurrency)` 执行
 
 #### --tasks 模式运行流程
 
-1. 若传了 `--tasks`，解析得到任务数组 `tasks[]`；若未传，先检测分支是否已存在（已存在则提示使用 `clawt resume -b <branchName>` 恢复会话），然后创建单个 worktree 并启动 Claude Code 交互式界面（流程结束，不进入后续并行执行阶段）
+1. 若传了 `--tasks`，解析得到任务数组 `tasks[]`；若未传，先检测分支是否已存在（已存在则提示使用 `clawt resume -b <branchName>` 恢复会话），然后创建单个 worktree，执行 postCreate hook（fire-and-forget）后启动 Claude Code 交互式界面（`launchInteractiveClaude(worktree)`），流程结束，不进入后续并行执行阶段
 2. `n = tasks.length`
 3. 按照 **5.1** 的流程创建 `n` 个 worktree
-4. 通过公共函数 `executeBatchTasks`（`src/utils/task-executor.ts`）启动批量任务执行，该函数负责进度面板渲染、SIGINT 中断处理、并发控制和汇总输出。对每个 worktree 并行启动 Claude Code CLI：
+4. **执行 postCreate hook**：调用 `runPostCreateHooks(worktrees, !options.postCreate)`，以 fire-and-forget 模式后台异步并行执行，不阻塞后续流程。详见 [post-create-hook.md](./post-create-hook.md)
+5. 通过公共函数 `executeBatchTasks`（`src/utils/task-executor.ts`）启动批量任务执行，该函数负责进度面板渲染、SIGINT 中断处理、并发控制和汇总输出。对每个 worktree 并行启动 Claude Code CLI：
    ```bash
    cd ~/.clawt/worktrees/<project>/<branchName>-<i>
-   claude -p "<tasks[i]>" --output-format stream-json --verbose --permission-mode bypassPermissions
+   claude -p "<tasks[i]>" --output-format stream-json --verbose --permission-mode bypassPermissions --append-system-prompt "<系统提示>"
    ```
+   其中 `--append-system-prompt` 使用统一的 `APPEND_SYSTEM_PROMPT` 常量（定义在 `src/constants/config.ts`）。
    使用 `stream-json` 格式可实时获取 Claude Code 的流式事件（工具调用、文本输出、最终结果），用于在进度面板中显示每个任务的实时活动描述和结果预览。流式事件解析由 `src/utils/stream-parser.ts` 负责。
-5. 进入**事件监听通知**阶段（见 [5.3](#53-任务完成通知机制)）
-6. **中断处理（Ctrl+C / SIGINT）**
+6. 进入**事件监听通知**阶段（见 [5.3](#53-任务完成通知机制)）
+7. **中断处理（Ctrl+C / SIGINT）**
    - 监听 `SIGINT` 信号，用户按下 Ctrl+C 时触发
    - 向所有正在运行的 Claude Code 子进程发送 `SIGTERM` 终止信号
    - 等待所有子进程退出后，进入清理流程：

@@ -20,6 +20,7 @@ import {
   parseTasksFromOptions,
   executeBatchTasks,
   printDryRunPreview,
+  runPostCreateHooks,
 } from '../utils/index.js';
 
 /**
@@ -35,6 +36,7 @@ export function registerRunCommand(program: Command): void {
     .option('-c, --concurrency <n>', '最大并发数，0 表示不限制')
     .option('-f, --file <path>', '从任务文件读取任务列表（与 --tasks 互斥）')
     .option('--dry-run', '预览模式，仅展示任务计划不实际执行')
+    .option('--post-create', '执行 postCreate hook（默认开启，--no-post-create 跳过）', true)
     .action(async (options: RunOptions) => {
       await handleRun(options);
     });
@@ -85,6 +87,9 @@ async function handleRunFromFile(options: RunOptions): Promise<void> {
     const branches = entries.map((e) => sanitizeBranchName(e.branch!));
     worktrees = createWorktreesByBranches(branches);
   }
+
+  // 执行 postCreate hook（后台异步，不阻塞）
+  runPostCreateHooks(worktrees, !options.postCreate);
 
   // 解析并发数
   const concurrency = parseConcurrency(options.concurrency, getConfigValue('maxConcurrency'));
@@ -176,6 +181,10 @@ async function handleRun(options: RunOptions): Promise<void> {
 
     const worktrees = createWorktrees(options.branch, 1);
     const worktree = worktrees[0];
+
+    // 执行 postCreate hook（后台异步，不阻塞）
+    runPostCreateHooks(worktrees, !options.postCreate);
+
     printSuccess(MESSAGES.WORKTREE_CREATED(1));
 
     launchInteractiveClaude(worktree);
@@ -192,6 +201,9 @@ async function handleRun(options: RunOptions): Promise<void> {
 
   // 创建 worktree
   const worktrees = createWorktrees(options.branch, count);
+
+  // 执行 postCreate hook（后台异步，不阻塞）
+  runPostCreateHooks(worktrees, !options.postCreate);
 
   await executeBatchTasks(worktrees, tasks, concurrency);
 }

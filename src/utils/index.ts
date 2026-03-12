@@ -89,4 +89,5 @@ export { InteractivePanel } from './interactive-panel.js';
 export { buildPanelFrame, buildGroupedWorktreeLines, buildDisplayOrder, renderDateSeparator, renderWorktreeBlock, renderSnapshotSummary, renderFooter, calculateVisibleRows } from './interactive-panel-render.js';
 export type { PanelLine } from './interactive-panel-render.js';
 export { buildConflictResolvePrompt, invokeClaudeForConflictResolve, resolveConflictsWithAI, determineConflictResolveMode, handleMergeConflict } from './conflict-resolver.js';
+export { resolvePostCreateHook, executePostCreateHooks, runPostCreateHooks } from '../hooks/index.js';
 

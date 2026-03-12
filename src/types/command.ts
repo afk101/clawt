@@ -4,6 +4,8 @@ export interface CreateOptions {
   branch: string;
   /** 创建数量（Commander 传入为字符串），默认 '1' */
   number: string;
+  /** 是否执行 postCreate hook，--no-post-create 时为 false */
+  postCreate?: boolean;
 }
 
 /** run 命令选项 */
@@ -18,6 +20,8 @@ export interface RunOptions {
   file?: string;
   /** 预览模式，仅展示任务计划不实际执行 */
   dryRun?: boolean;
+  /** 是否执行 postCreate hook，--no-post-create 时为 false */
+  postCreate?: boolean;
 }
 
 /** validate 命令选项 */

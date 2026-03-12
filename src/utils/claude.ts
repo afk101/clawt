@@ -108,9 +108,10 @@ function escapeShellSingleQuote(str: string): string {
  */
 export function buildClaudeCommand(worktree: WorktreeInfo, hasPreviousSession: boolean): string {
   const commandStr = getConfigValue('claudeCodeCommand');
+  const systemPrompt = APPEND_SYSTEM_PROMPT;
 
   const escapedPath = escapeShellSingleQuote(worktree.path);
-  const escapedPrompt = escapeShellSingleQuote(APPEND_SYSTEM_PROMPT);
+  const escapedPrompt = escapeShellSingleQuote(systemPrompt);
   const continueFlag = hasPreviousSession ? ' --continue' : '';
 
   return `cd '${escapedPath}' && ${commandStr} --append-system-prompt '${escapedPrompt}'${continueFlag}`;

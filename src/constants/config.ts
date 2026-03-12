@@ -3,7 +3,7 @@ import { VALID_TERMINAL_APPS } from './terminal.js';
 
 /** Claude Code 系统约束提示 */
 export const APPEND_SYSTEM_PROMPT =
-  'Currently, you are in the git worktree directory. There are no dependencies. To save disk space and improve the speed of task completion, installing dependencies is prohibited.';
+  'Currently, you are in the git worktree directory.';
 
 /**
  * 配置项完整定义（单一数据源）

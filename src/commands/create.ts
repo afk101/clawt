@@ -11,6 +11,7 @@ import {
   printSuccess,
   printInfo,
   printSeparator,
+  runPostCreateHooks,
 } from '../utils/index.js';
 
 /**
@@ -23,6 +24,7 @@ export function registerCreateCommand(program: Command): void {
     .description('批量创建 worktree 及对应分支（含验证分支）')
     .requiredOption('-b, --branch <branchName>', '分支名')
     .option('-n, --number <count>', '创建数量', '1')
+    .option('--post-create', '执行 postCreate hook（默认开启，--no-post-create 跳过）', true)
     .action(async (options: CreateOptions) => {
       await handleCreate(options);
     });
@@ -48,6 +50,9 @@ async function handleCreate(options: CreateOptions): Promise<void> {
   logger.info(`create 命令执行，分支: ${options.branch}，数量: ${count}`);
 
   const worktrees = createWorktrees(options.branch, count);
+
+  // 执行 postCreate hook
+  runPostCreateHooks(worktrees, !options.postCreate);
 
   printSuccess(MESSAGES.WORKTREE_CREATED(worktrees.length));
   printInfo('');
