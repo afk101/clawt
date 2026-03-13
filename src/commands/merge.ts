@@ -35,6 +35,8 @@ import {
   getMainWorkBranch,
   getCurrentBranch,
   handleMergeConflict,
+  promptCommitMessage,
+  isNonInteractive,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -61,6 +63,18 @@ const MERGE_RESOLVE_MESSAGES: WorktreeResolveMessages = {
   multipleMatches: MESSAGES.MERGE_MULTIPLE_MATCHES,
   noMatch: MESSAGES.MERGE_NO_MATCH,
 };
+
+/**
+ * 执行 squash 提交：暂存所有变更并提交
+ * @param {string} message - 提交信息
+ * @param {string} worktreePath - 目标 worktree 路径
+ * @param {string} branchName - 分支名（用于输出提示）
+ */
+function commitSquash(message: string, worktreePath: string, branchName: string): void {
+  gitAddAll(worktreePath);
+  gitCommit(message, worktreePath);
+  printSuccess(MESSAGES.MERGE_SQUASH_COMMITTED(branchName));
+}
 
 /**
  * 检测并处理目标分支的 auto-save 提交压缩
@@ -98,14 +112,24 @@ async function handleSquashIfNeeded(
 
   if (commitMessage) {
     // 有 -m 参数，直接提交
-    gitCommit(commitMessage, targetWorktreePath);
-    printSuccess(MESSAGES.MERGE_SQUASH_COMMITTED(branchName));
+    commitSquash(commitMessage, targetWorktreePath, branchName);
     return false;
   }
 
-  // 没有 -m 参数，提示用户自行提交
-  printInfo(MESSAGES.MERGE_SQUASH_PENDING(targetWorktreePath, branchName));
-  return true;
+  // 非交互模式下保持原有温和退出行为（不执行 gitAddAll，不改变暂存区）
+  if (isNonInteractive()) {
+    printInfo(MESSAGES.MERGE_SQUASH_PENDING(targetWorktreePath, branchName));
+    return true;
+  }
+
+  // 交互式询问用户输入提交信息
+  const userCommitMessage = await promptCommitMessage(
+    MESSAGES.MERGE_SQUASH_PROMPT_COMMIT_MESSAGE,
+    MESSAGES.MERGE_SQUASH_PENDING(targetWorktreePath, branchName),
+  );
+  // 用户输入完成后再提交，避免用户退出时暂存区被不必要地改变
+  commitSquash(userCommitMessage, targetWorktreePath, branchName);
+  return false;
 }
 
 /**
@@ -171,12 +195,14 @@ async function handleMerge(options: MergeOptions): Promise<void> {
   const targetClean = isWorkingDirClean(targetWorktreePath);
 
   if (!targetClean) {
-    // 目标 worktree 有未提交修改，必须提供 -m
-    if (!options.message) {
-      throw new ClawtError(MESSAGES.TARGET_WORKTREE_DIRTY_NO_MESSAGE(targetWorktreePath));
-    }
+    // 目标 worktree 有未提交修改，需要提交信息
+    const commitMessage = options.message
+      ?? await promptCommitMessage(
+        MESSAGES.MERGE_PROMPT_COMMIT_MESSAGE,
+        MESSAGES.TARGET_WORKTREE_DIRTY_NO_MESSAGE(targetWorktreePath),
+      );
     gitAddAll(targetWorktreePath);
-    gitCommit(options.message, targetWorktreePath);
+    gitCommit(commitMessage, targetWorktreePath);
   } else {
     // 目标 worktree 干净，检查是否有本地提交
     if (!hasLocalCommits(branch, mainWorktreePath)) {
