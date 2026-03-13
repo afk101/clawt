@@ -182,10 +182,12 @@ clawt sync -b <branch>
 ### `clawt merge` — 合并分支到主 worktree
 
 ```bash
-clawt merge -b <branch> -m "feat: 提交信息"   # 有未提交修改时需要 -m
-clawt merge -b <branch>                        # 已提交过可省略 -m
+clawt merge -b <branch> -m "feat: 提交信息"   # 通过 -m 直接指定提交信息
+clawt merge -b <branch>                        # 交互模式下有未提交修改时会询问输入提交信息
 clawt merge -b <branch> --auto                 # 遇到冲突直接调用 AI 解决
 ```
+
+交互模式下，如果目标 worktree 有未提交修改或 squash 后需要提交，会自动询问输入提交信息，无需提前指定 `-m`。非交互模式（`-y` / CI）下未提供 `-m` 时会提示退出。
 
 ### `clawt remove` — 移除 worktree
 

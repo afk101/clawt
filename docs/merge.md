@@ -15,7 +15,7 @@ clawt merge [-m <commitMessage>]
 | 参数 | 必填 | 说明                                                                     |
 | ---- | ---- | ------------------------------------------------------------------------ |
 | `-b` | 否   | 要合并的分支名（支持模糊匹配，不传则列出所有分支供选择）                   |
-| `-m` | 否   | 提交信息（目标 worktree 工作区有修改时必填）                               |
+| `-m` | 否   | 提交信息（目标 worktree 工作区有修改时使用；交互模式下未提供会询问输入）     |
 | `--auto` | 否   | 遇到冲突直接调用 AI 解决，不再询问                                        |
 
 **运行流程：**
@@ -54,25 +54,30 @@ clawt merge [-m <commitMessage>]
      1. 获取主分支名（从项目级配置 `clawtMainWorkBranch` 获取）
      2. 计算分叉点：`git merge-base <mainBranch> <branchName>`
      3. 在目标 worktree 中执行 `git reset --soft <merge-base>`，将所有 commit 撤销到暂存区
-     4. 如果用户提供了 `-m` → 直接在目标 worktree 执行 `git commit -m '<commitMessage>'`，输出成功提示，继续步骤 7
-     5. 如果用户未提供 `-m` → 提示用户前往目标 worktree 自行提交后重新执行 `clawt merge`：
-        ```
-        ✓ 已将所有提交压缩到暂存区
-          请在目标 worktree 中提交后重新执行 merge：
-          cd <worktreePath>
-          提交完成后执行：clawt merge -b <branch>
-        ```
-        **退出流程**
+     4. 如果用户提供了 `-m` → 在目标 worktree 执行 `git add . && git commit -m '<commitMessage>'`，输出成功提示，继续步骤 7
+     5. 如果用户未提供 `-m`：
+        - **交互模式** → 通过 `promptCommitMessage` 交互式询问用户输入提交信息，用户输入后执行 `git add . && git commit`，继续步骤 7
+        - **非交互模式** → 提示用户前往目标 worktree 自行提交后重新执行 `clawt merge`，**退出流程**（不执行 `git add`，不改变暂存区）：
+          ```
+          ✓ 已将所有提交压缩到暂存区
+            请在目标 worktree 中提交后重新执行 merge：
+            cd <worktreePath>
+            提交完成后执行：clawt merge -b <branch>
+          ```
+
+   > **最小副作用原则**：`git add .` 延后到确定要提交时才执行，紧邻 `git commit` 之前。非交互模式温和退出时不触发 `git add .`，避免不必要地改变暂存区状态。提交逻辑通过 `commitSquash` 函数统一封装（`git add . → git commit → 输出成功提示`），确保单一职责。
 7. **根据目标 worktree 状态决定是否需要提交**
    - 检测目标 worktree 工作区是否干净（`git status --porcelain`）
    - **工作区有未提交修改**：
-     - 如果用户未提供 `-m`，提示 `<worktreePath> 有未提交的修改，请通过 -m 参数提供提交信息`（其中 `<worktreePath>` 为目标 worktree 的完整路径），退出
      - 提供了 `-m` → 执行提交：
        ```bash
        cd ~/.clawt/worktrees/<project>/<branchName>
        git add .
        git commit -m '<commitMessage>'
        ```
+     - 未提供 `-m`：
+       - **交互模式** → 通过 `promptCommitMessage` 交互式询问用户输入提交信息，输入后执行 `git add . && git commit`
+       - **非交互模式** → 提示 `<worktreePath> 有未提交的修改，请通过 -m 参数提供提交信息`，退出
    - **工作区干净**：
      - 检查目标分支相对于主分支是否有本地提交（`git log HEAD..<branchName> --oneline`）
      - 有本地提交 → 跳过提交步骤，直接进入合并

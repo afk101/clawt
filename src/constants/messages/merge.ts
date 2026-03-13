@@ -55,4 +55,8 @@ export const MERGE_MESSAGES = {
     `Claude Code 解决冲突失败: ${errorMsg}\n  请手动处理：\n  解决冲突后执行 git add . && git merge --continue`,
   /** --auto 模式下的冲突手动解决（配置为 manual） */
   MERGE_CONFLICT_MANUAL: '合并存在冲突，请手动处理：\n  解决冲突后执行 git add . && git merge --continue',
+  /** 目标 worktree 有未提交修改时的交互式提交信息提示 */
+  MERGE_PROMPT_COMMIT_MESSAGE: '目标 worktree 有未提交的修改，请输入提交信息',
+  /** squash 后的交互式提交信息提示 */
+  MERGE_SQUASH_PROMPT_COMMIT_MESSAGE: '请输入 squash 后的提交信息',
 } as const;

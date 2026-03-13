@@ -28,6 +28,8 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       MERGE_SQUASH_COMMITTED: (branch: string) => `已压缩提交: ${branch}`,
       MERGE_SQUASH_PENDING: (path: string, branch: string) => `请手动提交: ${path}`,
       MERGE_VALIDATE_STATE_HINT: (branch: string) => `分支 ${branch} 存在 validate 状态`,
+      MERGE_PROMPT_COMMIT_MESSAGE: '目标 worktree 有未提交的修改，请输入提交信息',
+      MERGE_SQUASH_PROMPT_COMMIT_MESSAGE: '请输入 squash 后的提交信息',
       MAIN_WORKTREE_DIRTY: '主 worktree 有未提交的更改',
       TARGET_WORKTREE_DIRTY_NO_MESSAGE: (worktreePath: string) =>
         `${worktreePath} 有未提交修改，请提供 -m 参数`,
@@ -79,6 +81,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   guardMainWorkBranchExists: vi.fn(),
   handleMergeConflict: vi.fn(),
   isNonInteractive: vi.fn().mockReturnValue(false),
+  promptCommitMessage: vi.fn(),
 }));
 
 import { registerMergeCommand } from '../../../src/commands/merge.js';
@@ -104,6 +107,8 @@ import {
   hasCommitWithMessage,
   resolveTargetWorktree,
   handleMergeConflict,
+  promptCommitMessage,
+  isNonInteractive,
 } from '../../../src/utils/index.js';
 
 const mockedGetProjectName = vi.mocked(getProjectName);
@@ -127,6 +132,8 @@ const mockedCleanupWorktrees = vi.mocked(cleanupWorktrees);
 const mockedHasCommitWithMessage = vi.mocked(hasCommitWithMessage);
 const mockedResolveTargetWorktree = vi.mocked(resolveTargetWorktree);
 const mockedHandleMergeConflict = vi.mocked(handleMergeConflict);
+const mockedPromptCommitMessage = vi.mocked(promptCommitMessage);
+const mockedIsNonInteractive = vi.mocked(isNonInteractive);
 
 const worktree = { path: '/path/feature', branch: 'feature' };
 
@@ -153,6 +160,9 @@ beforeEach(() => {
   mockedCleanupWorktrees.mockReset();
   mockedHandleMergeConflict.mockReset();
   mockedHandleMergeConflict.mockResolvedValue(true); // 默认 AI 解决成功
+  mockedPromptCommitMessage.mockReset();
+  mockedIsNonInteractive.mockReset();
+  mockedIsNonInteractive.mockReturnValue(false); // 默认交互模式
 });
 
 describe('registerMergeCommand', () => {
@@ -177,18 +187,22 @@ describe('handleMerge', () => {
     ).rejects.toThrow();
   });
 
-  it('目标 worktree 有未提交修改但未提供 -m 时抛出', async () => {
+  it('目标 worktree 有未提交修改且无 -m 时交互式询问提交信息', async () => {
     mockedIsWorkingDirClean
       .mockReturnValueOnce(true) // 主 worktree 干净
       .mockReturnValueOnce(false); // 目标 worktree 不干净
+    mockedPromptCommitMessage.mockResolvedValue('用户输入的提交信息');
+    mockedConfirmAction.mockResolvedValue(false);
 
     const program = new Command();
     program.exitOverride();
     registerMergeCommand(program);
+    await program.parseAsync(['merge', '-b', 'feature'], { from: 'user' });
 
-    await expect(
-      program.parseAsync(['merge', '-b', 'feature'], { from: 'user' }),
-    ).rejects.toThrow();
+    expect(mockedPromptCommitMessage).toHaveBeenCalled();
+    expect(mockedGitAddAll).toHaveBeenCalledWith('/path/feature');
+    expect(mockedGitCommit).toHaveBeenCalledWith('用户输入的提交信息', '/path/feature');
+    expect(mockedGitMerge).toHaveBeenCalledWith('feature', '/repo');
   });
 
   it('目标 worktree 有未提交修改且提供 -m 时先提交再合并', async () => {
@@ -389,5 +403,95 @@ describe('handleMerge', () => {
     await program.parseAsync(['merge', '-b', 'feature'], { from: 'user' });
 
     expect(mockedPrintWarning).toHaveBeenCalled();
+  });
+
+  it('非交互模式下目标 worktree 有未提交修改且无 -m 时 promptCommitMessage 抛错', async () => {
+    mockedIsWorkingDirClean
+      .mockReturnValueOnce(true)   // 主 worktree 干净
+      .mockReturnValueOnce(false); // 目标 worktree 不干净
+    mockedPromptCommitMessage.mockRejectedValue(new Error('/path/feature 有未提交修改，请提供 -m 参数'));
+
+    const program = new Command();
+    program.exitOverride();
+    registerMergeCommand(program);
+
+    await expect(
+      program.parseAsync(['merge', '-b', 'feature'], { from: 'user' }),
+    ).rejects.toThrow();
+  });
+
+  it('squash 后无 -m 交互模式下询问用户输入并继续合并', async () => {
+    // 主 worktree 干净
+    mockedIsWorkingDirClean.mockReturnValue(true);
+    // 存在 auto-save commit
+    mockedHasCommitWithMessage.mockReturnValue(true);
+    // 用户选择压缩
+    mockedConfirmAction.mockResolvedValueOnce(true)  // squash 确认
+      .mockResolvedValueOnce(false); // 不清理 worktree
+    // mock promptCommitMessage 返回用户输入
+    mockedPromptCommitMessage.mockResolvedValue('squash 提交信息');
+    // 有本地提交
+    mockedHasLocalCommits.mockReturnValue(true);
+
+    const program = new Command();
+    program.exitOverride();
+    registerMergeCommand(program);
+    await program.parseAsync(['merge', '-b', 'feature'], { from: 'user' });
+
+    expect(mockedPromptCommitMessage).toHaveBeenCalled();
+    expect(mockedGitAddAll).toHaveBeenCalledWith('/path/feature');
+    expect(mockedGitCommit).toHaveBeenCalledWith('squash 提交信息', '/path/feature');
+    expect(mockedGitMerge).toHaveBeenCalledWith('feature', '/repo');
+
+    // 验证 gitAddAll 在 promptCommitMessage 之后调用（延后到确定要提交时才执行）
+    const addAllOrder = mockedGitAddAll.mock.invocationCallOrder[0];
+    const promptOrder = mockedPromptCommitMessage.mock.invocationCallOrder[0];
+    const commitOrder = mockedGitCommit.mock.invocationCallOrder[0];
+    expect(addAllOrder).toBeGreaterThan(promptOrder);
+    expect(addAllOrder).toBeLessThan(commitOrder);
+  });
+
+  it('squash 后 gitAddAll 应在 gitResetSoftTo 之后被调用以暂存工作区变更', async () => {
+    // 主 worktree 干净
+    mockedIsWorkingDirClean.mockReturnValue(true);
+    // 存在 auto-save commit
+    mockedHasCommitWithMessage.mockReturnValue(true);
+    // 用户选择压缩
+    mockedConfirmAction.mockResolvedValueOnce(true)  // squash 确认
+      .mockResolvedValueOnce(false); // 不清理 worktree
+    // 有本地提交
+    mockedHasLocalCommits.mockReturnValue(true);
+
+    const program = new Command();
+    program.exitOverride();
+    registerMergeCommand(program);
+    await program.parseAsync(['merge', '-b', 'feature', '-m', 'squash msg'], { from: 'user' });
+
+    // 验证 squash 流程中 gitAddAll 在 gitCommit 之前被调用
+    expect(mockedGitAddAll).toHaveBeenCalledWith('/path/feature');
+    expect(mockedGitCommit).toHaveBeenCalledWith('squash msg', '/path/feature');
+
+    // 步骤 4 不应再触发（squash 已处理完毕，工作区应干净）
+    expect(mockedGitMerge).toHaveBeenCalledWith('feature', '/repo');
+  });
+
+  it('squash 后无 -m 非交互模式下提示自行处理并退出', async () => {
+    // 主 worktree 干净
+    mockedIsWorkingDirClean.mockReturnValue(true);
+    // 存在 auto-save commit
+    mockedHasCommitWithMessage.mockReturnValue(true);
+    // 用户选择压缩
+    mockedConfirmAction.mockResolvedValue(true);
+    // 非交互模式
+    mockedIsNonInteractive.mockReturnValue(true);
+
+    const program = new Command();
+    program.exitOverride();
+    registerMergeCommand(program);
+    await program.parseAsync(['merge', '-b', 'feature'], { from: 'user' });
+
+    // 非交互模式下不执行 gitAddAll 和 gitMerge，提前退出
+    expect(mockedGitAddAll).not.toHaveBeenCalled();
+    expect(mockedGitMerge).not.toHaveBeenCalled();
   });
 });
