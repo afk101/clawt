@@ -341,7 +341,7 @@ clawt alias remove l
 | `aliases` | `{}` | 命令别名映射（如 `{"l": "list", "r": "run"}`） |
 | `autoUpdate` | `true` | 自动检查新版本（每 24 小时检查一次 npm registry） |
 | `conflictResolveMode` | `"ask"` | merge 冲突时的解决模式：`ask`（询问是否使用 AI）、`auto`（自动 AI 解决）、`manual`（手动解决） |
-| `conflictResolveTimeoutMs` | `300000` | Claude Code 冲突解决超时时间（毫秒），默认 5 分钟 |
+| `conflictResolveTimeoutMs` | `600000` | Claude Code 冲突解决超时时间（毫秒），默认 10 分钟 |
 
 ## postCreate Hook
 
