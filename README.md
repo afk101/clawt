@@ -1,5 +1,6 @@
 # Clawt
 
+**[English](./README.md)** | [中文](./README.zh-CN.md)
 
 Run multiple Claude Code Agent tasks in parallel based on Git Worktree — all agents' code changes are fully isolated from each other.
 
