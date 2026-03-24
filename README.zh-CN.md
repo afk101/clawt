@@ -199,7 +199,7 @@ clawt merge -b <branch> --auto                 # 遇到冲突直接调用 AI 解
 
 ```bash
 clawt remove -b <branch>    # 移除指定分支的 worktree（支持模糊匹配）
-clawt remove                 # 交互式多选要移除的 worktree
+clawt remove                 # 交互式多选要移除的 worktree（按创建日期分组）
 clawt remove --all           # 移除当前项目下所有 worktree
 ```
 

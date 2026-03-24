@@ -199,7 +199,7 @@ In interactive mode, if the target worktree has uncommitted changes or a commit 
 
 ```bash
 clawt remove -b <branch>    # Remove worktree for specified branch (supports fuzzy matching)
-clawt remove                 # Interactive multi-select worktrees to remove
+clawt remove                 # Interactive multi-select worktrees to remove (grouped by creation date)
 clawt remove --all           # Remove all worktrees for the current project
 ```
 

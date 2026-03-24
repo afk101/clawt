@@ -10,7 +10,7 @@ import {
   SELECT_ALL_LABEL
 } from '../constants/index.js';
 import type { WorktreeInfo } from '../types/index.js';
-import { promptSelectBranch, promptMultiSelectBranches } from './ui-prompts.js';
+import { promptSelectBranch, promptGroupedMultiSelectBranches } from './ui-prompts.js';
 import type { GroupedChoice } from './ui-prompts.js';
 
 /**
@@ -90,7 +90,7 @@ export async function resolveTargetWorktrees(
     if (worktrees.length === 1) {
       return [worktrees[0]];
     }
-    return promptMultiSelectBranches(worktrees, messages.selectBranch);
+    return promptGroupedMultiSelectBranches(worktrees, messages.selectBranch);
   }
 
   // 1. 精确匹配优先
@@ -109,7 +109,7 @@ export async function resolveTargetWorktrees(
 
   // 2b. 多个匹配，交互多选
   if (fuzzyMatches.length > 1) {
-    return promptMultiSelectBranches(fuzzyMatches, messages.multipleMatches(branchName));
+    return promptGroupedMultiSelectBranches(fuzzyMatches, messages.multipleMatches(branchName));
   }
 
   // 3. 无匹配，抛出错误并列出所有可用分支
