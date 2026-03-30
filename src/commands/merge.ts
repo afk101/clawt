@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
-import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
+import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE_PREFIX } from '../constants/index.js';
 import type { MergeOptions } from '../types/index.js';
 import { PRE_CHECK_MERGE } from '../constants/index.js';
 import {
@@ -92,7 +92,7 @@ async function handleSquashIfNeeded(
   commitMessage?: string,
 ): Promise<boolean> {
   // 检查目标分支是否存在 auto-save commit
-  if (!hasCommitWithMessage(branchName, AUTO_SAVE_COMMIT_MESSAGE, mainWorktreePath)) {
+  if (!hasCommitWithMessage(branchName, AUTO_SAVE_COMMIT_MESSAGE_PREFIX, mainWorktreePath)) {
     return false;
   }
 

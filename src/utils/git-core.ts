@@ -2,7 +2,7 @@ import { basename } from 'node:path';
 import { execSync, execFileSync } from 'node:child_process';
 import { execCommand, execCommandWithInput } from './shell.js';
 import { logger } from '../logger/index.js';
-import { EXEC_MAX_BUFFER } from '../constants/git.js';
+import { EXEC_MAX_BUFFER, AUTO_SAVE_COMMIT_MESSAGE_PREFIX } from '../constants/git.js';
 
 /**
  * 获取 git common dir（用于判断是否为主 worktree）
@@ -458,4 +458,14 @@ export function gitMergeContinue(cwd?: string): void {
  */
 export function gitMergeAbort(cwd?: string): void {
   execCommand('git merge --abort', { cwd });
+}
+
+/**
+ * 生成完整的 auto-save commit message
+ * @param {string} mainBranch - 主分支名（被合并的源分支）
+ * @param {string} branch - 目标分支名（合并到的分支）
+ * @returns {string} 完整的 commit message
+ */
+export function buildAutoSaveCommitMessage(mainBranch: string, branch: string): string {
+  return `${AUTO_SAVE_COMMIT_MESSAGE_PREFIX} ${mainBranch} into ${branch}`;
 }

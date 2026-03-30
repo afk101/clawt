@@ -30,7 +30,7 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       SYNC_SUCCESS: (branch: string, mainBranch: string) => `✓ 已将 ${mainBranch} 同步到 ${branch}`,
       SYNC_VALIDATE_BRANCH_REBUILT: (validateBranch: string) => `验证分支 ${validateBranch} 已重建`,
     },
-    AUTO_SAVE_COMMIT_MESSAGE: 'clawt:auto-save',
+    AUTO_SAVE_COMMIT_MESSAGE_PREFIX: 'clawt: auto-save before merging',
   };
 });
 
@@ -54,6 +54,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),
   guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   guardMainWorkBranchExists: vi.fn(),
+  buildAutoSaveCommitMessage: (mainBranch: string, branch: string) =>
+    `clawt: auto-save before merging ${mainBranch} into ${branch}`,
 }));
 
 import { registerSyncCommand } from '../../../src/commands/sync.js';
@@ -135,7 +137,10 @@ describe('handleSync', () => {
     await program.parseAsync(['sync', '-b', 'feature'], { from: 'user' });
 
     expect(mockedGitAddAll).toHaveBeenCalledWith('/path/feature');
-    expect(mockedGitCommit).toHaveBeenCalledWith('clawt:auto-save', '/path/feature');
+    expect(mockedGitCommit).toHaveBeenCalledWith(
+      'clawt: auto-save before merging main into feature',
+      '/path/feature',
+    );
     expect(mockedGitMerge).toHaveBeenCalled();
   });
 

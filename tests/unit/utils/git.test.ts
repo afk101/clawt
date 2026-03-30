@@ -64,6 +64,7 @@ import {
   gitDiffTree,
   gitApplyCachedCheck,
   getBranchCreatedAt,
+  buildAutoSaveCommitMessage,
 } from '../../../src/utils/git.js';
 
 const mockedExecCommand = vi.mocked(execCommand);
@@ -608,5 +609,22 @@ describe('getBranchCreatedAt', () => {
       'git reflog show feature --format=%cI',
       { cwd: '/repo' },
     );
+  });
+});
+
+describe('buildAutoSaveCommitMessage', () => {
+  it('生成包含分支信息的完整 commit message', () => {
+    const result = buildAutoSaveCommitMessage('main', 'feature/login');
+    expect(result).toBe('clawt: auto-save before merging main into feature/login');
+  });
+
+  it('生成的 message 以前缀常量开头', () => {
+    const result = buildAutoSaveCommitMessage('main', 'feat-xyz');
+    expect(result.startsWith('clawt: auto-save before merging')).toBe(true);
+  });
+
+  it('符合 conventional commit 格式', () => {
+    const result = buildAutoSaveCommitMessage('develop', 'hotfix');
+    expect(result).toMatch(/^[a-z]+:\s.+$/);
   });
 });

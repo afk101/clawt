@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
-import { MESSAGES, AUTO_SAVE_COMMIT_MESSAGE } from '../constants/index.js';
+import { MESSAGES } from '../constants/index.js';
 import type { SyncOptions } from '../types/index.js';
 import { PRE_CHECK_SYNC } from '../constants/index.js';
 import {
@@ -20,6 +20,7 @@ import {
   getMainWorkBranch,
   rebuildValidateBranch,
   getValidateBranchName,
+  buildAutoSaveCommitMessage,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -49,10 +50,11 @@ const SYNC_RESOLVE_MESSAGES: WorktreeResolveMessages = {
  * 自动保存目标 worktree 中的未提交变更
  * @param {string} worktreePath - 目标 worktree 路径
  * @param {string} branch - 分支名
+ * @param {string} mainBranch - 主分支名
  */
-function autoSaveChanges(worktreePath: string, branch: string): void {
+function autoSaveChanges(worktreePath: string, branch: string, mainBranch: string): void {
   gitAddAll(worktreePath);
-  gitCommit(AUTO_SAVE_COMMIT_MESSAGE, worktreePath);
+  gitCommit(buildAutoSaveCommitMessage(mainBranch, branch), worktreePath);
   printInfo(MESSAGES.SYNC_AUTO_COMMITTED(branch));
   logger.info(`已自动保存 ${branch} 分支的未提交变更`);
 }
@@ -99,7 +101,7 @@ export async function executeSyncForBranch(targetWorktreePath: string, branch: s
 
   // 检查目标 worktree 是否有未提交变更，有则自动保存
   if (!isWorkingDirClean(targetWorktreePath)) {
-    autoSaveChanges(targetWorktreePath, branch);
+    autoSaveChanges(targetWorktreePath, branch, mainBranch);
   }
 
   // 在目标 worktree 中合并主分支
