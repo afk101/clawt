@@ -37,7 +37,7 @@ export function registerHomeCommand(program: Command): void {
 async function handleHome(): Promise<void> {
   // 场景 1：不在 git 仓库中，直接报错
   if (!isInsideGitRepo()) {
-    printError(MESSAGES.NOT_MAIN_WORKTREE);
+    printError(MESSAGES.NOT_GIT_REPO);
     return;
   }
 

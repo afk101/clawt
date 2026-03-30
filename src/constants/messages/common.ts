@@ -2,6 +2,8 @@
 export const COMMON_MESSAGES = {
   /** 不在主 worktree 根目录 */
   NOT_MAIN_WORKTREE: '请在主 worktree 的根目录下执行 clawt',
+  /** 不在 git 仓库中 */
+  NOT_GIT_REPO: '当前目录不是 git 仓库，请先执行 git init 并提交后，再执行 clawt init 初始化项目',
   /** Git 未安装 */
   GIT_NOT_INSTALLED: 'Git 未安装或不在 PATH 中，请先安装 Git',
   /** Claude Code CLI 未安装 */

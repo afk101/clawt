@@ -1,7 +1,7 @@
 import { MESSAGES } from '../constants/index.js';
 import { ClawtError } from '../errors/index.js';
 import { execCommand } from './shell.js';
-import { getGitCommonDir, isWorkingDirClean } from './git.js';
+import { getGitCommonDir, isInsideGitRepo, isWorkingDirClean } from './git.js';
 import { requireProjectConfig, guardMainWorkBranchExists } from './project-config.js';
 import { ensureOnMainWorkBranch } from './validate-branch.js';
 
@@ -25,20 +25,18 @@ export interface PreCheckOptions {
 
 /**
  * 校验当前目录是否为主 worktree 的根目录
- * 条件：git rev-parse --git-common-dir === ".git"
- * @throws {ClawtError} 不在主 worktree 根目录时抛出（包括不在 git 仓库中的情况）
+ * 先判断是否在 git 仓库中，再判断是否为主 worktree
+ * @throws {ClawtError} 不在 git 仓库时抛出 NOT_GIT_REPO
+ * @throws {ClawtError} 不在主 worktree 根目录时抛出 NOT_MAIN_WORKTREE
  */
 export function validateMainWorktree(): void {
-  try {
-    const gitCommonDir = getGitCommonDir();
-    if (gitCommonDir !== '.git') {
-      throw new ClawtError(MESSAGES.NOT_MAIN_WORKTREE);
-    }
-  } catch (error) {
-    if (error instanceof ClawtError) {
-      throw error;
-    }
-    // git 命令执行失败，可能不在 git 仓库中
+  // 先检查是否在 git 仓库中
+  if (!isInsideGitRepo()) {
+    throw new ClawtError(MESSAGES.NOT_GIT_REPO);
+  }
+  // 再检查是否在主 worktree 根目录
+  const gitCommonDir = getGitCommonDir();
+  if (gitCommonDir !== '.git') {
     throw new ClawtError(MESSAGES.NOT_MAIN_WORKTREE);
   }
 }

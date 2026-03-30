@@ -5,9 +5,10 @@ vi.mock('../../../src/utils/shell.js', () => ({
   execCommand: vi.fn(),
 }));
 
-// mock git（validateMainWorktree 依赖 getGitCommonDir）
+// mock git（validateMainWorktree 依赖 getGitCommonDir 和 isInsideGitRepo）
 vi.mock('../../../src/utils/git.js', () => ({
   getGitCommonDir: vi.fn(),
+  isInsideGitRepo: vi.fn(),
 }));
 
 // mock project-config（runPreChecks 依赖 requireProjectConfig 和 guardMainWorkBranchExists）
@@ -22,30 +23,35 @@ vi.mock('../../../src/logger/index.js', () => ({
 }));
 
 import { execCommand } from '../../../src/utils/shell.js';
-import { getGitCommonDir } from '../../../src/utils/git.js';
+import { getGitCommonDir, isInsideGitRepo } from '../../../src/utils/git.js';
 import { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled, validateHeadExists, runPreChecks } from '../../../src/utils/validation.js';
 import { requireProjectConfig, guardMainWorkBranchExists } from '../../../src/utils/project-config.js';
 import { ClawtError } from '../../../src/errors/index.js';
 
 const mockedExecCommand = vi.mocked(execCommand);
 const mockedGetGitCommonDir = vi.mocked(getGitCommonDir);
+const mockedIsInsideGitRepo = vi.mocked(isInsideGitRepo);
 const mockedRequireProjectConfig = vi.mocked(requireProjectConfig);
 const mockedGuardMainWorkBranchExists = vi.mocked(guardMainWorkBranchExists);
 
 describe('validateMainWorktree', () => {
-  it('.git 返回时正常通过', () => {
+  it('在主 worktree 根目录时正常通过', () => {
+    mockedIsInsideGitRepo.mockReturnValue(true);
     mockedGetGitCommonDir.mockReturnValue('.git');
     expect(() => validateMainWorktree()).not.toThrow();
   });
 
-  it('非 .git 时抛出 ClawtError', () => {
+  it('在子 worktree 中时抛出 NOT_MAIN_WORKTREE 错误', () => {
+    mockedIsInsideGitRepo.mockReturnValue(true);
     mockedGetGitCommonDir.mockReturnValue('/path/to/.git');
     expect(() => validateMainWorktree()).toThrow(ClawtError);
+    expect(() => validateMainWorktree()).toThrow('请在主 worktree 的根目录下执行 clawt');
   });
 
-  it('命令失败时抛出 ClawtError', () => {
-    mockedGetGitCommonDir.mockImplementation(() => { throw new Error('not a git repo'); });
+  it('不在 git 仓库中时抛出 NOT_GIT_REPO 错误', () => {
+    mockedIsInsideGitRepo.mockReturnValue(false);
     expect(() => validateMainWorktree()).toThrow(ClawtError);
+    expect(() => validateMainWorktree()).toThrow('当前目录不是 git 仓库');
   });
 });
 
@@ -87,6 +93,7 @@ describe('validateHeadExists', () => {
 
 describe('runPreChecks', () => {
   it('按选项组合调用对应校验', () => {
+    mockedIsInsideGitRepo.mockReturnValue(true);
     mockedGetGitCommonDir.mockReturnValue('.git');
     mockedExecCommand.mockReturnValue('abc1234');
     mockedRequireProjectConfig.mockReturnValue({ clawtMainWorkBranch: 'main' });

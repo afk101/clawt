@@ -5,6 +5,7 @@ describe('MESSAGES', () => {
   describe('纯字符串消息', () => {
     const stringKeys = [
       'NOT_MAIN_WORKTREE',
+      'NOT_GIT_REPO',
       'GIT_NOT_INSTALLED',
       'CLAUDE_NOT_INSTALLED',
       'NO_WORKTREES',
