@@ -61,7 +61,7 @@ export interface SyncResult {
 
 1. **获取主 worktree 路径和主分支名**：通过 `getGitTopLevel()` 获取主 worktree 路径（后续传给 `rebuildValidateBranch`），通过项目级配置 `clawtMainWorkBranch` 获取主工作分支名（不再通过 `getCurrentBranch` 动态获取，因为在新架构下主 worktree 可能处于验证分支上）
 2. **自动保存未提交变更**：检查目标 worktree 是否有未提交修改
-   - 有修改 → 自动执行 `git add . && git commit -m "<AUTO_SAVE_COMMIT_MESSAGE>"` 保存变更（commit message 由常量 `AUTO_SAVE_COMMIT_MESSAGE` 定义，值为 `chore: auto-save before sync`，同时用于 merge 命令的 squash 检测）
+   - 有修改 → 自动执行 `git add . && git commit -m "<message>"` 保存变更（commit message 由 `buildAutoSaveCommitMessage(mainBranch, branch)` 函数动态生成，格式为 `clawt: auto-save before merging {mainBranch} into {branch}`，前缀部分由常量 `AUTO_SAVE_COMMIT_MESSAGE_PREFIX` 定义，值为 `clawt: auto-save before merging`，同时用于 merge 命令的 squash 检测）
    - 无修改 → 跳过
 3. **在目标 worktree 中合并主分支**：
    ```bash

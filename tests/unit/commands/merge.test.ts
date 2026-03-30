@@ -41,7 +41,7 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       MERGE_SUCCESS_NO_MESSAGE: (branch: string, autoPullPush: boolean) => `合并成功: ${branch}`,
       WORKTREE_CLEANED: (branch: string) => `已清理: ${branch}`,
     },
-    AUTO_SAVE_COMMIT_MESSAGE: 'clawt:auto-save',
+    AUTO_SAVE_COMMIT_MESSAGE_PREFIX: 'clawt: auto-save before merging',
   };
 });
 

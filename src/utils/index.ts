@@ -56,6 +56,7 @@ export {
   gitAddFiles,
   gitMergeContinue,
   gitMergeAbort,
+  buildAutoSaveCommitMessage,
 } from './git.js';
 export { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 export { validateMainWorktree, validateGitInstalled, validateClaudeCodeInstalled, validateHeadExists, validateWorkingDirClean, runPreChecks } from './validation.js';

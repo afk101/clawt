@@ -42,7 +42,7 @@ clawt merge [-m <commitMessage>]
      - 提示 `主 worktree 有未提交的更改，请先处理`，退出
    - 无更改 → 继续
 6. **Squash 检测与执行（auto-save 临时提交压缩）**
-   - 通过 `git log HEAD..<branchName> --format=%s` 检查目标分支是否存在以 `AUTO_SAVE_COMMIT_MESSAGE`（`chore: auto-save before sync`）为前缀的 commit
+   - 通过 `git log HEAD..<branchName> --format=%s` 检查目标分支是否存在以 `AUTO_SAVE_COMMIT_MESSAGE_PREFIX`（`clawt: auto-save before merging`）为前缀的 commit
    - **不存在** → 跳过，进入步骤 7
    - **存在** → 提示用户是否将所有提交压缩为一个：
      ```
