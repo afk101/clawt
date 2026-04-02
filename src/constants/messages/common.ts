@@ -48,4 +48,11 @@ export const COMMON_MESSAGES = {
   /** 守卫检测：当前分支与配置的主工作分支不一致 */
   GUARD_BRANCH_MISMATCH: (configuredBranch: string, currentBranch: string) =>
     `当前分支 ${currentBranch} 与配置的主工作分支 ${configuredBranch} 不一致，如需更新请执行 clawt init`,
+  /** Git index 被锁定（index.lock 存在） */
+  GIT_INDEX_LOCKED: (lockFilePath: string) =>
+    `Git index 被锁定，无法执行操作\n` +
+    `  原因：锁文件已存在（可能是上次 git 操作异常中断残留）\n` +
+    `  锁文件路径：${lockFilePath}\n` +
+    `  修复方法：确认没有其他 git 操作在进行后，执行以下命令删除锁文件：\n` +
+    `  rm ${lockFilePath}`,
 } as const;
