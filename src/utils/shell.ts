@@ -1,6 +1,7 @@
 import { execSync, execFileSync, spawn, spawnSync, type ChildProcess, type SpawnSyncReturns, type StdioOptions } from 'node:child_process';
 import { logger } from '../logger/index.js';
 import { EXEC_MAX_BUFFER } from '../constants/git.js';
+import { throwIfGitIndexLockError } from './git-lock.js';
 
 /**
  * 获取移除了 CLAUDECODE 嵌套会话标记的环境变量副本
@@ -45,17 +46,23 @@ export interface ParallelCommandResultWithStderr extends ParallelCommandResult {
  * @param {object} options - 可选配置
  * @param {string} options.cwd - 工作目录
  * @returns {string} 命令的标准输出（已 trim）
- * @throws {Error} 命令执行失败时抛出
+ * @throws {ClawtError} 检测到 index.lock 错误时抛出中文友好提示
+ * @throws {Error} 其他命令执行失败时抛出
  */
 export function execCommand(command: string, options?: { cwd?: string }): string {
   logger.debug(`执行命令: ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
-  const result = execSync(command, {
-    cwd: options?.cwd,
-    encoding: 'utf-8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-    maxBuffer: EXEC_MAX_BUFFER,
-  });
-  return result.trim();
+  try {
+    const result = execSync(command, {
+      cwd: options?.cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      maxBuffer: EXEC_MAX_BUFFER,
+    });
+    return result.trim();
+  } catch (error) {
+    throwIfGitIndexLockError(error, options?.cwd);
+    throw error;
+  }
 }
 
 /**
@@ -100,18 +107,24 @@ export function killAllChildProcesses(children: ChildProcess[]): void {
  * @param {Buffer} options.input - 通过 stdin 传入的数据（Buffer 格式，保留二进制完整性）
  * @param {string} [options.cwd] - 工作目录
  * @returns {string} 命令的标准输出（已 trim）
- * @throws {Error} 命令执行失败时抛出
+ * @throws {ClawtError} 检测到 index.lock 错误时抛出中文友好提示
+ * @throws {Error} 其他命令执行失败时抛出
  */
 export function execCommandWithInput(command: string, args: string[], options: { input: Buffer; cwd?: string }): string {
   logger.debug(`执行命令(stdin): ${command} ${args.join(' ')}${options.cwd ? ` (cwd: ${options.cwd})` : ''}`);
-  const result = execFileSync(command, args, {
-    cwd: options.cwd,
-    input: options.input,
-    encoding: 'utf-8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-    maxBuffer: EXEC_MAX_BUFFER,
-  });
-  return result.trim();
+  try {
+    const result = execFileSync(command, args, {
+      cwd: options.cwd,
+      input: options.input,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      maxBuffer: EXEC_MAX_BUFFER,
+    });
+    return result.trim();
+  } catch (error) {
+    throwIfGitIndexLockError(error, options.cwd);
+    throw error;
+  }
 }
 
 /**
