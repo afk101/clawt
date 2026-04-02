@@ -125,17 +125,7 @@ export class InteractivePanel {
     // 恢复终端
     this.restoreTerminal();
 
-    // 移除 resize 监听
-    if (this.resizeHandler) {
-      process.stdout.removeListener('resize', this.resizeHandler);
-      this.resizeHandler = null;
-    }
-
-    // 移除 exit 兜底
-    if (this.exitHandler) {
-      process.removeListener('exit', this.exitHandler);
-      this.exitHandler = null;
-    }
+    this.removeTerminalListeners();
 
     // 完成 Promise
     if (this.resolveStart) {
@@ -148,6 +138,9 @@ export class InteractivePanel {
    * 初始化终端：进入备选屏幕、隐藏光标、禁用行换行
    */
   private initTerminal(): void {
+    // 确保不会重复注册监听器
+    this.removeTerminalListeners();
+
     process.stdout.write(ALT_SCREEN_ENTER);
     process.stdout.write(CURSOR_HIDE);
     process.stdout.write(LINE_WRAP_DISABLE);
@@ -163,12 +156,22 @@ export class InteractivePanel {
     process.stdout.on('resize', this.resizeHandler);
 
     // 注册 exit 兜底，确保异常退出时终端状态被恢复
-    this.exitHandler = () => {
-      process.stdout.write(LINE_WRAP_ENABLE);
-      process.stdout.write(CURSOR_SHOW);
-      process.stdout.write(ALT_SCREEN_LEAVE);
-    };
+    this.exitHandler = () => this.restoreTerminal();
     process.on('exit', this.exitHandler);
+  }
+
+  /**
+   * 移除终端事件监听器（resize 和 exit）
+   */
+  private removeTerminalListeners(): void {
+    if (this.resizeHandler) {
+      process.stdout.removeListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+    }
+    if (this.exitHandler) {
+      process.removeListener('exit', this.exitHandler);
+      this.exitHandler = null;
+    }
   }
 
   /**
@@ -365,6 +368,8 @@ export class InteractivePanel {
 
     // 恢复终端以便子命令输出
     this.restoreTerminal();
+    // 移除旧的终端事件监听器，避免 initTerminal() 重复注册导致泄漏
+    this.removeTerminalListeners();
 
     // 恢复 stdin 以便子命令交互
     this.keyboardController.stop();
