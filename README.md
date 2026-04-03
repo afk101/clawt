@@ -343,7 +343,7 @@ Configuration file is located at `~/.clawt/config.json`, auto-generated after in
 | `aliases` | `{}` | Command alias mapping (e.g., `{"l": "list", "r": "run"}`) |
 | `autoUpdate` | `true` | Auto-check for new versions (checks npm registry every 24 hours) |
 | `conflictResolveMode` | `"ask"` | Merge conflict resolution mode: `ask` (prompt for AI), `auto` (auto AI resolve), `manual` (manual resolve) |
-| `conflictResolveTimeoutMs` | `600000` | Claude Code conflict resolution timeout (ms), default 10 minutes |
+| `conflictResolveTimeoutMs` | `900000` | Claude Code conflict resolution timeout (ms), default 15 minutes |
 
 ## postCreate Hook
 

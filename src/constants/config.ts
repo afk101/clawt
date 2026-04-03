@@ -53,8 +53,8 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
     allowedValues: ['ask', 'auto', 'manual'] as const,
   },
   conflictResolveTimeoutMs: {
-    defaultValue: 600000,
-    description: 'Claude Code 冲突解决超时时间（毫秒），默认 600000（10 分钟）',
+    defaultValue: 900000,
+    description: 'Claude Code 冲突解决超时时间（毫秒），默认 900000（15 分钟）',
   },
 };
 

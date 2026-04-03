@@ -26,7 +26,7 @@
   "aliases": {},
   "autoUpdate": true,
   "conflictResolveMode": "ask",
-  "conflictResolveTimeoutMs": 600000
+  "conflictResolveTimeoutMs": 900000
 }
 ```
 
@@ -44,6 +44,6 @@
 | `aliases` | `Record<string, string>` | `{}` | 命令别名映射，键为别名，值为目标内置命令名 |
 | `autoUpdate` | `boolean` | `true` | 是否启用自动更新检查（每 24 小时通过 npm registry 检查一次新版本） |
 | `conflictResolveMode` | `string` | `"ask"` | merge 冲突时的解决模式：`ask`（询问是否使用 AI）、`auto`（自动 AI 解决）、`manual`（手动解决） |
-| `conflictResolveTimeoutMs` | `number` | `600000` | Claude Code 冲突解决超时时间（毫秒），默认 600000（10 分钟） |
+| `conflictResolveTimeoutMs` | `number` | `900000` | Claude Code 冲突解决超时时间（毫秒），默认 900000（15 分钟） |
 
 ---

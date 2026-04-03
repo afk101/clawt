@@ -20,7 +20,7 @@ export interface ClawtConfig {
   autoUpdate: boolean;
   /** merge 冲突时的解决模式：ask（询问）、auto（自动 AI 解决）、manual（手动解决） */
   conflictResolveMode: 'ask' | 'auto' | 'manual';
-  /** Claude Code 冲突解决超时时间（毫秒），默认 300000（5 分钟） */
+  /** Claude Code 冲突解决超时时间（毫秒），默认 900000（15 分钟） */
   conflictResolveTimeoutMs: number;
 }
 

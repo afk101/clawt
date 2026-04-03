@@ -10,7 +10,7 @@ import { CONFLICT_RESOLVE_PROMPT } from '../constants/ai-prompts.js';
 import { getEnvWithoutNestedSessionFlag } from './shell.js';
 
 /** 默认 Claude Code 冲突解决超时时间（毫秒） */
-const DEFAULT_CONFLICT_RESOLVE_TIMEOUT_MS = 600000;
+const DEFAULT_CONFLICT_RESOLVE_TIMEOUT_MS = 900000;
 
 /**
  * 构建发送给 Claude Code 的冲突解决 prompt
