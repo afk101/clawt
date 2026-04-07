@@ -6,7 +6,9 @@ import { throwIfGitIndexLockError } from './git-lock.js';
 
 /**
  * 获取移除了 CLAUDECODE 嵌套会话标记的环境变量副本，并注入 CLAUDE_CODE_ENTRYPOINT 标识
- * 仅用于 claude -p 等非交互式子进程，避免被 Claude Code 误判为嵌套会话而拒绝启动
+ * 仅用于 claude -p 等非交互式子进程：
+ * - 移除 CLAUDECODE：避免被 Claude Code 误判为嵌套会话而拒绝启动
+ * - 注入 CLAUDE_CODE_ENTRYPOINT="cli"：使 claude -p 会话支持 --continue 恢复
  * 不适用于交互式启动 Claude Code（如 clawt resume），交互式场景应保留原始环境变量
  * @returns {NodeJS.ProcessEnv} 移除 CLAUDECODE 并注入 CLAUDE_CODE_ENTRYPOINT 后的环境变量
  */

@@ -320,7 +320,7 @@ async function interactiveConfigEditor<T extends object>(
 
 | 环境变量 | 值 | 说明 |
 | -------- | --- | ---- |
-| `CLAUDE_CODE_ENTRYPOINT` | `cli` | 所有通过 `claude -p` 启动的非交互式 Claude Code 子进程（task-executor 和 conflict-resolver）会自动注入此环境变量，用于标识启动来源。常量定义在 `src/constants/config.ts` 的 `CLAUDE_CODE_ENTRYPOINT_VALUE`，注入逻辑在 `src/utils/shell.ts` 的 `getEnvWithoutNestedSessionFlag()` 函数中实现。不适用于交互式启动 Claude Code 的场景（如 `clawt resume`）。 |
+| `CLAUDE_CODE_ENTRYPOINT` | `cli` | 所有通过 `claude -p` 启动的非交互式 Claude Code 子进程（task-executor 和 conflict-resolver）会自动注入此环境变量，使这些会话支持通过 `--continue` 恢复。常量定义在 `src/constants/config.ts` 的 `CLAUDE_CODE_ENTRYPOINT_VALUE`，注入逻辑在 `src/utils/shell.ts` 的 `getEnvWithoutNestedSessionFlag()` 函数中实现。不适用于交互式启动 Claude Code 的场景（如 `clawt resume`）。 |
 
 所有命令执行前，都必须先执行**主 worktree 校验**（见 [2.1](#21-主-worktree-的定义与定位规则)）。
 
