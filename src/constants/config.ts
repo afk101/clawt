@@ -5,6 +5,9 @@ import { VALID_TERMINAL_APPS } from './terminal.js';
 export const APPEND_SYSTEM_PROMPT =
   'Currently, you are in the git worktree directory.';
 
+/** 通过 clawt 启动的 Claude Code 非交互式会话（claude -p）的 entrypoint 标识 */
+export const CLAUDE_CODE_ENTRYPOINT_VALUE = 'cli';
+
 /**
  * 配置项完整定义（单一数据源）
  * 新增配置项时只需在此处维护，DEFAULT_CONFIG 和 CONFIG_DESCRIPTIONS 会自动同步
