@@ -374,6 +374,10 @@ Hooks run asynchronously in the background (fire-and-forget), not blocking the m
 
 > **Priority:** `--yes` > `CI` > `CLAWT_NON_INTERACTIVE` > default interactive mode
 
+**Internally injected environment variables:**
+
+All non-interactive Claude Code sessions launched via `claude -p` (task-executor and conflict-resolver) automatically inject the environment variable `CLAUDE_CODE_ENTRYPOINT="cli"` to identify the launch source. This does not apply to interactive Claude Code sessions (e.g., `clawt resume`).
+
 ## Logs
 
 Logs are saved in `~/.clawt/logs/`, rotated by date, retained for 30 days.

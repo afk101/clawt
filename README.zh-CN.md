@@ -374,6 +374,10 @@ hook 以 fire-and-forget 模式后台异步并行执行，不阻塞主流程。�
 
 > **优先级：** `--yes` > `CI` > `CLAWT_NON_INTERACTIVE` > 默认交互模式
 
+**内部注入的环境变量：**
+
+所有通过 `claude -p` 启动的非交互式 Claude Code 子进程（task-executor 和 conflict-resolver）会自动注入环境变量 `CLAUDE_CODE_ENTRYPOINT="cli"`，用于标识启动来源。不适用于交互式启动 Claude Code 的场景（如 `clawt resume`）。
+
 ## 日志
 
 日志保存在 `~/.clawt/logs/`，按日期滚动，保留 30 天。

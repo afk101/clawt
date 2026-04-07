@@ -104,7 +104,7 @@ clawt merge [-m <commitMessage>]
    | `auto` | — | 直接调用 AI 解决，不询问 |
    | `manual` | — | 输出冲突提示信息，用户手动解决 |
 
-   AI 解决冲突时，调用 Claude Code CLI 在主 worktree 中分析并解决冲突文件，超时时间由配置项 `conflictResolveTimeoutMs` 控制（默认 15 分钟）。AI 解决成功后自动执行 `git add . && git merge --continue` 完成合并。
+   AI 解决冲突时，调用 Claude Code CLI 在主 worktree 中分析并解决冲突文件，超时时间由配置项 `conflictResolveTimeoutMs` 控制（默认 15 分钟）。冲突解决子进程通过 `getEnvWithoutNestedSessionFlag()` 启动，会自动注入环境变量 `CLAUDE_CODE_ENTRYPOINT="cli"` 标识启动来源。AI 解决成功后自动执行 `git add . && git merge --continue` 完成合并。
 10. **推送（受 `autoPullPush` 配置控制）**
    - `autoPullPush` 为 `false` → 输出提示 `已跳过自动 pull/push，请手动执行 git pull && git push`
    - `autoPullPush` 为 `true` → 执行 `git pull` + `git push`：
