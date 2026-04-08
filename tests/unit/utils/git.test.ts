@@ -36,6 +36,7 @@ import {
   gitPush,
   gitResetHard,
   gitCleanForce,
+  gitCheckoutIndexForce,
   gitStashPush,
   gitStashApply,
   gitStashPop,
@@ -248,6 +249,13 @@ describe('gitCleanForce', () => {
   it('执行 git clean -fd', () => {
     gitCleanForce('/repo');
     expect(mockedExecCommand).toHaveBeenCalledWith('git clean -fd', { cwd: '/repo' });
+  });
+});
+
+describe('gitCheckoutIndexForce', () => {
+  it('执行 git checkout-index -f -a', () => {
+    gitCheckoutIndexForce('/repo');
+    expect(mockedExecCommand).toHaveBeenCalledWith('git checkout-index -f -a', { cwd: '/repo' });
   });
 });
 

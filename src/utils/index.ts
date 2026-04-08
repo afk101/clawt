@@ -22,6 +22,7 @@ export {
   gitPush,
   gitResetHard,
   gitCleanForce,
+  gitCheckoutIndexForce,
   gitStashPush,
   gitStashApply,
   gitStashPop,

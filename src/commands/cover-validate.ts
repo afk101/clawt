@@ -15,8 +15,8 @@ import {
   gitAddAll,
   gitWriteTree,
   gitReadTree,
-  gitDiffTree,
-  gitApplyFromStdin,
+  gitCheckoutIndexForce,
+  gitCleanForce,
   printSuccess,
   printInfo,
   isWorkingDirClean,
@@ -62,15 +62,12 @@ export function findTargetWorktreePath(branchName: string): string {
 }
 
 /**
- * 计算验证分支上相对于快照的增量 patch
+ * 计算验证分支当前的 tree hash（保存并恢复暂存区状态）
  * 操作序列：git write-tree（保存暂存区）→ git add . → git write-tree（获取工作区 tree）→ git read-tree（恢复暂存区）
- * 当 snapshotTreeHash 与当前 tree hash 相同时返回 null 表示无变更
- * @param {string} snapshotTreeHash - 快照中记录的 tree hash
  * @param {string} mainWorktreePath - 主 worktree 路径
- * @returns {{ patch: Buffer; currentTreeHash: string } | null} 增量 patch 和当前 tree hash，无变更时返回 null
+ * @returns {string} 当前工作区对应的 tree hash
  */
-export function computeIncrementalPatch(snapshotTreeHash: string, mainWorktreePath: string): { patch: Buffer; currentTreeHash: string } | null {
-  // 先保存当前暂存区的 tree hash，用于后续恢复
+export function computeWorktreeTreeHash(mainWorktreePath: string): string {
   const savedIndexTreeHash = gitWriteTree(mainWorktreePath);
   let currentTreeHash: string;
 
@@ -78,17 +75,10 @@ export function computeIncrementalPatch(snapshotTreeHash: string, mainWorktreePa
     gitAddAll(mainWorktreePath);
     currentTreeHash = gitWriteTree(mainWorktreePath);
   } finally {
-    // 无论成功或失败，都通过 git read-tree 恢复原始暂存区状态
     gitReadTree(savedIndexTreeHash, mainWorktreePath);
   }
 
-  // 快照 tree 与当前 tree 相同，无增量变更
-  if (snapshotTreeHash === currentTreeHash) {
-    return null;
-  }
-
-  const patch = gitDiffTree(snapshotTreeHash, currentTreeHash, mainWorktreePath);
-  return { patch, currentTreeHash };
+  return currentTreeHash;
 }
 
 /**
@@ -127,23 +117,26 @@ async function handleCoverValidate(): Promise<void> {
     if (!confirmed) return;
   }
 
-  // 步骤 4：计算增量 patch
-  const result = computeIncrementalPatch(snapshotTreeHash, mainWorktreePath);
-  if (!result) {
+  // 步骤 4：计算当前 tree hash
+  const currentTreeHash = computeWorktreeTreeHash(mainWorktreePath);
+
+  if (snapshotTreeHash === currentTreeHash) {
     printInfo(MESSAGES.COVER_VALIDATE_NO_CHANGES);
     return;
   }
 
-  // 步骤 5：应用 patch 到目标 worktree
+  // 步骤 5：直接将 tree 应用到目标 worktree
   try {
-    gitApplyFromStdin(result.patch, targetWorktreePath);
+    gitReadTree(currentTreeHash, targetWorktreePath);
+    gitCheckoutIndexForce(targetWorktreePath);
+    gitCleanForce(targetWorktreePath);
   } catch (error) {
-    logger.error(`cover-validate patch apply 失败: ${error}`);
-    throw new ClawtError(MESSAGES.COVER_VALIDATE_APPLY_FAILED(targetBranchName));
+    logger.error(`cover-validate 覆盖失败: ${error}`);
+    throw new ClawtError(MESSAGES.COVER_VALIDATE_COVER_FAILED(targetBranchName));
   }
 
   // 步骤 6：更新快照 treeHash（使后续再次 cover 的基准正确），HEAD 和 stagedTreeHash 不变
-  writeSnapshot(projectName, targetBranchName, result.currentTreeHash);
+  writeSnapshot(projectName, targetBranchName, currentTreeHash);
 
   printSuccess(MESSAGES.COVER_VALIDATE_SUCCESS(targetBranchName));
 }

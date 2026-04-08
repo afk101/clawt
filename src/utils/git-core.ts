@@ -160,6 +160,14 @@ export function gitCleanForce(cwd?: string): void {
 }
 
 /**
+ * git checkout-index -f -a，将暂存区内容强制写入工作区（覆盖工作区文件）
+ * @param {string} [cwd] - 工作目录
+ */
+export function gitCheckoutIndexForce(cwd?: string): void {
+  execCommand('git checkout-index -f -a', { cwd });
+}
+
+/**
  * git stash push -m <message>
  * @param {string} message - stash 消息
  * @param {string} cwd - 工作目录

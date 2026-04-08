@@ -21,7 +21,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     COVER_VALIDATE_NO_CHANGES: '验证分支上没有相对于快照的增量修改，无需覆盖',
     COVER_VALIDATE_TARGET_NOT_FOUND: (branch: string) => `未找到分支 ${branch} 对应的 worktree`,
     COVER_VALIDATE_NO_SNAPSHOT: (branch: string) => `未找到分支 ${branch} 的 validate 快照`,
-    COVER_VALIDATE_APPLY_FAILED: (branch: string) => `覆盖变更到 worktree ${branch} 失败`,
+    COVER_VALIDATE_COVER_FAILED: (branch: string) => `覆盖变更到 worktree ${branch} 失败`,
     COVER_VALIDATE_SUCCESS: (branch: string) => `✓ 已将验证分支上的修改覆盖到 worktree => ${branch}`,
     COVER_VALIDATE_WORKING_DIR_CLEAN: '当前验证分支的工作区和暂存区没有任何修改，可能为误操作',
   },
@@ -42,8 +42,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   gitAddAll: vi.fn(),
   gitWriteTree: vi.fn().mockReturnValue('current-tree-hash'),
   gitReadTree: vi.fn(),
-  gitDiffTree: vi.fn().mockReturnValue(Buffer.from('fake-patch')),
-  gitApplyFromStdin: vi.fn(),
+  gitCheckoutIndexForce: vi.fn(),
+  gitCleanForce: vi.fn(),
   printSuccess: vi.fn(),
   printInfo: vi.fn(),
   isWorkingDirClean: vi.fn().mockReturnValue(false),
@@ -53,7 +53,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   isNonInteractive: vi.fn().mockReturnValue(false),
 }));
 
-import { registerCoverValidateCommand, extractTargetBranchName, findTargetWorktreePath, computeIncrementalPatch } from '../../../src/commands/cover-validate.js';
+import { registerCoverValidateCommand, extractTargetBranchName, findTargetWorktreePath, computeWorktreeTreeHash } from '../../../src/commands/cover-validate.js';
 import {
   getCurrentBranch,
   getProjectWorktrees,
@@ -64,8 +64,8 @@ import {
   gitAddAll,
   gitWriteTree,
   gitReadTree,
-  gitDiffTree,
-  gitApplyFromStdin,
+  gitCheckoutIndexForce,
+  gitCleanForce,
   printSuccess,
   printInfo,
   isWorkingDirClean,
@@ -81,8 +81,8 @@ const mockedWriteSnapshot = vi.mocked(writeSnapshot);
 const mockedGitAddAll = vi.mocked(gitAddAll);
 const mockedGitWriteTree = vi.mocked(gitWriteTree);
 const mockedGitReadTree = vi.mocked(gitReadTree);
-const mockedGitDiffTree = vi.mocked(gitDiffTree);
-const mockedGitApplyFromStdin = vi.mocked(gitApplyFromStdin);
+const mockedGitCheckoutIndexForce = vi.mocked(gitCheckoutIndexForce);
+const mockedGitCleanForce = vi.mocked(gitCleanForce);
 const mockedPrintSuccess = vi.mocked(printSuccess);
 const mockedPrintInfo = vi.mocked(printInfo);
 const mockedIsWorkingDirClean = vi.mocked(isWorkingDirClean);
@@ -99,7 +99,6 @@ beforeEach(() => {
   mockedIsWorkingDirClean.mockReturnValue(false);
   mockedConfirmAction.mockResolvedValue(true);
   mockedGitWriteTree.mockReturnValue('current-tree-hash');
-  mockedGitDiffTree.mockReturnValue(Buffer.from('fake-patch'));
 });
 
 describe('registerCoverValidateCommand', () => {
@@ -130,27 +129,16 @@ describe('findTargetWorktreePath', () => {
   });
 });
 
-describe('computeIncrementalPatch', () => {
-  it('有增量变更时返回 patch 和 currentTreeHash', () => {
+describe('computeWorktreeTreeHash', () => {
+  it('返回当前工作区的 tree hash', () => {
     mockedGitWriteTree
       .mockReturnValueOnce('saved-index-tree')  // 保存暂存区
       .mockReturnValueOnce('new-tree-hash');     // git add . 后的 tree
 
-    const result = computeIncrementalPatch('snapshot-tree-hash', '/repo');
-    expect(result).not.toBeNull();
-    expect(result!.currentTreeHash).toBe('new-tree-hash');
+    const result = computeWorktreeTreeHash('/repo');
+    expect(result).toBe('new-tree-hash');
     expect(mockedGitAddAll).toHaveBeenCalledWith('/repo');
     expect(mockedGitReadTree).toHaveBeenCalledWith('saved-index-tree', '/repo');
-    expect(mockedGitDiffTree).toHaveBeenCalledWith('snapshot-tree-hash', 'new-tree-hash', '/repo');
-  });
-
-  it('无增量变更时返回 null', () => {
-    mockedGitWriteTree
-      .mockReturnValueOnce('saved-index-tree')
-      .mockReturnValueOnce('snapshot-tree-hash'); // 与快照相同
-
-    const result = computeIncrementalPatch('snapshot-tree-hash', '/repo');
-    expect(result).toBeNull();
   });
 });
 
@@ -163,7 +151,7 @@ describe('handleCoverValidate - 工作区干净检查', () => {
     await program.parseAsync(['cover'], { from: 'user' });
   }
 
-  it('工作区干净且用户取消时不执行 patch', async () => {
+  it('工作区干净且用户取消时不执行覆盖', async () => {
     mockedIsWorkingDirClean.mockReturnValue(true);
     mockedConfirmAction.mockResolvedValue(false);
 
@@ -173,14 +161,14 @@ describe('handleCoverValidate - 工作区干净检查', () => {
     expect(mockedConfirmAction).toHaveBeenCalledWith('是否继续执行覆盖？');
     // 用户取消后不应继续执行后续逻辑
     expect(mockedGitAddAll).not.toHaveBeenCalled();
-    expect(mockedGitApplyFromStdin).not.toHaveBeenCalled();
+    expect(mockedGitCheckoutIndexForce).not.toHaveBeenCalled();
+    expect(mockedGitCleanForce).not.toHaveBeenCalled();
     expect(mockedPrintSuccess).not.toHaveBeenCalled();
   });
 
   it('工作区干净且用户确认继续时正常执行', async () => {
     mockedIsWorkingDirClean.mockReturnValue(true);
     mockedConfirmAction.mockResolvedValue(true);
-    // computeIncrementalPatch 返回有 patch 的结果
     mockedGitWriteTree
       .mockReturnValueOnce('saved-index-tree')
       .mockReturnValueOnce('new-tree-hash');
@@ -188,7 +176,9 @@ describe('handleCoverValidate - 工作区干净检查', () => {
     await runCover();
 
     expect(mockedConfirmAction).toHaveBeenCalledWith('是否继续执行覆盖？');
-    expect(mockedGitApplyFromStdin).toHaveBeenCalled();
+    expect(mockedGitReadTree).toHaveBeenCalledWith('new-tree-hash', '/path/feature');
+    expect(mockedGitCheckoutIndexForce).toHaveBeenCalledWith('/path/feature');
+    expect(mockedGitCleanForce).toHaveBeenCalledWith('/path/feature');
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 
@@ -201,7 +191,9 @@ describe('handleCoverValidate - 工作区干净检查', () => {
     await runCover();
 
     expect(mockedConfirmAction).not.toHaveBeenCalled();
-    expect(mockedGitApplyFromStdin).toHaveBeenCalled();
+    expect(mockedGitReadTree).toHaveBeenCalledWith('new-tree-hash', '/path/feature');
+    expect(mockedGitCheckoutIndexForce).toHaveBeenCalledWith('/path/feature');
+    expect(mockedGitCleanForce).toHaveBeenCalledWith('/path/feature');
     expect(mockedPrintSuccess).toHaveBeenCalled();
   });
 });

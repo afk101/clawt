@@ -44,20 +44,25 @@ clawt cover
 
 > 工作区干净时通常意味着用户没有在验证分支上做任何修改就执行了 cover，这大概率是误操作。增加确认提示可以避免不必要的覆盖操作。
 
-##### 步骤 4：计算增量 patch
+##### 步骤 4：计算当前 tree hash
 
-通过 `computeIncrementalPatch()` 计算验证分支上相对于快照的增量变更：
+通过 `computeWorktreeTreeHash()` 计算验证分支当前的完整 tree hash：
 
-1. 保存当前暂存区的 tree hash（`savedIndexTreeHash`），用于后续恢复
-2. `git add .` + `git write-tree` 获取当前工作区的完整 tree hash（`currentTreeHash`）
-3. 通过 `git read-tree` 恢复原始暂存区状态（无论成功失败都执行，在 `finally` 块中）
-4. 比较 `snapshotTreeHash` 与 `currentTreeHash`：
-   - **相同** → 无增量变更，输出提示后返回
-   - **不同** → 通过 `git diff-tree` 生成 patch
+1. 保存当前暂存区的 tree hash，用于后续恢复
+2. `git add .` + `git write-tree` 获取当前工作区的完整 tree hash
+3. 通过 `git read-tree` 恢复原始暂存区状态
 
-##### 步骤 5：应用 patch 到目标 worktree
+比较 snapshotTreeHash 与 currentTreeHash，如果相同则无变更，输出提示后返回。
 
-将增量 patch 通过 `git apply --binary` 应用到目标 worktree 的工作区。如果 patch apply 失败，报错退出并提示用户检查目标 worktree 工作区状态。
+##### 步骤 5：直接覆盖目标 worktree
+
+采用 **直接 checkout tree** 方式，实现真正的覆盖语义：
+
+1. **写入暂存区**：通过 `git read-tree <currentTreeHash>` 将验证分支的完整 tree 写入目标 worktree 的暂存区
+2. **强制检出工作区**：通过 `git checkout-index -f -a` 将暂存区内容强制写入工作区
+3. **清理残留文件**：通过 `git clean -fd` 删除目标 worktree 中未跟踪文件
+
+> **关键优势**：无基准依赖，无条件覆盖目标 worktree，符合 cover 的语义。
 
 ##### 步骤 6：更新快照
 
@@ -78,7 +83,7 @@ clawt cover
 | `COVER_VALIDATE_NO_SNAPSHOT` | 无快照 | 提示先执行 `clawt validate -b <branch>` 创建快照 |
 | `COVER_VALIDATE_NO_CHANGES` | 无增量变更 | 提示无需覆盖 |
 | `COVER_VALIDATE_WORKING_DIR_CLEAN` | 工作区干净 | 提示可能为误操作，需确认是否继续 |
-| `COVER_VALIDATE_APPLY_FAILED` | patch 应用失败 | 提示检查目标 worktree 工作区状态后重试 |
+| `COVER_VALIDATE_COVER_FAILED` | tree checkout/clean 失败 | 提示检查目标 worktree 状态后重试 |
 
 **实现要点：**
 
@@ -87,7 +92,11 @@ clawt cover
 - 辅助函数：
   - `extractTargetBranchName()`：从验证分支名提取目标分支名
   - `findTargetWorktreePath()`：查找目标 worktree 路径
-  - `computeIncrementalPatch()`：计算增量 patch
+  - `computeWorktreeTreeHash()`：计算当前工作区 tree hash（保存并恢复暂存区状态）
+- Git 工具函数：
+  - `gitReadTree()`：将 tree 写入暂存区
+  - `gitCheckoutIndexForce()`：强制检出暂存区到工作区
+  - `gitCleanForce()`：清理未跟踪文件
 - 消息常量：`COVER_VALIDATE_MESSAGES`（`src/constants/messages/cover-validate.ts`）
 - `writeSnapshot` 调用时只传 `treeHash`，利用其可选参数特性保留磁盘上的 `headCommitHash` 和 `stagedTreeHash` 原值
 
