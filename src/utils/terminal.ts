@@ -158,11 +158,11 @@ function openCommandInCmuxSurface(command: string, title: string): void {
 
     logger.debug(`已创建 surface: ${surfaceRef}`);
 
-    // 步骤 3：向新 surface 发送命令
+    // 步骤 3：向新 surface 发送命令（追加 \n 自动执行）
     execFileSync('cmux', [
       'send',
       '--surface', surfaceRef,
-      command,
+      `${command}\\n`,  // 追加换行符以自动执行命令
     ], {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],

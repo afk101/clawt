@@ -144,11 +144,11 @@ describe('cmux surface 创建', () => {
       expect.objectContaining({ timeout: 5000 })
     );
 
-    // 验证 send 调用
+    // 验证 send 调用（包含 \n 以自动执行）
     expect(mockedExecFileSync).toHaveBeenNthCalledWith(
       2,
       'cmux',
-      ['send', '--surface', 'surface:24', 'claude'],
+      ['send', '--surface', 'surface:24', 'claude\\n'],
       expect.objectContaining({ timeout: 5000 })
     );
   });
@@ -164,11 +164,11 @@ describe('cmux surface 创建', () => {
 
     expect(() => openCommandInNewTerminalTab('claude', 'test-title')).not.toThrow();
 
-    // 验证解析正确
+    // 验证解析正确（包含 \n 以自动执行）
     expect(mockedExecFileSync).toHaveBeenNthCalledWith(
       2,
       'cmux',
-      ['send', '--surface', 'surface:24', 'claude'],
+      ['send', '--surface', 'surface:24', 'claude\\n'],
       expect.objectContaining({ timeout: 5000 })
     );
   });
