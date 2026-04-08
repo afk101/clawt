@@ -13,7 +13,7 @@ export const DISABLE_BRACKETED_PASTE = '\x1b[?2004l';
 export const PASTE_THRESHOLD_MS = 10;
 
 /** 配置项 terminalApp 允许的有效值 */
-export const VALID_TERMINAL_APPS: readonly string[] = ['auto', 'iterm2', 'terminal'];
+export const VALID_TERMINAL_APPS: readonly string[] = ['auto', 'iterm2', 'terminal', 'cmux'];
 
 /** iTerm2 应用路径，用于 auto 模式检测是否已安装 */
 export const ITERM2_APP_PATH = '/Applications/iTerm.app';

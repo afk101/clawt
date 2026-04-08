@@ -88,13 +88,19 @@ clawt resume -f tasks.md -c 2
 
 | 配置值     | 行为                                                         |
 | ---------- | ------------------------------------------------------------ |
-| `auto`     | 自动检测：优先检测 iTerm2 是否已安装（`/Applications/iTerm.app`），已安装则使用 iTerm2，否则降级到 Terminal.app |
-| `iterm2`   | 强制使用 iTerm2                                               |
-| `terminal` | 强制使用 Terminal.app                                         |
+| `auto`     | 自动检测：优先检测 cmux 环境（通过 `CMUX_PANEL_ID` 环境变量），在 cmux 环境时在当前 pane 创建新 surface；否则检测 iTerm2 是否已安装，已安装则使用 iTerm2，否则降级到 Terminal.app |
+| `cmux`     | 在当前 cmux pane 中创建新 surface 执行命令                    |
+| `iterm2`   | 强制使用 iTerm2 创建新 Tab                                    |
+| `terminal` | 强制使用 Terminal.app 创建新 Tab                              |
 
-**平台限制：** 批量恢复目前仅支持 macOS 平台（通过 AppleScript 打开终端 Tab）。非 macOS 平台会抛出错误。
+**平台限制：** 批量恢复目前仅支持 macOS 平台。非 macOS 平台会抛出错误。
 
-**权限要求：** Terminal.app 通过 System Events 模拟键盘操作（`Cmd+T`）新建 Tab，需要在「系统设置 → 隐私与安全性 → 辅助功能」中授权终端应用。iTerm2 使用原生 AppleScript 接口，无需辅助功能权限。
+**cmux 集成说明：**
+- cmux 终端通过 `cmux new-surface --type terminal --pane <pane-id>` 创建新 surface
+- 创建后通过 `cmux send --surface <surface-id> <command>` 发送启动命令
+- 环境变量 `CMUX_PANEL_ID` 用于识别当前 pane，`CMUX_SURFACE_ID` 作为回退
+
+**权限要求：** Terminal.app 通过 System Events 模拟键盘操作（`Cmd+T`）新建 Tab，需要在「系统设置 → 隐私与安全性 → 辅助功能」中授权终端应用。iTerm2 使用原生 AppleScript 接口，无需辅助功能权限。cmux 通过 CLI 命令操作，无需特殊权限。
 
 启动命令通过配置项 `claudeCodeCommand`（默认值 `claude`）指定，与 `clawt run` 不传 `--tasks` 时的交互式界面行为一致。
 

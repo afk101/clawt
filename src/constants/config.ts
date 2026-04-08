@@ -38,7 +38,7 @@ export const CONFIG_DEFINITIONS: ConfigDefinitions = {
   },
   terminalApp: {
     defaultValue: 'auto',
-    description: '批量 resume 使用的终端应用：auto（自动检测）、iterm2、terminal（macOS）',
+    description: '批量 resume 使用的终端应用：auto（自动检测）、iterm2、terminal、cmux（macOS）',
     allowedValues: VALID_TERMINAL_APPS,
   },
   resumeInPlace: {
