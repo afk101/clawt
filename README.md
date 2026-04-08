@@ -338,7 +338,7 @@ Configuration file is located at `~/.clawt/config.json`, auto-generated after in
 | `autoPullPush` | `false` | Auto pull/push after merge |
 | `confirmDestructiveOps` | `true` | Confirm before destructive operations |
 | `maxConcurrency` | `0` | Max concurrency for run command, `0` means unlimited |
-| `terminalApp` | `"auto"` | Terminal for batch resume: `auto` / `iterm2` / `terminal` |
+| `terminalApp` | `"auto"` | Terminal for batch resume: `auto` / `iterm2` / `terminal` / `cmux` |
 | `resumeInPlace` | `false` | Resume single selection in current terminal; `false` opens in new tab |
 | `aliases` | `{}` | Command alias mapping (e.g., `{"l": "list", "r": "run"}`) |
 | `autoUpdate` | `true` | Auto-check for new versions (checks npm registry every 24 hours) |
