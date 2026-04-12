@@ -76,6 +76,18 @@ describe('isGitIndexLockError', () => {
   it('大小写不敏感匹配 "unable to write"', () => {
     expect(isGitIndexLockError('FATAL: UNABLE TO WRITE INDEX.')).toBe(true);
   });
+
+  it('检测中文 "不能写入索引" 错误', () => {
+    expect(isGitIndexLockError('致命错误：不能写入索引。')).toBe(true);
+  });
+
+  it('检测中文 "无法写入索引" 错误', () => {
+    expect(isGitIndexLockError('致命错误：无法写入新索引文件')).toBe(true);
+  });
+
+  it('检测中文 "无法创建 index.lock" 错误', () => {
+    expect(isGitIndexLockError("致命错误：无法创建 '/repo/.git/index.lock'：文件已存在")).toBe(true);
+  });
 });
 
 describe('findGitIndexLockPath', () => {

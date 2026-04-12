@@ -7,11 +7,17 @@ import { MESSAGES } from '../constants/index.js';
 /**
  * index.lock 错误的关键词匹配模式
  * 每个模式同时要求包含 index 关键词，避免 "Unable to write" 单独匹配导致误报
+ * 同时支持英文和中文（Git 本地化）错误消息
  */
 const INDEX_LOCK_ERROR_PATTERNS = [
+  // 英文错误消息
   /Unable to write.*index/i,
   /index\.lock/i,
   /Unable to create.*index/i,
+  // 中文错误消息（Git 本地化）
+  /不能写入索引/,
+  /无法写入.*索引/,
+  /无法创建.*index/i,
 ];
 
 /** 从 Git 错误消息中提取 index.lock 文件路径的正则（路径被 ASCII 单引号包裹） */
