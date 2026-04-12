@@ -87,8 +87,8 @@ export function buildPanelFrame(
   // 配置分支信息行
   lines.push(renderConfiguredBranchLine(statusResult.main));
 
-  // 快照摘要行
-  lines.push(renderSnapshotSummary(statusResult.snapshots.total, statusResult.snapshots.orphaned));
+  // 主工作分支 diff 信息行
+  lines.push(renderMainBranchDiff(statusResult.main));
 
   // 计算可用的 worktree 显示区域行数
   const visibleRows = calculateVisibleRows(rows);
@@ -313,6 +313,21 @@ function renderConfiguredBranchLine(main: MainWorktreeStatus): string {
     return PANEL_CONFIGURED_BRANCH_MISMATCH(main.configuredMainBranch);
   }
   return PANEL_CONFIGURED_BRANCH(main.configuredMainBranch);
+}
+
+/**
+ * 渲染主工作分支的 diff 信息行
+ * 格式：工作区: +N -M（绿色新增，红色删除）或 工作区: 无变更（绿色）
+ * @param {MainWorktreeStatus} main - 主 worktree 状态
+ * @returns {string} 格式化的 diff 信息
+ */
+function renderMainBranchDiff(main: MainWorktreeStatus): string {
+  if (main.insertions === 0 && main.deletions === 0) {
+    return `工作区: ${chalk.green(MESSAGES.STATUS_CHANGE_CLEAN)}`;
+  }
+  const insertText = chalk.green(`+${main.insertions}`);
+  const deleteText = chalk.red(`-${main.deletions}`);
+  return `工作区: ${insertText} ${deleteText}`;
 }
 
 /**

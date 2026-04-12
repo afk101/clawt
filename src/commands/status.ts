@@ -81,6 +81,9 @@ export function collectStatus(): StatusResult {
   const configuredMainBranch = projectConfig?.clawtMainWorkBranch || null;
   const configuredBranchExists = configuredMainBranch ? checkBranchExists(configuredMainBranch) : null;
 
+  // 主 worktree 的 diff 统计
+  const { insertions, deletions } = countDiffStat(process.cwd());
+
   // 主 worktree 状态
   const main: MainWorktreeStatus = {
     branch: currentBranch,
@@ -88,6 +91,8 @@ export function collectStatus(): StatusResult {
     projectName,
     configuredMainBranch,
     configuredBranchExists,
+    insertions,
+    deletions,
   };
 
   // 各 worktree 详细状态

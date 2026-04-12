@@ -131,7 +131,9 @@ clawt status [--json] [-i | --interactive]
     "isClean": true,
     "projectName": "main-project",
     "configuredMainBranch": "main",
-    "configuredBranchExists": true
+    "configuredBranchExists": true,
+    "insertions": 185,
+    "deletions": 42
   },
   "worktrees": [
     {
@@ -163,10 +165,12 @@ clawt status [--json] [-i | --interactive]
 | `projectName`           | `string`          | 项目名                                       |
 | `configuredMainBranch`  | `string \| null`  | 配置的主工作分支名（项目未初始化时为 null）     |
 | `configuredBranchExists`| `boolean \| null` | 配置的主工作分支是否存在（项目未初始化时为 null）|
+| `insertions`            | `number`          | 工作区和暂存区的新增行数                      |
+| `deletions`             | `number`          | 工作区和暂存区的删除行数                      |
 
 **实现要点：**
 
-- 类型定义在 `src/types/status.ts`：`WorktreeDetailedStatus`（`snapshotTime: string | null`、`createdAt: string | null`）、`MainWorktreeStatus`（包含 `configuredMainBranch` 和 `configuredBranchExists`）、`SnapshotInfo`、`SnapshotSummary`（包含 `total` 和 `orphaned`）、`StatusResult`（`snapshots` 为 `SnapshotSummary` 类型）
+- 类型定义在 `src/types/status.ts`：`WorktreeDetailedStatus`（`snapshotTime: string | null`、`createdAt: string | null`）、`MainWorktreeStatus`（包含 `configuredMainBranch`、`configuredBranchExists`、`insertions`、`deletions`）、`SnapshotInfo`、`SnapshotSummary`（包含 `total` 和 `orphaned`）、`StatusResult`（`snapshots` 为 `SnapshotSummary` 类型）
 - 消息常量在 `MESSAGES.STATUS_*` 系列：
   - `STATUS_TITLE(projectName)`：标题文本
   - `STATUS_MAIN_SECTION`：主 worktree 区块标题
@@ -202,7 +206,7 @@ clawt status [--json] [-i | --interactive]
 ```
 项目状态总览: my-project
 主工作分支: main
-快照: 3 个（1 个孤立）
+工作区: +185 -42
 ──────── ↑ 更多 worktree... ────────
   ════ 2026-03-01（2 天前） ════
 
@@ -239,7 +243,7 @@ clawt status [--json] [-i | --interactive]
    - 分支已删除（红色）：`✗ 主工作分支: <branchName>（已不存在）`
    - 分支不一致（黄色）：`⚠ 主工作分支: <branchName>（不一致）`
    - 未初始化（灰色）：`未初始化（执行 clawt init 设置主工作分支）`
-3. **快照摘要行**：显示快照总数和孤立快照数
+3. **工作区 diff 信息行**：显示主工作分支的工作区 diff 统计，有变更时格式为 `工作区: +N -M`（新增行数绿色，删除行数红色），无变更时显示 `工作区: 无变更`（绿色）
 4. **顶部分隔线**：当存在向上溢出时，分隔线中间嵌入 `↑ 更多 worktree...` 提示
 5. **Worktree 滚动区域**：按日期分组显示 worktree 列表，支持上下滚动
 6. **底部分隔线**：当存在向下溢出时，分隔线中间嵌入 `↓ 更多 worktree...` 提示

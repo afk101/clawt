@@ -340,4 +340,41 @@ describe('handleStatus', () => {
     const unverifiedLine = printedLines.find((line) => line.includes('未验证'));
     expect(unverifiedLine).toBeUndefined();
   });
+
+  it('主 worktree diff 统计包含在 JSON 输出中', async () => {
+    // 模拟主 worktree 有变更
+    mockedGetDiffStat.mockReturnValue({ insertions: 185, deletions: 42 });
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    await program.parseAsync(['status', '--json'], { from: 'user' });
+
+    const jsonCall = consoleSpy.mock.calls.find((call) => {
+      try { JSON.parse(call[0]); return true; } catch { return false; }
+    });
+    const parsed = JSON.parse(jsonCall![0]);
+    expect(parsed.main.insertions).toBe(185);
+    expect(parsed.main.deletions).toBe(42);
+  });
+
+  it('主 worktree 无变更时 diff 统计为 0', async () => {
+    mockedGetDiffStat.mockReturnValue({ insertions: 0, deletions: 0 });
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    await program.parseAsync(['status', '--json'], { from: 'user' });
+
+    const jsonCall = consoleSpy.mock.calls.find((call) => {
+      try { JSON.parse(call[0]); return true; } catch { return false; }
+    });
+    const parsed = JSON.parse(jsonCall![0]);
+    expect(parsed.main.insertions).toBe(0);
+    expect(parsed.main.deletions).toBe(0);
+  });
 });

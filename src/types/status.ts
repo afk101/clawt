@@ -32,6 +32,10 @@ export interface MainWorktreeStatus {
   configuredMainBranch: string | null;
   /** 配置的主工作分支是否存在（项目未初始化时为 null） */
   configuredBranchExists: boolean | null;
+  /** 工作区和暂存区的新增行数 */
+  insertions: number;
+  /** 工作区和暂存区的删除行数 */
+  deletions: number;
 }
 
 /** validate 快照信息 */
