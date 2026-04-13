@@ -50,7 +50,7 @@ clawt status [--json] [-i | --interactive]
 
 主 Worktree 区块会显示配置的主工作分支信息，根据状态有以下三种展示：
 - **正常**（灰色）：`主工作分支: <branchName>`
-- **当前分支不一致**（黄色）：`⚠ 主工作分支: <branchName>（当前分支不一致，如需更新请执行 clawt init）`
+- **当前分支不一致**（红色）：`⚠ 主工作分支: <branchName>（当前分支不一致，如需更新请执行 clawt init）`
 - **分支已不存在**（红色）：`✗ 主工作分支: <branchName>（已不存在，请执行 clawt init 重新设置）`
 
 注意：当项目未初始化（`configuredMainBranch` 为 null）时不展示配置分支信息；当主 worktree 当前处于验证分支（`VALIDATE_BRANCH_PREFIX` 前缀）时不显示不一致警告。
@@ -184,7 +184,7 @@ clawt status [--json] [-i | --interactive]
   - `STATUS_SNAPSHOT_ORPHANED(count)`：孤立快照警告（接受数量参数）
   - `STATUS_CONFIGURED_BRANCH(branchName)`：配置的主工作分支（正常状态，灰色）
   - `STATUS_CONFIGURED_BRANCH_DELETED(branchName)`：配置的主工作分支已不存在（红色）
-  - `STATUS_CONFIGURED_BRANCH_MISMATCH(branchName)`：当前分支与配置不一致（黄色）
+  - `STATUS_CONFIGURED_BRANCH_MISMATCH(branchName)`：当前分支与配置不一致（红色）
 - `getWorktreeCreatedTime()` 工具函数（在 `src/utils/worktree-matcher.ts`），通过 `fs.statSync().birthtime` 获取 worktree 目录的创建时间，返回 ISO 8601 格式字符串或 null
 - `getSnapshotModifiedTime()` 工具函数（在 `src/utils/validate-snapshot.ts`），通过 `fs.statSync` 获取快照文件的修改时间（mtime），返回 UTC 时区的 ISO 8601 格式字符串（`toISOString()` 格式）或 null
 - `formatRelativeTime()` 格式化函数（在 `src/utils/formatter.ts`），将 ISO 8601 日期字符串转换为中文相对时间描述（如"3 天前"、"2 小时前"、"刚刚"），无效日期时返回 null
@@ -241,7 +241,7 @@ clawt status [--json] [-i | --interactive]
 2. **配置分支信息行**：显示配置的主工作分支状态，有以下四种情况：
    - 正常（灰色）：`主工作分支: <branchName>`
    - 分支已删除（红色）：`✗ 主工作分支: <branchName>（已不存在）`
-   - 分支不一致（黄色）：`⚠ 主工作分支: <branchName>（不一致）`
+   - 分支不一致（红色）：`⚠ 主工作分支: <branchName>（不一致）`
    - 未初始化（灰色）：`未初始化（执行 clawt init 设置主工作分支）`
 3. **工作区 diff 信息行**：显示主工作分支的工作区 diff 统计，有变更时格式为 `工作区: +N -M`（新增行数绿色，删除行数红色），无变更时显示 `工作区: 无变更`（绿色）
 4. **顶部分隔线**：当存在向上溢出时，分隔线中间嵌入 `↑ 更多 worktree...` 提示
@@ -338,7 +338,7 @@ Worktree 按创建日期分组（复用 `groupWorktreesByDate()`），每组前�
   - `PANEL_TITLE(projectName)`：面板标题
   - `PANEL_CONFIGURED_BRANCH(branchName)`：配置分支信息（正常状态，灰色）
   - `PANEL_CONFIGURED_BRANCH_DELETED(branchName)`：配置分支信息（分支已删除，红色）
-  - `PANEL_CONFIGURED_BRANCH_MISMATCH(branchName)`：配置分支信息（分支不一致，黄色）
+  - `PANEL_CONFIGURED_BRANCH_MISMATCH(branchName)`：配置分支信息（分支不一致，红色）
   - `PANEL_NOT_INITIALIZED`：未初始化提示（灰色）
 - `PanelLine` 接口（`src/utils/interactive-panel-render.ts`）：面板行类型定义，包含 `type`（`'separator'` | `'worktree-content'`）、`text`、可选 `worktreeIndex`
 - `collectStatus()` 函数已改为导出（`export`），以便 `InteractivePanel` 作为数据收集函数引用

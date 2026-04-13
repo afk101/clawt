@@ -272,7 +272,7 @@ function printMainSection(main: MainWorktreeStatus): void {
     if (main.configuredBranchExists === false) {
       printInfo(`    ${chalk.red(MESSAGES.STATUS_CONFIGURED_BRANCH_DELETED(main.configuredMainBranch))}`);
     } else if (main.branch !== main.configuredMainBranch && !main.branch.startsWith(VALIDATE_BRANCH_PREFIX)) {
-      printInfo(`    ${chalk.yellow(MESSAGES.STATUS_CONFIGURED_BRANCH_MISMATCH(main.configuredMainBranch))}`);
+      printInfo(`    ${chalk.red(MESSAGES.STATUS_CONFIGURED_BRANCH_MISMATCH(main.configuredMainBranch))}`);
     } else {
       printInfo(`    ${chalk.gray(MESSAGES.STATUS_CONFIGURED_BRANCH(main.configuredMainBranch))}`);
     }

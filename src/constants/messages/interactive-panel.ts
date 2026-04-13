@@ -83,7 +83,7 @@ export const PANEL_CONFIGURED_BRANCH_DELETED = (branchName: string): string =>
  * @returns {string} 格式化的分支信息
  */
 export const PANEL_CONFIGURED_BRANCH_MISMATCH = (branchName: string): string =>
-  chalk.yellow(`⚠ 主工作分支: ${branchName}（不一致）`);
+  chalk.red(`⚠ 主工作分支: ${branchName}（不一致）`);
 
 /** 面板配置分支信息（未初始化） */
 export const PANEL_NOT_INITIALIZED = chalk.gray('未初始化（执行 clawt init 设置主工作分支）');
