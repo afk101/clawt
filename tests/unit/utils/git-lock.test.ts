@@ -24,11 +24,19 @@ vi.mock('../../../src/errors/index.js', () => ({
 vi.mock('../../../src/constants/index.js', () => ({
   MESSAGES: {
     GIT_INDEX_LOCKED: (lockFilePath: string) => `Git index 被锁定，锁文件路径：${lockFilePath}`,
+    GIT_INDEX_LOCK_RETRYING: 'Git index 被锁定，正在重试...',
   },
 }));
 
 import { execSync } from 'node:child_process';
-import { isGitIndexLockError, findGitIndexLockPath, throwIfGitIndexLockError } from '../../../src/utils/git-lock.js';
+import {
+  isGitIndexLockError,
+  findGitIndexLockPath,
+  throwIfGitIndexLockError,
+  shouldRetryGitIndexLockError,
+  waitForGitIndexLockRetrySync,
+  extractFullErrorMessage,
+} from '../../../src/utils/git-lock.js';
 
 const mockedExecSync = vi.mocked(execSync);
 
@@ -157,5 +165,81 @@ describe('throwIfGitIndexLockError', () => {
   it('非 index.lock 错误不抛出', () => {
     const error = new Error("Command failed: git merge feature");
     expect(() => throwIfGitIndexLockError(error)).not.toThrow();
+  });
+});
+
+describe('extractFullErrorMessage', () => {
+  it('从 Error 对象提取 message', () => {
+    const error = new Error('test error');
+    expect(extractFullErrorMessage(error)).toBe('test error');
+  });
+
+  it('合并 message 和 stderr', () => {
+    const error = new Error('Command failed');
+    (error as any).stderr = 'fatal: Unable to write index.';
+    expect(extractFullErrorMessage(error)).toBe('Command failed\nfatal: Unable to write index.');
+  });
+
+  it('处理 Buffer 类型的 stderr', () => {
+    const error = new Error('Command failed');
+    (error as any).stderr = Buffer.from('fatal: Unable to write index.');
+    expect(extractFullErrorMessage(error)).toBe('Command failed\nfatal: Unable to write index.');
+  });
+
+  it('非 Error 对象返回 String 转换结果', () => {
+    expect(extractFullErrorMessage('string error')).toBe('string error');
+    expect(extractFullErrorMessage(123)).toBe('123');
+  });
+});
+
+describe('shouldRetryGitIndexLockError', () => {
+  it('index.lock 错误且未达到重试上限时返回 true', () => {
+    const error = new Error("fatal: Unable to create '/repo/.git/index.lock': File exists.");
+    expect(shouldRetryGitIndexLockError(error, 0)).toBe(true);
+  });
+
+  it('index.lock 错误但已达到重试上限时返回 false', () => {
+    const error = new Error("fatal: Unable to create '/repo/.git/index.lock': File exists.");
+    // MAX_RETRIES 默认为 1，所以 retryCount = 1 时不应再重试
+    expect(shouldRetryGitIndexLockError(error, 1)).toBe(false);
+  });
+
+  it('非 index.lock 错误返回 false', () => {
+    const error = new Error('Command failed: git merge feature');
+    expect(shouldRetryGitIndexLockError(error, 0)).toBe(false);
+  });
+
+  it('从 stderr 检测 index.lock 错误', () => {
+    const error = new Error('Command failed');
+    (error as any).stderr = "fatal: Unable to create '/repo/.git/index.lock': File exists.";
+    expect(shouldRetryGitIndexLockError(error, 0)).toBe(true);
+  });
+});
+
+describe('waitForGitIndexLockRetrySync', () => {
+  it('向 stderr 输出重试提示', () => {
+    const stderrWriteSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+    // 执行函数（会有短暂延迟）
+    waitForGitIndexLockRetrySync();
+
+    // 验证输出了重试提示
+    expect(stderrWriteSpy).toHaveBeenCalledWith('Git index 被锁定，正在重试...\n');
+
+    stderrWriteSpy.mockRestore();
+  });
+
+  it('执行时间接近配置的延迟时间', () => {
+    const stderrWriteSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+
+    const startTime = Date.now();
+    waitForGitIndexLockRetrySync();
+    const elapsed = Date.now() - startTime;
+
+    // 延迟时间应该接近 150ms（允许 50ms 误差）
+    expect(elapsed).toBeGreaterThanOrEqual(100);
+    expect(elapsed).toBeLessThanOrEqual(300);
+
+    stderrWriteSpy.mockRestore();
   });
 });

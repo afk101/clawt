@@ -3,6 +3,7 @@ import { execSync } from 'node:child_process';
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
+import { GIT_INDEX_LOCK_RETRY } from '../constants/git.js';
 
 /**
  * index.lock 错误的关键词匹配模式
@@ -38,7 +39,7 @@ export function isGitIndexLockError(errorMessage: string): boolean {
  * @param {unknown} error - 捕获的错误对象
  * @returns {string} 合并后的错误消息
  */
-function extractFullErrorMessage(error: unknown): string {
+export function extractFullErrorMessage(error: unknown): string {
   if (!(error instanceof Error)) return String(error);
   const stderr = (error as { stderr?: string | Buffer }).stderr;
   const stderrStr = stderr ? String(stderr) : '';
@@ -93,4 +94,35 @@ export function throwIfGitIndexLockError(error: unknown, cwd?: string): void {
     const lockFilePath = parseIndexLockPathFromError(errorMessage) ?? findGitIndexLockPath(cwd);
     throw new ClawtError(MESSAGES.GIT_INDEX_LOCKED(lockFilePath));
   }
+}
+
+/**
+ * 同步延迟函数（使用 Atomics.wait 实现真正的阻塞等待）
+ * 相比 busy-wait，不消耗 CPU 资源
+ * @param {number} ms - 延迟毫秒数
+ */
+function sleepSync(ms: number): void {
+  const sharedBuffer = new SharedArrayBuffer(4);
+  const int32 = new Int32Array(sharedBuffer);
+  Atomics.wait(int32, 0, 0, ms);
+}
+
+/**
+ * 检测是否应该重试 Git index.lock 错误
+ * @param {unknown} error - 捕获的错误对象
+ * @param {number} retryCount - 当前已重试次数
+ * @returns {boolean} 是否应重试（是 lock 错误且未超过重试上限）
+ */
+export function shouldRetryGitIndexLockError(error: unknown, retryCount: number): boolean {
+  const errorMessage = extractFullErrorMessage(error);
+  return isGitIndexLockError(errorMessage) && retryCount < GIT_INDEX_LOCK_RETRY.MAX_RETRIES;
+}
+
+/**
+ * 等待 index.lock 重试延迟（同步版本）
+ * 打印提示信息并等待指定时间
+ */
+export function waitForGitIndexLockRetrySync(): void {
+  process.stderr.write(`${MESSAGES.GIT_INDEX_LOCK_RETRYING}\n`);
+  sleepSync(GIT_INDEX_LOCK_RETRY.DELAY_MS);
 }

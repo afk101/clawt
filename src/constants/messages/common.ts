@@ -55,4 +55,6 @@ export const COMMON_MESSAGES = {
     `  锁文件路径：${lockFilePath}\n` +
     `  修复方法：确认没有其他 git 操作在进行后，执行以下命令删除锁文件：\n` +
     `  rm ${lockFilePath}`,
+  /** Git index.lock 重试中（简短提示） */
+  GIT_INDEX_LOCK_RETRYING: 'Git index 被锁定，正在重试...',
 } as const;

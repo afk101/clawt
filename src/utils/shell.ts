@@ -2,7 +2,7 @@ import { execSync, execFileSync, spawn, spawnSync, type ChildProcess, type Spawn
 import { logger } from '../logger/index.js';
 import { EXEC_MAX_BUFFER } from '../constants/git.js';
 import { CLAUDE_CODE_ENTRYPOINT_VALUE } from '../constants/index.js';
-import { throwIfGitIndexLockError } from './git-lock.js';
+import { throwIfGitIndexLockError, shouldRetryGitIndexLockError, waitForGitIndexLockRetrySync } from './git-lock.js';
 
 /**
  * 获取移除了 CLAUDECODE 嵌套会话标记的环境变量副本，并注入 CLAUDE_CODE_ENTRYPOINT 标识
@@ -45,26 +45,39 @@ export interface ParallelCommandResultWithStderr extends ParallelCommandResult {
 
 /**
  * 同步执行 shell 命令并返回 stdout
+ * 当检测到 Git index.lock 错误时，会自动重试一次
  * @param {string} command - 要执行的命令
  * @param {object} options - 可选配置
  * @param {string} options.cwd - 工作目录
  * @returns {string} 命令的标准输出（已 trim）
- * @throws {ClawtError} 检测到 index.lock 错误时抛出中文友好提示
+ * @throws {ClawtError} 检测到 index.lock 错误且重试失败时抛出中文友好提示
  * @throws {Error} 其他命令执行失败时抛出
  */
 export function execCommand(command: string, options?: { cwd?: string }): string {
   logger.debug(`执行命令: ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
-  try {
-    const result = execSync(command, {
-      cwd: options?.cwd,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      maxBuffer: EXEC_MAX_BUFFER,
-    });
-    return result.trim();
-  } catch (error) {
-    throwIfGitIndexLockError(error, options?.cwd);
-    throw error;
+
+  let retryCount = 0;
+
+  while (true) {
+    try {
+      const result = execSync(command, {
+        cwd: options?.cwd,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        maxBuffer: EXEC_MAX_BUFFER,
+      });
+      return result.trim();
+    } catch (error) {
+      if (shouldRetryGitIndexLockError(error, retryCount)) {
+        retryCount++;
+        logger.debug(`检测到 index.lock 错误，第 ${retryCount} 次重试`);
+        waitForGitIndexLockRetrySync();
+        continue;
+      }
+
+      throwIfGitIndexLockError(error, options?.cwd);
+      throw error;
+    }
   }
 }
 
@@ -104,29 +117,42 @@ export function killAllChildProcesses(children: ChildProcess[]): void {
 
 /**
  * 同步执行命令，通过 stdin 传入数据
+ * 当检测到 Git index.lock 错误时，会自动重试一次
  * @param {string} command - 要执行的命令
  * @param {string[]} args - 命令参数
  * @param {object} options - 配置
  * @param {Buffer} options.input - 通过 stdin 传入的数据（Buffer 格式，保留二进制完整性）
  * @param {string} [options.cwd] - 工作目录
  * @returns {string} 命令的标准输出（已 trim）
- * @throws {ClawtError} 检测到 index.lock 错误时抛出中文友好提示
+ * @throws {ClawtError} 检测到 index.lock 错误且重试失败时抛出中文友好提示
  * @throws {Error} 其他命令执行失败时抛出
  */
 export function execCommandWithInput(command: string, args: string[], options: { input: Buffer; cwd?: string }): string {
   logger.debug(`执行命令(stdin): ${command} ${args.join(' ')}${options.cwd ? ` (cwd: ${options.cwd})` : ''}`);
-  try {
-    const result = execFileSync(command, args, {
-      cwd: options.cwd,
-      input: options.input,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      maxBuffer: EXEC_MAX_BUFFER,
-    });
-    return result.trim();
-  } catch (error) {
-    throwIfGitIndexLockError(error, options.cwd);
-    throw error;
+
+  let retryCount = 0;
+
+  while (true) {
+    try {
+      const result = execFileSync(command, args, {
+        cwd: options.cwd,
+        input: options.input,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        maxBuffer: EXEC_MAX_BUFFER,
+      });
+      return result.trim();
+    } catch (error) {
+      if (shouldRetryGitIndexLockError(error, retryCount)) {
+        retryCount++;
+        logger.debug(`检测到 index.lock 错误，第 ${retryCount} 次重试`);
+        waitForGitIndexLockRetrySync();
+        continue;
+      }
+
+      throwIfGitIndexLockError(error, options.cwd);
+      throw error;
+    }
   }
 }
 

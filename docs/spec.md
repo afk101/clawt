@@ -384,6 +384,7 @@ async function interactiveConfigEditor<T extends object>(
 | Worktree 路径已存在               | 输出错误提示，退出 (exit code 1)                            |
 | Git 命令执行失败                  | 捕获 stderr，记录日志，输出错误提示，退出 (exit code 1)      |
 | 目标 worktree 不存在              | 输出错误提示（列出可用 worktree），退出 (exit code 1)        |
+| Git index.lock 被锁定             | 自动重试 1 次（延迟 150ms），重试失败则输出错误提示和修复方法 |
 
 ### 7.2 退出码
 
