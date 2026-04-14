@@ -12,5 +12,5 @@ export const GIT_INDEX_LOCK_RETRY = {
   /** 重试次数（用户反馈"重试一下就可以了"，单次重试足够） */
   MAX_RETRIES: 1,
   /** 重试延迟毫秒数（让锁文件有时间被释放） */
-  DELAY_MS: 150,
+  DELAY_MS: 1000,
 } as const;
