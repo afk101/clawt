@@ -46,7 +46,7 @@ clawt tasks init [path]
 # 格式说明: 标签外的文本会被忽略，每个任务用 START/END 标签包裹
 #
 # 规则:
-#   1. 每个任务块用 <!-- CLAWT-TASKS:START --> 和 <!-- CLAWT-TASKS:END --> 包裹
+#   1. 每个任务块用 <START> 和 <END> 标签包裹（实际标签见下方示例）
 #   2. 块内 # branch: <分支名> 声明分支名（使用 -b 参数时可省略）
 #   3. 块内其余行为任务描述（支持多行）
 
