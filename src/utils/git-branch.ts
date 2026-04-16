@@ -1,4 +1,4 @@
-import { execCommand } from './shell.js';
+import { execCommand, execCommandAsync } from './shell.js';
 import { logger } from '../logger/index.js';
 
 /**
@@ -65,6 +65,51 @@ export function getCommitCountBehind(branchName: string, cwd?: string): number {
     return parseInt(output, 10) || 0;
   } catch {
     return 0;
+  }
+}
+
+/**
+ * 解析 git rev-list --left-right --count 的输出
+ * 输出格式：<left_count>\t<right_count>
+ * left = HEAD 侧独有提交数（即 behind），right = branch 侧独有提交数（即 ahead）
+ * @param {string} output - rev-list 命令输出
+ * @returns {{ ahead: number; behind: number }} 领先和落后的提交数
+ */
+function parseDivergenceOutput(output: string): { ahead: number; behind: number } {
+  const [leftStr, rightStr] = output.trim().split(/\s+/);
+  return { ahead: parseInt(rightStr, 10) || 0, behind: parseInt(leftStr, 10) || 0 };
+}
+
+/**
+ * 获取当前分支与目标分支的双向提交差异
+ * 使用单条 git rev-list --left-right --count 命令同时获取领先和落后提交数，
+ * 替代分别调用 getCommitCountAhead 和 getCommitCountBehind 两条命令
+ * @param {string} branchName - 目标分支名
+ * @param {string} [cwd] - 工作目录
+ * @returns {{ ahead: number; behind: number }} 领先和落后的提交数
+ */
+export function getCommitDivergence(branchName: string, cwd?: string): { ahead: number; behind: number } {
+  try {
+    const output = execCommand(`git rev-list --left-right --count HEAD...${branchName}`, { cwd });
+    return parseDivergenceOutput(output);
+  } catch {
+    return { ahead: 0, behind: 0 };
+  }
+}
+
+/**
+ * 异步获取当前分支与目标分支的双向提交差异
+ * 用于并行收集多个 worktree 的提交差异时避免串行阻塞
+ * @param {string} branchName - 目标分支名
+ * @param {string} [cwd] - 工作目录
+ * @returns {Promise<{ ahead: number; behind: number }>} 领先和落后的提交数
+ */
+export async function getCommitDivergenceAsync(branchName: string, cwd?: string): Promise<{ ahead: number; behind: number }> {
+  try {
+    const output = await execCommandAsync(`git rev-list --left-right --count HEAD...${branchName}`, { cwd });
+    return parseDivergenceOutput(output);
+  } catch {
+    return { ahead: 0, behind: 0 };
   }
 }
 

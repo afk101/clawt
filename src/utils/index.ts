@@ -1,4 +1,4 @@
-export { execCommand, spawnProcess, killAllChildProcesses, execCommandWithInput, runCommandInherited, parseParallelCommands, runParallelCommands, runCommandWithStderrCapture, runParallelCommandsWithStderrCapture } from './shell.js';
+export { execCommand, execCommandAsync, spawnProcess, killAllChildProcesses, execCommandWithInput, runCommandInherited, parseParallelCommands, runParallelCommands, runCommandWithStderrCapture, runParallelCommandsWithStderrCapture } from './shell.js';
 export type { ParallelCommandResult, CommandResultWithStderr, ParallelCommandResultWithStderr } from './shell.js';
 export { copyToClipboard } from './clipboard.js';
 export {
@@ -13,6 +13,7 @@ export {
   removeWorktreeByPath,
   deleteBranch,
   getStatusPorcelain,
+  getStatusPorcelainAsync,
   isWorkingDirClean,
   gitAddAll,
   gitCommit,
@@ -34,7 +35,10 @@ export {
   hasLocalCommits,
   getCommitCountAhead,
   getCommitCountBehind,
+  getCommitDivergence,
+  getCommitDivergenceAsync,
   getDiffStat,
+  getDiffStatAsync,
   gitDiffCachedBinary,
   gitApplyCachedFromStdin,
   getCurrentBranch,

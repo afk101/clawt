@@ -9,11 +9,10 @@ import {
   getCurrentBranch,
   isWorkingDirClean,
   getProjectWorktrees,
-  getCommitCountAhead,
-  getCommitCountBehind,
+  getCommitDivergenceAsync,
+  getDiffStatAsync,
+  getStatusPorcelainAsync,
   getDiffStat,
-  hasMergeConflict,
-  hasLocalCommits,
   getSnapshotModifiedTime,
   getProjectSnapshotBranches,
   getWorktreeCreatedTime,
@@ -55,7 +54,7 @@ async function handleStatus(options: StatusOptions): Promise<void> {
     return;
   }
 
-  const statusResult = collectStatus();
+  const statusResult = await collectStatus();
 
   logger.info(`status 命令执行，项目: ${statusResult.main.projectName}，共 ${statusResult.totalWorktrees} 个 worktree`);
 
@@ -69,9 +68,10 @@ async function handleStatus(options: StatusOptions): Promise<void> {
 
 /**
  * 收集项目全局状态信息
- * @returns {StatusResult} 完整的状态数据
+ * 各 worktree 的数据通过 Promise.all 并行收集，避免串行阻塞
+ * @returns {Promise<StatusResult>} 完整的状态数据
  */
-export function collectStatus(): StatusResult {
+export async function collectStatus(): Promise<StatusResult> {
   const projectName = getProjectName();
   const currentBranch = getCurrentBranch();
   const isClean = isWorkingDirClean();
@@ -95,9 +95,11 @@ export function collectStatus(): StatusResult {
     deletions,
   };
 
-  // 各 worktree 详细状态
+  // 各 worktree 详细状态（异步并行收集）
   const worktrees = getProjectWorktrees();
-  const worktreeStatuses = worktrees.map((wt) => collectWorktreeDetailedStatus(wt, projectName));
+  const worktreeStatuses = await Promise.all(
+    worktrees.map((wt) => collectWorktreeDetailedStatusAsync(wt, projectName)),
+  );
 
   // 未清理的 validate 快照
   const snapshots = collectSnapshots(projectName, worktrees);
@@ -111,67 +113,97 @@ export function collectStatus(): StatusResult {
 }
 
 /**
- * 收集单个 worktree 的详细状态
- * 变更状态判断优先级：冲突 > 未提交 > 已提交 > 干净
+ * 异步收集单个 worktree 的详细状态
+ * 内部 3 个 git 命令通过 Promise.all 并行执行，每个 worktree 内部也是并行的
  * @param {WorktreeInfo} worktree - worktree 信息
  * @param {string} projectName - 项目名
- * @returns {WorktreeDetailedStatus} 详细状态
+ * @returns {Promise<WorktreeDetailedStatus>} 详细状态
  */
-function collectWorktreeDetailedStatus(worktree: WorktreeInfo, projectName: string): WorktreeDetailedStatus {
-  const changeStatus = detectChangeStatus(worktree);
-  const { commitsAhead, commitsBehind } = countCommitDivergence(worktree.branch);
-  const { insertions, deletions } = countDiffStat(worktree.path);
+async function collectWorktreeDetailedStatusAsync(worktree: WorktreeInfo, projectName: string): Promise<WorktreeDetailedStatus> {
+  // 3 个 git 命令并行执行：提交差异、工作区状态、diff 统计
+  const [divergence, porcelain, diffStat] = await Promise.all([
+    countCommitDivergenceAsync(worktree.branch),
+    detectStatusPorcelainAsync(worktree.path),
+    countDiffStatAsync(worktree.path),
+  ]);
+
+  const changeStatus = detectChangeStatusFromPorcelain(porcelain, divergence.commitsAhead);
   const createdAt = getWorktreeCreatedTime(worktree.path);
 
   return {
     path: worktree.path,
     branch: worktree.branch,
     changeStatus,
-    commitsAhead,
-    commitsBehind,
+    commitsAhead: divergence.commitsAhead,
+    commitsBehind: divergence.commitsBehind,
     snapshotTime: resolveSnapshotTime(projectName, worktree.branch),
-    insertions,
-    deletions,
+    insertions: diffStat.insertions,
+    deletions: diffStat.deletions,
     createdAt,
   };
 }
 
 /**
- * 检测 worktree 的变更状态
+ * 从 porcelain 输出判断变更状态
  * 优先级：冲突 > 未提交 > 已提交 > 干净
- * @param {WorktreeInfo} worktree - worktree 信息
+ * @param {string} porcelain - git status --porcelain 输出
+ * @param {number} commitsAhead - 领先提交数
  * @returns {WorktreeDetailedStatus['changeStatus']} 变更状态
  */
-function detectChangeStatus(worktree: WorktreeInfo): WorktreeDetailedStatus['changeStatus'] {
+function detectChangeStatusFromPorcelain(porcelain: string, commitsAhead: number): WorktreeDetailedStatus['changeStatus'] {
+  // 检测合并冲突（UU/AA/DD/DU/UD/AU/UA 开头的行）
+  const hasConflict = porcelain.split('\n').some((line) => /^(UU|AA|DD|DU|UD|AU|UA)/.test(line));
+  if (hasConflict) {
+    return 'conflict';
+  }
+  // 检测未提交修改（porcelain 非空即有未提交变更）
+  if (porcelain !== '') {
+    return 'uncommitted';
+  }
+  // 用 commitsAhead > 0 判断是否有本地提交
+  if (commitsAhead > 0) {
+    return 'committed';
+  }
+  return 'clean';
+}
+
+/**
+ * 异步获取工作区 porcelain 状态，出错时返回空字符串
+ * @param {string} worktreePath - worktree 目录路径
+ * @returns {Promise<string>} porcelain 格式输出
+ */
+async function detectStatusPorcelainAsync(worktreePath: string): Promise<string> {
   try {
-    if (hasMergeConflict(worktree.path)) {
-      return 'conflict';
-    }
-    if (!isWorkingDirClean(worktree.path)) {
-      return 'uncommitted';
-    }
-    if (hasLocalCommits(worktree.branch)) {
-      return 'committed';
-    }
-    return 'clean';
+    return await getStatusPorcelainAsync(worktreePath);
   } catch {
-    return 'clean';
+    return '';
   }
 }
 
 /**
- * 统计分支与主分支的提交差异（领先/落后数）
+ * 异步统计分支与主分支的提交差异（领先/落后数）
  * @param {string} branchName - 分支名
- * @returns {{ commitsAhead: number; commitsBehind: number }} 领先和落后的提交数
+ * @returns {Promise<{ commitsAhead: number; commitsBehind: number }>} 领先和落后的提交数
  */
-function countCommitDivergence(branchName: string): { commitsAhead: number; commitsBehind: number } {
+async function countCommitDivergenceAsync(branchName: string): Promise<{ commitsAhead: number; commitsBehind: number }> {
   try {
-    return {
-      commitsAhead: getCommitCountAhead(branchName),
-      commitsBehind: getCommitCountBehind(branchName),
-    };
+    const { ahead, behind } = await getCommitDivergenceAsync(branchName);
+    return { commitsAhead: ahead, commitsBehind: behind };
   } catch {
     return { commitsAhead: 0, commitsBehind: 0 };
+  }
+}
+
+/**
+ * 异步统计 worktree 的差异行数
+ * @param {string} worktreePath - worktree 目录路径
+ * @returns {Promise<{ insertions: number; deletions: number }>} 新增和删除行数
+ */
+async function countDiffStatAsync(worktreePath: string): Promise<{ insertions: number; deletions: number }> {
+  try {
+    return await getDiffStatAsync(worktreePath);
+  } catch {
+    return { insertions: 0, deletions: 0 };
   }
 }
 

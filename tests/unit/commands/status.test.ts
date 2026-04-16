@@ -39,11 +39,10 @@ vi.mock('../../../src/utils/index.js', () => ({
   getCurrentBranch: vi.fn(),
   isWorkingDirClean: vi.fn(),
   getProjectWorktrees: vi.fn(),
-  getCommitCountAhead: vi.fn(),
-  getCommitCountBehind: vi.fn(),
+  getCommitDivergenceAsync: vi.fn(),
   getDiffStat: vi.fn(),
-  hasMergeConflict: vi.fn(),
-  hasLocalCommits: vi.fn(),
+  getDiffStatAsync: vi.fn(),
+  getStatusPorcelainAsync: vi.fn(),
   getSnapshotModifiedTime: vi.fn(),
   getProjectSnapshotBranches: vi.fn(),
   getWorktreeCreatedTime: vi.fn(),
@@ -61,11 +60,10 @@ import {
   getCurrentBranch,
   isWorkingDirClean,
   getProjectWorktrees,
-  getCommitCountAhead,
-  getCommitCountBehind,
+  getCommitDivergenceAsync,
   getDiffStat,
-  hasMergeConflict,
-  hasLocalCommits,
+  getDiffStatAsync,
+  getStatusPorcelainAsync,
   getSnapshotModifiedTime,
   getProjectSnapshotBranches,
   getWorktreeCreatedTime,
@@ -77,11 +75,10 @@ const mockedGetProjectName = vi.mocked(getProjectName);
 const mockedGetCurrentBranch = vi.mocked(getCurrentBranch);
 const mockedIsWorkingDirClean = vi.mocked(isWorkingDirClean);
 const mockedGetProjectWorktrees = vi.mocked(getProjectWorktrees);
-const mockedGetCommitCountAhead = vi.mocked(getCommitCountAhead);
-const mockedGetCommitCountBehind = vi.mocked(getCommitCountBehind);
+const mockedGetCommitDivergenceAsync = vi.mocked(getCommitDivergenceAsync);
 const mockedGetDiffStat = vi.mocked(getDiffStat);
-const mockedHasMergeConflict = vi.mocked(hasMergeConflict);
-const mockedHasLocalCommits = vi.mocked(hasLocalCommits);
+const mockedGetDiffStatAsync = vi.mocked(getDiffStatAsync);
+const mockedGetStatusPorcelainAsync = vi.mocked(getStatusPorcelainAsync);
 const mockedGetSnapshotModifiedTime = vi.mocked(getSnapshotModifiedTime);
 const mockedGetProjectSnapshotBranches = vi.mocked(getProjectSnapshotBranches);
 const mockedGetWorktreeCreatedTime = vi.mocked(getWorktreeCreatedTime);
@@ -94,11 +91,10 @@ beforeEach(() => {
   mockedIsWorkingDirClean.mockReturnValue(true);
   mockedGetProjectWorktrees.mockReturnValue([]);
   mockedGetProjectSnapshotBranches.mockReturnValue([]);
-  mockedGetCommitCountAhead.mockReturnValue(0);
-  mockedGetCommitCountBehind.mockReturnValue(0);
+  mockedGetCommitDivergenceAsync.mockResolvedValue({ ahead: 0, behind: 0 });
   mockedGetDiffStat.mockReturnValue({ insertions: 0, deletions: 0 });
-  mockedHasMergeConflict.mockReturnValue(false);
-  mockedHasLocalCommits.mockReturnValue(false);
+  mockedGetDiffStatAsync.mockResolvedValue({ insertions: 0, deletions: 0 });
+  mockedGetStatusPorcelainAsync.mockResolvedValue('');
   mockedGetSnapshotModifiedTime.mockReturnValue(null);
   mockedGetWorktreeCreatedTime.mockReturnValue(null);
   mockedFormatRelativeTime.mockReturnValue('3 天前');
@@ -128,9 +124,8 @@ describe('handleStatus', () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
-    mockedGetCommitCountAhead.mockReturnValue(2);
-    mockedGetDiffStat.mockReturnValue({ insertions: 10, deletions: 5 });
-    mockedHasLocalCommits.mockReturnValue(true);
+    mockedGetCommitDivergenceAsync.mockResolvedValue({ ahead: 2, behind: 0 });
+    mockedGetDiffStatAsync.mockResolvedValue({ insertions: 10, deletions: 5 });
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -155,8 +150,8 @@ describe('handleStatus', () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
-    // 模拟冲突状态
-    mockedHasMergeConflict.mockReturnValue(true);
+    // 模拟冲突状态：porcelain 输出包含 UU 前缀的行
+    mockedGetStatusPorcelainAsync.mockResolvedValue('UU src/conflict-file.ts');
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -214,10 +209,8 @@ describe('handleStatus', () => {
     mockedGetProjectWorktrees.mockReturnValue([
       { path: '/path/feature', branch: 'feature' },
     ]);
-    mockedHasMergeConflict.mockReturnValue(false);
-    mockedIsWorkingDirClean
-      .mockReturnValueOnce(true)   // 主 worktree
-      .mockReturnValueOnce(false); // 目标 worktree 不干净
+    // 模拟未提交修改：porcelain 输出包含修改但非冲突的行
+    mockedGetStatusPorcelainAsync.mockResolvedValue(' M src/file.ts');  // 目标 worktree 有未提交修改
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 

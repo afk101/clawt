@@ -1,6 +1,6 @@
 import { basename } from 'node:path';
 import { execSync, execFileSync } from 'node:child_process';
-import { execCommand, execCommandWithInput } from './shell.js';
+import { execCommand, execCommandAsync, execCommandWithInput } from './shell.js';
 import { logger } from '../logger/index.js';
 import { EXEC_MAX_BUFFER, AUTO_SAVE_COMMIT_MESSAGE_PREFIX } from '../constants/git.js';
 
@@ -79,6 +79,16 @@ export function getProjectName(cwd?: string): string {
  */
 export function getStatusPorcelain(cwd?: string): string {
   return execCommand('git status --porcelain', { cwd });
+}
+
+/**
+ * 异步获取工作区状态（git status --porcelain）
+ * 用于并行收集多个 worktree 状态时避免串行阻塞
+ * @param {string} cwd - 工作目录
+ * @returns {Promise<string>} porcelain 格式输出，为空表示干净
+ */
+export async function getStatusPorcelainAsync(cwd?: string): Promise<string> {
+  return execCommandAsync('git status --porcelain', { cwd });
 }
 
 /**
@@ -253,6 +263,17 @@ export function parseShortStat(output: string): { insertions: number; deletions:
 export function getDiffStat(worktreePath: string): { insertions: number; deletions: number } {
   // 工作区和暂存区相对于 HEAD 的变更
   const output = execCommand('git diff --shortstat HEAD', { cwd: worktreePath });
+  return parseShortStat(output);
+}
+
+/**
+ * 异步获取 worktree 中工作区和暂存区的变更统计
+ * 用于并行收集多个 worktree 的 diff 统计时避免串行阻塞
+ * @param {string} worktreePath - worktree 目录路径
+ * @returns {Promise<{ insertions: number; deletions: number }>} 新增和删除行数
+ */
+export async function getDiffStatAsync(worktreePath: string): Promise<{ insertions: number; deletions: number }> {
+  const output = await execCommandAsync('git diff --shortstat HEAD', { cwd: worktreePath });
   return parseShortStat(output);
 }
 

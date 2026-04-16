@@ -1,8 +1,12 @@
-import { execSync, execFileSync, spawn, spawnSync, type ChildProcess, type SpawnSyncReturns, type StdioOptions } from 'node:child_process';
+import { exec, execSync, execFileSync, spawn, spawnSync, type ChildProcess, type SpawnSyncReturns, type StdioOptions } from 'node:child_process';
+import { promisify } from 'node:util';
 import { logger } from '../logger/index.js';
 import { EXEC_MAX_BUFFER } from '../constants/git.js';
 import { CLAUDE_CODE_ENTRYPOINT_VALUE } from '../constants/index.js';
 import { throwIfGitIndexLockError, shouldRetryGitIndexLockError, waitForGitIndexLockRetrySync } from './git-lock.js';
+
+/** promisified 版本的 exec */
+const execPromise = promisify(exec);
 
 /**
  * 获取移除了 CLAUDECODE 嵌套会话标记的环境变量副本，并注入 CLAUDE_CODE_ENTRYPOINT 标识
@@ -79,6 +83,26 @@ export function execCommand(command: string, options?: { cwd?: string }): string
       throw error;
     }
   }
+}
+
+/**
+ * 异步执行 shell 命令并返回 stdout
+ * 基于 child_process.exec 的 promisified 版本，适用于只读 git 命令的并行执行场景
+ * 不包含 index.lock 重试逻辑（只读命令不触发 index.lock）
+ * @param {string} command - 要执行的命令
+ * @param {object} options - 可选配置
+ * @param {string} options.cwd - 工作目录
+ * @returns {Promise<string>} 命令的标准输出（已 trim）
+ * @throws {Error} 命令执行失败时抛出
+ */
+export async function execCommandAsync(command: string, options?: { cwd?: string }): Promise<string> {
+  logger.debug(`执行异步命令: ${command}${options?.cwd ? ` (cwd: ${options.cwd})` : ''}`);
+  const { stdout } = await execPromise(command, {
+    cwd: options?.cwd,
+    encoding: 'utf-8',
+    maxBuffer: EXEC_MAX_BUFFER,
+  });
+  return (stdout as string).trim();
 }
 
 /**
