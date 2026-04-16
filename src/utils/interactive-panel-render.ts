@@ -69,6 +69,7 @@ function buildSeparatorWithHint(cols: number, hint: string): string {
  * @param {number} rows - 终端行数
  * @param {number} cols - 终端列数
  * @param {number} countdown - 刷新倒计时秒数
+ * @param {PanelLine[]} [cachedPanelLines] - 缓存的面板行列表（传入时复用，不传则重新构建）
  * @returns {string[]} 帧内容行数组
  */
 export function buildPanelFrame(
@@ -78,6 +79,7 @@ export function buildPanelFrame(
   rows: number,
   cols: number,
   countdown: number,
+  cachedPanelLines?: PanelLine[],
 ): string[] {
   const lines: string[] = [];
 
@@ -100,8 +102,8 @@ export function buildPanelFrame(
     // 底部分隔线（无溢出提示）
     lines.push(buildSeparatorWithHint(cols, ''));
   } else {
-    // 构建分组的 worktree 行列表
-    const panelLines = buildGroupedWorktreeLines(statusResult.worktrees, selectedIndex);
+    // 构建分组的 worktree 行列表（优先使用缓存）
+    const panelLines = cachedPanelLines ?? buildGroupedWorktreeLines(statusResult.worktrees, selectedIndex);
 
     // 判断溢出状态
     const hasOverflowUp = scrollOffset > 0;

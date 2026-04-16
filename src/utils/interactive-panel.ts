@@ -20,7 +20,7 @@ import {
 } from '../constants/index.js';
 import { PANEL_NOT_TTY, PANEL_PRESS_ENTER_TO_RETURN } from '../constants/messages/index.js';
 import { runCommandInherited } from './shell.js';
-import { buildPanelFrame } from './interactive-panel-render.js';
+import { buildPanelFrame, renderFooter } from './interactive-panel-render.js';
 import { truncateToTerminalWidth } from './progress-render.js';
 import type { StatusResult } from '../types/index.js';
 import { KeyboardController } from './keyboard-controller.js';
@@ -53,16 +53,20 @@ export class InteractivePanel {
   private exitHandler: (() => void) | null;
   /** 操作锁（防止操作期间响应按键） */
   private isOperating: boolean;
+  /** 刷新锁（防止异步刷新期间触发重复刷新） */
+  private isRefreshing: boolean;
   /** Promise resolve 函数（stop 时调用以完成 start 返回的 Promise） */
   private resolveStart: (() => void) | null;
-  /** 数据收集函数引用 */
-  private collectStatusFn: () => StatusResult;
+  /** 数据收集函数引用（异步，支持并行收集 worktree 数据） */
+  private collectStatusFn: () => Promise<StatusResult>;
+  /** 上一帧的总行数，用于 footer-only 渲染时定位最后一行 */
+  private lastFrameLineCount: number = 0;
 
   /**
    * 创建交互式面板
-   * @param {() => StatusResult} collectStatusFn - 数据收集函数
+   * @param {() => Promise<StatusResult>} collectStatusFn - 异步数据收集函数
    */
-  constructor(collectStatusFn: () => StatusResult) {
+  constructor(collectStatusFn: () => Promise<StatusResult>) {
     this.stateManager = new PanelStateManager();
     this.keyboardController = new KeyboardController(this.handleKeypress.bind(this));
     this.refreshTimer = null;
@@ -73,6 +77,7 @@ export class InteractivePanel {
     this.resizeHandler = null;
     this.exitHandler = null;
     this.isOperating = false;
+    this.isRefreshing = false;
     this.resolveStart = null;
     this.collectStatusFn = collectStatusFn;
   }
@@ -82,18 +87,18 @@ export class InteractivePanel {
    * 非 TTY 时打印提示并退出
    * @returns {Promise<void>} 面板关闭时 resolve
    */
-  start(): Promise<void> {
+  async start(): Promise<void> {
     // 非 TTY 降级
     if (!this.isTTY) {
       console.log(PANEL_NOT_TTY);
-      return Promise.resolve();
+      return;
     }
+
+    // 异步收集初始数据（在创建 Promise 之前完成，避免 async executor 反模式）
+    this.stateManager.updateData(await this.collectStatusFn());
 
     return new Promise<void>((resolve) => {
       this.resolveStart = resolve;
-
-      // 收集初始数据
-      this.stateManager.updateData(this.collectStatusFn());
 
       // 初始化终端
       this.initTerminal();
@@ -270,12 +275,12 @@ export class InteractivePanel {
       this.refreshData();
     }, PANEL_REFRESH_INTERVAL_MS);
 
-    // 倒计时定时器（每秒更新显示）
+    // 倒计时定时器（每秒仅更新 footer 行，不触发全量重绘）
     this.countdownTimer = setInterval(() => {
       if (this.refreshCountdown > 0) {
         this.refreshCountdown--;
       }
-      this.render();
+      this.renderFooterOnly();
     }, PANEL_COUNTDOWN_INTERVAL_MS);
 
     // 确保定时器不阻止进程退出
@@ -298,29 +303,35 @@ export class InteractivePanel {
   }
 
   /**
-   * 刷新数据：记录当前选中分支 → 重新收集 → 恢复选中位置 → 重置倒计时 → 重绘
+   * 刷新数据：记录当前选中分支 → 异步重新收集 → 恢复选中位置 → 重置倒计时 → 重绘
+   * 使用 isRefreshing 锁防止异步刷新期间触发重复刷新
    */
-  private refreshData(): void {
-    if (this.stopped || this.isOperating) return;
+  private async refreshData(): Promise<void> {
+    if (this.stopped || this.isOperating || this.isRefreshing) return;
 
-    // 记录当前选中分支名
-    const previousBranch = this.stateManager.getSelectedBranch();
+    this.isRefreshing = true;
+    try {
+      // 记录当前选中分支名
+      const previousBranch = this.stateManager.getSelectedBranch();
 
-    // 重新收集数据并更新状态
-    this.stateManager.updateData(this.collectStatusFn(), previousBranch || undefined);
+      // 异步重新收集数据并更新状态
+      this.stateManager.updateData(await this.collectStatusFn(), previousBranch || undefined);
 
-    // 在重绘前必须确保滚动状态正常
-    this.stateManager.adjustScrollForSelection();
+      // 在重绘前必须确保滚动状态正常
+      this.stateManager.adjustScrollForSelection();
 
-    // 重置倒计时
-    this.refreshCountdown = PANEL_REFRESH_INTERVAL_MS / 1000;
+      // 重置倒计时
+      this.refreshCountdown = PANEL_REFRESH_INTERVAL_MS / 1000;
 
-    this.render();
+      this.render();
+    } finally {
+      this.isRefreshing = false;
+    }
   }
 
   /**
    * 渲染一帧面板内容
-   * 使用同步输出防止闪烁
+   * 使用同步输出防止闪烁，复用缓存的 panelLines 避免重复 groupWorktreesByDate 计算
    */
   private render(): void {
     const statusResult = this.stateManager.getStatusResult();
@@ -336,6 +347,7 @@ export class InteractivePanel {
       rows,
       cols,
       this.refreshCountdown,
+      this.stateManager.getCachedPanelLines(),
     );
 
     // 同步输出开始
@@ -349,7 +361,31 @@ export class InteractivePanel {
       process.stdout.write(`${truncateToTerminalWidth(frameLines[i], cols)}${suffix}`);
     }
 
+    // 记录帧行数，供 renderFooterOnly 定位最后一行
+    this.lastFrameLineCount = frameLines.length;
+
     // 同步输出结束
+    process.stdout.write(SYNC_OUTPUT_END);
+  }
+
+  /**
+   * 仅更新 footer 行（倒计时文本）
+   * 使用 ANSI 光标定位直接覆写最后一行，避免全量重绘
+   */
+  private renderFooterOnly(): void {
+    if (this.stopped || this.isOperating || this.lastFrameLineCount === 0) return;
+
+    const cols = process.stdout.columns || DEFAULT_TERMINAL_COLUMNS;
+    const footerText = renderFooter(this.refreshCountdown);
+    const truncated = truncateToTerminalWidth(footerText, cols);
+
+    // 使用 ANSI 转义序列定位到最后一行并覆写
+    // \x1b[<row>;1H 移动光标到第 <row> 行第 1 列
+    // \x1b[2K 清除当前行
+    process.stdout.write(SYNC_OUTPUT_START);
+    process.stdout.write(`\x1b[${this.lastFrameLineCount};1H`);
+    process.stdout.write('\x1b[2K');
+    process.stdout.write(truncated);
     process.stdout.write(SYNC_OUTPUT_END);
   }
 
@@ -389,8 +425,8 @@ export class InteractivePanel {
 
     this.isOperating = false;
 
-    // 刷新数据并重新启动自动刷新
-    this.refreshData();
+    // 异步刷新数据并重新启动自动刷新
+    await this.refreshData();
     this.startAutoRefresh();
 
     // 渲染
