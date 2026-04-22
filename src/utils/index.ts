@@ -97,4 +97,5 @@ export { buildPanelFrame, buildGroupedWorktreeLines, buildDisplayOrder, renderDa
 export type { PanelLine } from './interactive-panel-render.js';
 export { buildConflictResolvePrompt, invokeClaudeForConflictResolve, resolveConflictsWithAI, determineConflictResolveMode, handleMergeConflict } from './conflict-resolver.js';
 export { resolvePostCreateHook, executePostCreateHooks, runPostCreateHooks } from '../hooks/index.js';
+export { getWorktreeMetaPath, writeWorktreeMeta, readWorktreeSourceBranch, removeWorktreeMeta, removeProjectWorktreeMeta } from './worktree-meta.js';
 

@@ -20,6 +20,8 @@ import {
   confirmAction,
   removeSnapshot,
   removeProjectSnapshots,
+  removeWorktreeMeta,
+  removeProjectWorktreeMeta,
   resolveTargetWorktrees,
   getValidateBranchName,
   deleteValidateBranch,
@@ -119,6 +121,8 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
       deleteValidateBranch(wt.branch);
       // 清理该分支对应的 validate 快照
       removeSnapshot(projectName, wt.branch);
+      // 清理来源分支 meta 文件
+      removeWorktreeMeta(projectName, wt.branch);
       printSuccess(MESSAGES.WORKTREE_REMOVED(wt.path));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -130,6 +134,8 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   // --all 模式下清理整个项目的 validate 快照目录
   if (options.all) {
     removeProjectSnapshots(projectName);
+    // 清理整个项目的来源分支 meta 目录
+    removeProjectWorktreeMeta(projectName);
   }
 
   // 清理 worktree 并清除空目录

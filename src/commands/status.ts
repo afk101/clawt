@@ -23,6 +23,8 @@ import {
   InteractivePanel,
   loadProjectConfig,
   checkBranchExists,
+  readWorktreeSourceBranch,
+  safeStringify,
 } from '../utils/index.js';
 
 /**
@@ -129,6 +131,8 @@ async function collectWorktreeDetailedStatusAsync(worktree: WorktreeInfo, projec
 
   const changeStatus = detectChangeStatusFromPorcelain(porcelain, divergence.commitsAhead);
   const createdAt = getWorktreeCreatedTime(worktree.path);
+  // 同步读取来源分支（文件 I/O 轻量，无需并行）
+  const sourceBranch = readWorktreeSourceBranch(projectName, worktree.branch);
 
   return {
     path: worktree.path,
@@ -140,6 +144,7 @@ async function collectWorktreeDetailedStatusAsync(worktree: WorktreeInfo, projec
     insertions: diffStat.insertions,
     deletions: diffStat.deletions,
     createdAt,
+    sourceBranch,
   };
 }
 
@@ -256,7 +261,7 @@ function collectSnapshots(projectName: string, worktrees: WorktreeInfo[]): Snaps
  * @param {StatusResult} result - 状态数据
  */
 function printStatusAsJson(result: StatusResult): void {
-  console.log(JSON.stringify(result, null, 2));
+  console.log(safeStringify(result, 2));
 }
 
 /**
@@ -356,6 +361,11 @@ function printWorktreeItem(wt: WorktreeDetailedStatus): void {
     printInfo(`    ${chalk.yellow(`落后主分支 ${wt.commitsBehind} 个提交`)}`);
   } else {
     printInfo(`    ${chalk.green('与主分支同步')}`);
+  }
+
+  // 来源主分支（无 meta 文件时静默跳过）
+  if (wt.sourceBranch) {
+    printInfo(`    ${chalk.gray(MESSAGES.STATUS_SOURCE_BRANCH(wt.sourceBranch))}`);
   }
 
   // 分支创建时间

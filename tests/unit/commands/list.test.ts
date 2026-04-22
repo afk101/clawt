@@ -12,6 +12,8 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
     MESSAGES: {
       NO_WORKTREES: '(无 worktree)',
       WORKTREE_STATUS_UNAVAILABLE: '(状态不可用)',
+      // 来源分支展示消息：格式为"来自 <branchName>"
+      STATUS_SOURCE_BRANCH: (branchName: string) => `来自 ${branchName}`,
     },
   };
 });
@@ -24,6 +26,10 @@ vi.mock('../../../src/utils/index.js', () => ({
   formatWorktreeStatus: vi.fn(),
   isWorktreeIdle: vi.fn(),
   printInfo: vi.fn(),
+  // 新增：读取 worktree 来源分支，默认返回 null（无来源分支）
+  readWorktreeSourceBranch: vi.fn().mockReturnValue(null),
+  // 新增：JSON 序列化工具
+  safeStringify: vi.fn().mockImplementation((value: unknown) => JSON.stringify(value, null, 2)),
 }));
 
 import { registerListCommand } from '../../../src/commands/list.js';
@@ -118,5 +124,27 @@ describe('handleList', () => {
     await program.parseAsync(['list'], { from: 'user' });
 
     expect(mockedGetWorktreeStatus).toHaveBeenCalled();
+  });
+
+  it('来源分支非空时文本输出包含"来自"行', async () => {
+    mockedGetProjectName.mockReturnValue('test-project');
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature' },
+    ]);
+    mockedGetWorktreeStatus.mockReturnValue({
+      commitCount: 0, insertions: 0, deletions: 0, hasDirtyFiles: false,
+    });
+    // mock readWorktreeSourceBranch 返回 'develop'
+    const { readWorktreeSourceBranch } = await import('../../../src/utils/index.js');
+    vi.mocked(readWorktreeSourceBranch).mockReturnValue('develop');
+
+    const program = new Command();
+    program.exitOverride();
+    registerListCommand(program);
+    await program.parseAsync(['list'], { from: 'user' });
+
+    const printedLines = mockedPrintInfo.mock.calls.map((call) => call[0] as string);
+    const sourceBranchLine = printedLines.find((line) => line.includes('来自'));
+    expect(sourceBranchLine).toBeDefined();
   });
 });
