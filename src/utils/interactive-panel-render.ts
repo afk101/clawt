@@ -27,7 +27,6 @@ import {
   PANEL_SYNCED_WITH_MAIN,
   PANEL_COMMITS_AHEAD,
   PANEL_COMMITS_BEHIND,
-  PANEL_SOURCE_BRANCH,
 } from '../constants/messages/index.js';
 import type { StatusResult, WorktreeDetailedStatus, MainWorktreeStatus } from '../types/index.js';
 import { formatRelativeTime, groupWorktreesByDate, formatRelativeDate } from './index.js';
@@ -256,11 +255,6 @@ export function renderWorktreeBlock(wt: WorktreeDetailedStatus, isSelected: bool
     lines.push(`${indent}${chalk.yellow(PANEL_COMMITS_BEHIND(wt.commitsBehind))}`);
   } else {
     lines.push(`${indent}${chalk.green(PANEL_SYNCED_WITH_MAIN)}`);
-  }
-
-  // 来源主分支（无 meta 文件时静默跳过）
-  if (wt.sourceBranch) {
-    lines.push(`${indent}${PANEL_SOURCE_BRANCH(wt.sourceBranch)}`);
   }
 
   // 分支创建时间

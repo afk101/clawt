@@ -24,6 +24,3 @@ export const UPDATE_CHECK_PATH = join(CLAWT_HOME, 'update-check.json');
 
 /** 项目配置目录 ~/.clawt/projects/ */
 export const PROJECTS_CONFIG_DIR = join(CLAWT_HOME, 'projects');
-
-/** worktree 来源分支元数据目录 ~/.clawt/worktree-meta/ */
-export const WORKTREE_META_DIR = join(CLAWT_HOME, 'worktree-meta');

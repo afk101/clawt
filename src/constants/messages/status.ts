@@ -39,6 +39,4 @@ export const STATUS_MESSAGES = {
   /** status 当前分支与配置的主工作分支不一致 */
   STATUS_CONFIGURED_BRANCH_MISMATCH: (branchName: string) =>
     `⚠ 主工作分支: ${branchName}（当前分支不一致，如需更新请执行 clawt init）`,
-  /** 来源主分支标签 */
-  STATUS_SOURCE_BRANCH: (branchName: string) => `来自 ${branchName}`,
 } as const;

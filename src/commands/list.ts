@@ -11,8 +11,6 @@ import {
   formatWorktreeStatus,
   isWorktreeIdle,
   printInfo,
-  readWorktreeSourceBranch,
-  safeStringify,
 } from '../utils/index.js';
 // getWorktreeStatus 和 formatWorktreeStatus 仅在文本模式下使用
 
@@ -65,7 +63,7 @@ function printListAsJson(projectName: string, worktrees: import('../types/index.
     })),
   };
 
-  console.log(safeStringify(result, 2));
+  console.log(JSON.stringify(result, null, 2));
 }
 
 /**
@@ -93,12 +91,6 @@ function printListAsText(projectName: string, worktrees: import('../types/index.
         printInfo(`    ${formatWorktreeStatus(status)}`);
       } else {
         printInfo(`    ${chalk.yellow(MESSAGES.WORKTREE_STATUS_UNAVAILABLE)}`);
-      }
-
-      // 来源主分支（无 meta 文件时静默跳过）
-      const sourceBranch = readWorktreeSourceBranch(projectName, wt.branch);
-      if (sourceBranch) {
-        printInfo(`    ${chalk.gray(MESSAGES.STATUS_SOURCE_BRANCH(sourceBranch))}`);
       }
 
       printInfo('');

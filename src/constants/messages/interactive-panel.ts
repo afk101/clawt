@@ -99,11 +99,3 @@ export const PANEL_COMMITS_AHEAD = (count: number): string => `${count} 个本�
 
 /** 交互面板：落后主分支提交数量提示 */
 export const PANEL_COMMITS_BEHIND = (count: number): string => `落后主分支 ${count} 个提交`;
-
-/**
- * 交互面板：来源主分支标签
- * @param {string} branchName - 来源主分支名
- * @returns {string} 格式化的来源分支文本
- */
-export const PANEL_SOURCE_BRANCH = (branchName: string): string =>
-  chalk.gray(`来自 ${branchName}`);

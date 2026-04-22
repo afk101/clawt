@@ -28,8 +28,6 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       STATUS_CONFIGURED_BRANCH: (branchName: string) => `主工作分支: ${branchName}`,
       STATUS_CONFIGURED_BRANCH_DELETED: (branchName: string) => `✗ 主工作分支: ${branchName}（已不存在）`,
       STATUS_CONFIGURED_BRANCH_MISMATCH: (branchName: string) => `⚠ 主工作分支: ${branchName}（当前分支不一致）`,
-      // 新增：来源分支展示消息
-      STATUS_SOURCE_BRANCH: (branchName: string) => `来自 ${branchName}`,
     },
     VALIDATE_BRANCH_PREFIX: 'clawt-validate-',
   };
@@ -54,12 +52,6 @@ vi.mock('../../../src/utils/index.js', () => ({
   printSeparator: vi.fn(),
   loadProjectConfig: vi.fn().mockReturnValue(null),
   checkBranchExists: vi.fn().mockReturnValue(true),
-  // 新增：读取 worktree 来源分支，默认返回 null（无来源分支）
-  readWorktreeSourceBranch: vi.fn().mockReturnValue(null),
-  // 新增：JSON 序列化工具，支持可选的缩进参数
-  safeStringify: vi.fn().mockImplementation((value: unknown, indent?: number) => JSON.stringify(value, null, indent ?? 2)),
-  // 新增：交互式面板组件（status.ts 从 utils 导入）
-  InteractivePanel: vi.fn(),
 }));
 
 import { registerStatusCommand } from '../../../src/commands/status.js';
@@ -377,29 +369,5 @@ describe('handleStatus', () => {
     const parsed = JSON.parse(jsonCall![0]);
     expect(parsed.main.insertions).toBe(0);
     expect(parsed.main.deletions).toBe(0);
-  });
-
-  it('sourceBranch 字段包含在 JSON 输出中', async () => {
-    mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
-    ]);
-    // mock readWorktreeSourceBranch 返回 'develop'
-    const { readWorktreeSourceBranch } = await import('../../../src/utils/index.js');
-    vi.mocked(readWorktreeSourceBranch).mockReturnValue('develop');
-
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    const program = new Command();
-    program.exitOverride();
-    registerStatusCommand(program);
-    await program.parseAsync(['status', '--json'], { from: 'user' });
-
-    const jsonCall = consoleSpy.mock.calls.find((call) => {
-      try { JSON.parse(call[0]); return true; } catch { return false; }
-    });
-    if (jsonCall) {
-      const parsed = JSON.parse(jsonCall[0]);
-      expect(parsed.worktrees[0].sourceBranch).toBe('develop');
-    }
   });
 });

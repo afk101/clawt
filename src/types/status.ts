@@ -18,8 +18,6 @@ export interface WorktreeDetailedStatus {
   deletions: number;
   /** 分支创建时间（首次分叉提交的 ISO 8601 时间字符串），无分叉提交时为 null */
   createdAt: string | null;
-  /** 创建 worktree 时的来源主分支名（无 meta 文件时为 null） */
-  sourceBranch: string | null;
 }
 
 /** 主 worktree 状态信息 */

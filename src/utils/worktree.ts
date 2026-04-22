@@ -6,8 +6,6 @@ import { createWorktree as gitCreateWorktree, getProjectName, gitWorktreeList, r
 import { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 import { ensureDir, removeEmptyDir } from './fs.js';
 import { createValidateBranch, deleteValidateBranch } from './validate-branch.js';
-import { writeWorktreeMeta, removeWorktreeMeta } from './worktree-meta.js';
-import { getMainWorkBranch } from './project-config.js';
 import type { WorktreeInfo, WorktreeStatus } from '../types/index.js';
 
 /**
@@ -40,22 +38,12 @@ export function createWorktrees(branchName: string, count: number): WorktreeInfo
   const projectDir = getProjectWorktreeDir();
   ensureDir(projectDir);
 
-  // 获取项目名和主工作分支（用于写入 meta）
-  const projectName = getProjectName();
-  const sourceBranch = getMainWorkBranch();
-
   // 5. 串行创建 worktree 及对应验证分支
   const results: WorktreeInfo[] = [];
   for (const name of branchNames) {
     const worktreePath = join(projectDir, name);
     gitCreateWorktree(name, worktreePath);
     createValidateBranch(name);
-    try {
-      writeWorktreeMeta(projectName, name, sourceBranch);
-    } catch (err) {
-      // meta 写入失败不阻断 worktree 创建（来源分支仅用于展示）
-      logger.warn(`写入 worktree meta 失败，来源分支将显示为未知: ${err}`);
-    }
     results.push({ path: worktreePath, branch: name });
     logger.info(`worktree 创建完成: ${worktreePath} (分支: ${name})`);
   }
@@ -78,22 +66,12 @@ export function createWorktreesByBranches(branchNames: string[]): WorktreeInfo[]
   const projectDir = getProjectWorktreeDir();
   ensureDir(projectDir);
 
-  // 获取项目名和主工作分支（用于写入 meta）
-  const projectName = getProjectName();
-  const sourceBranch = getMainWorkBranch();
-
   // 3. 串行创建 worktree 及对应验证分支
   const results: WorktreeInfo[] = [];
   for (const name of branchNames) {
     const worktreePath = join(projectDir, name);
     gitCreateWorktree(name, worktreePath);
     createValidateBranch(name);
-    try {
-      writeWorktreeMeta(projectName, name, sourceBranch);
-    } catch (err) {
-      // meta 写入失败不阻断 worktree 创建（来源分支仅用于展示）
-      logger.warn(`写入 worktree meta 失败，来源分支将显示为未知: ${err}`);
-    }
     results.push({ path: worktreePath, branch: name });
     logger.info(`worktree 创建完成: ${worktreePath} (分支: ${name})`);
   }
@@ -144,14 +122,11 @@ export function getProjectWorktrees(): WorktreeInfo[] {
  * @param {WorktreeInfo[]} worktrees - 待清理的 worktree 列表
  */
 export function cleanupWorktrees(worktrees: WorktreeInfo[]): void {
-  // 获取项目名，用于清理对应的 worktree meta 文件
-  const projectName = getProjectName();
   for (const wt of worktrees) {
     try {
       removeWorktreeByPath(wt.path);
       deleteBranch(wt.branch);
       deleteValidateBranch(wt.branch);
-      removeWorktreeMeta(projectName, wt.branch);
       logger.info(`已清理 worktree 和分支: ${wt.branch}`);
     } catch (error) {
       logger.error(`清理 worktree 失败: ${wt.path} - ${error}`);

@@ -49,8 +49,6 @@ vi.mock('../../../src/utils/index.js', () => ({
   confirmAction: vi.fn(),
   removeSnapshot: vi.fn(),
   removeProjectSnapshots: vi.fn(),
-  removeWorktreeMeta: vi.fn(),
-  removeProjectWorktreeMeta: vi.fn(),
   resolveTargetWorktrees: vi.fn(),
   requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
   getValidateBranchName: vi.fn((name: string) => `clawt-validate-${name}`),

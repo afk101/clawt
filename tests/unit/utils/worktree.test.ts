@@ -54,25 +54,6 @@ vi.mock('../../../src/utils/validate-branch.js', () => ({
   deleteValidateBranch: vi.fn(),
 }));
 
-// mock worktree-meta（来源分支 meta 读写，测试中不验证文件系统操作）
-vi.mock('../../../src/utils/worktree-meta.js', () => ({
-  writeWorktreeMeta: vi.fn(),
-  removeWorktreeMeta: vi.fn(),
-  removeProjectWorktreeMeta: vi.fn(),
-  readWorktreeSourceBranch: vi.fn().mockReturnValue(null),
-  getWorktreeMetaPath: vi.fn(),
-}));
-
-// mock project-config（提供 getMainWorkBranch 的默认返回值）
-vi.mock('../../../src/utils/project-config.js', () => ({
-  getMainWorkBranch: vi.fn().mockReturnValue('main'),
-  loadProjectConfig: vi.fn().mockReturnValue(null),
-  getProjectConfig: vi.fn().mockReturnValue(null),
-  requireProjectConfig: vi.fn().mockReturnValue({ clawtMainWorkBranch: 'main' }),
-  getConfigValue: vi.fn(),
-  setConfigValue: vi.fn(),
-}));
-
 import { existsSync, readdirSync } from 'node:fs';
 import {
   getProjectName,
