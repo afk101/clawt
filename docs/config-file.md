@@ -35,7 +35,7 @@
 | 配置项             | 类型      | 默认值    | 说明                                               |
 | ------------------ | --------- | --------- | -------------------------------------------------- |
 | `autoDeleteBranch` | `boolean` | `false`   | 移除 worktree 时是否自动删除对应本地分支（无需每次确认）；merge 成功后是否自动清理 worktree 和分支；run 任务被中断（Ctrl+C）后是否自动清理本次创建的 worktree 和分支 |
-| `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面 |
+| `claudeCodeCommand` | `string` | `"claude"` | Claude Code CLI 启动指令，用于 `clawt run` 不传 `--tasks` 时和 `clawt resume` 在 worktree 中打开交互式界面。可被项目级配置 `claudeCodeCommand` 覆盖（优先级：项目级 > 全局级，详见 [project-config.md](./project-config.md)） |
 | `autoPullPush` | `boolean` | `false` | merge 成功后是否自动执行 git pull 和 git push |
 | `confirmDestructiveOps` | `boolean` | `true` | 执行破坏性操作（reset、validate --clean）前是否提示确认 |
 | `maxConcurrency` | `number` | `0` | run 命令默认最大并发数，`0` 表示不限制 |

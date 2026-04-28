@@ -34,6 +34,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   interactiveConfigEditor: vi.fn(),
   guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   guardMainWorkBranchExists: vi.fn(),
+  normalizeProjectConfig: vi.fn((config: unknown) => config),
 }));
 
 import { registerInitCommand } from '../../../src/commands/init.js';

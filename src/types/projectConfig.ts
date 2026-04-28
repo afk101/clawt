@@ -6,6 +6,8 @@ export interface ProjectConfig {
   validateRunCommand?: string;
   /** worktree 创建后自动执行的命令，用于安装依赖等初始化操作 */
   postCreate?: string;
+  /** Claude Code CLI 启动指令（项目级覆盖全局配置，未设置时回退到全局配置） */
+  claudeCodeCommand?: string;
 }
 
 /** 单个项目配置项的完整定义（默认值 + 描述） */

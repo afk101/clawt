@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ClawtError } from '../errors/index.js';
 import { APPEND_SYSTEM_PROMPT, CLAUDE_PROJECTS_DIR } from '../constants/index.js';
-import { getConfigValue } from './config.js';
+import { resolveClaudeCodeCommand } from './project-config.js';
 import { printInfo, printWarning } from './formatter.js';
 import { openCommandInNewTerminalTab } from './terminal.js';
 import type { WorktreeInfo } from '../types/index.js';
@@ -51,7 +51,7 @@ interface LaunchClaudeOptions {
 }
 
 export function launchInteractiveClaude(worktree: WorktreeInfo, options: LaunchClaudeOptions = {}): void {
-  const commandStr = getConfigValue('claudeCodeCommand');
+  const commandStr = resolveClaudeCodeCommand();
   const parts = commandStr.split(/\s+/).filter(Boolean);
   const cmd = parts[0];
   const args = [
@@ -107,7 +107,7 @@ function escapeShellSingleQuote(str: string): string {
  * @returns {string} 完整的 shell 命令字符串
  */
 export function buildClaudeCommand(worktree: WorktreeInfo, hasPreviousSession: boolean): string {
-  const commandStr = getConfigValue('claudeCodeCommand');
+  const commandStr = resolveClaudeCodeCommand();
   const systemPrompt = APPEND_SYSTEM_PROMPT;
 
   const escapedPath = escapeShellSingleQuote(worktree.path);

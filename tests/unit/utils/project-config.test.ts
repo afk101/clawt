@@ -42,6 +42,16 @@ vi.mock('../../../src/utils/fs.js', () => ({
   ensureDir: vi.fn(),
 }));
 
+// mock config
+vi.mock('../../../src/utils/config.js', () => ({
+  getConfigValue: vi.fn().mockReturnValue('claude'),
+}));
+
+// mock json
+vi.mock('../../../src/utils/json.js', () => ({
+  safeStringify: (value: unknown, indent: number = 2) => JSON.stringify(value, null, indent),
+}));
+
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import {
   getProjectConfigPath,
@@ -50,7 +60,9 @@ import {
   requireProjectConfig,
   getMainWorkBranch,
   getValidateRunCommand,
+  resolveClaudeCodeCommand,
 } from '../../../src/utils/project-config.js';
+import { getConfigValue } from '../../../src/utils/config.js';
 
 const mockedExistsSync = vi.mocked(existsSync);
 const mockedReadFileSync = vi.mocked(readFileSync);
@@ -164,5 +176,43 @@ describe('getValidateRunCommand', () => {
       validateRunCommand: '',
     }));
     expect(getValidateRunCommand()).toBeUndefined();
+  });
+});
+
+describe('resolveClaudeCodeCommand', () => {
+  const mockedGetConfigValue = vi.mocked(getConfigValue);
+
+  beforeEach(() => {
+    mockedGetConfigValue.mockReset();
+    mockedGetConfigValue.mockReturnValue('claude');
+  });
+
+  it('项目配置中有 claudeCodeCommand 时返回项目级值', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(JSON.stringify({
+      clawtMainWorkBranch: 'main',
+      claudeCodeCommand: 'claude --model opus',
+    }));
+    expect(resolveClaudeCodeCommand()).toBe('claude --model opus');
+  });
+
+  it('项目配置中无 claudeCodeCommand 时回退到全局配置', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(JSON.stringify({ clawtMainWorkBranch: 'main' }));
+    expect(resolveClaudeCodeCommand()).toBe('claude');
+  });
+
+  it('项目配置中 claudeCodeCommand 为空字符串时回退到全局配置', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedReadFileSync.mockReturnValue(JSON.stringify({
+      clawtMainWorkBranch: 'main',
+      claudeCodeCommand: '',
+    }));
+    expect(resolveClaudeCodeCommand()).toBe('claude');
+  });
+
+  it('项目配置文件不存在时回退到全局配置', () => {
+    mockedExistsSync.mockReturnValue(false);
+    expect(resolveClaudeCodeCommand()).toBe('claude');
   });
 });

@@ -26,7 +26,7 @@ clawt init show --json
 
 **功能说明：**
 
-初始化项目级配置，将指定分支记录为该项目的主工作分支（`clawtMainWorkBranch`）。该配置用于 `create` / `run` 时检测当前分支是否为主工作分支，并在偏离时提醒用户。`init show` 子命令提供交互式面板，可查看和修改所有项目配置项（如 `validateRunCommand`、`postCreate`）。项目级配置的完整说明见 [project-config.md](./project-config.md)。
+初始化项目级配置，将指定分支记录为该项目的主工作分支（`clawtMainWorkBranch`）。该配置用于 `create` / `run` 时检测当前分支是否为主工作分支，并在偏离时提醒用户。`init show` 子命令提供交互式面板，可查看和修改所有项目配置项（如 `validateRunCommand`、`postCreate`、`claudeCodeCommand`）。项目级配置的完整说明见 [project-config.md](./project-config.md)。
 
 **运行流程（设置模式）：**
 
@@ -53,7 +53,7 @@ clawt init show --json
 3. **交互式配置编辑**：调用 `interactiveConfigEditor`（`src/utils/config-strategy.ts`），基于 `PROJECT_CONFIG_DEFINITIONS` 构建配置项列表（详见 [project-config.md](./project-config.md)）
    - 列出所有项目配置项，显示名称、当前值和描述
    - 用户选择配置项后，根据值类型自动选择输入方式（与全局配置的交互式编辑逻辑一致）
-4. **持久化修改**：将修改后的值合并到当前配置并写入配置文件
+4. **持久化修改**：将修改后的值合并到当前配置，经 `normalizeProjectConfig` 归一化处理后写入配置文件（可选字段的空字符串会被移除，等同于未设置）
 5. **输出成功提示**：`✓ 项目配置 <key> 已设置为 <value>`
 
 **输出格式：**
@@ -85,5 +85,6 @@ clawt init show --json
 - `init show` 子命令从 JSON 展示改为交互式面板，调用 `interactiveConfigEditor`（`src/utils/config-strategy.ts`）实现通用交互式配置编辑
 - 配置项定义来自 `PROJECT_CONFIG_DEFINITIONS`（`src/constants/project-config.ts`），详见 [项目级配置文档](./project-config.md)
 - 消息常量：`MESSAGES.INIT_SELECT_PROMPT`（选择配置项提示语）、`MESSAGES.INIT_SET_SUCCESS`（修改成功提示），定义在 `src/constants/messages/init.ts`
+- `handleInitShow` 使用 `normalizeProjectConfig` 对修改后的配置进行归一化处理：可选字段（如 `validateRunCommand`、`postCreate`、`claudeCodeCommand`）设为空字符串时自动移除该键，避免 JSON 文件中出现冗余的 `"field": ""` 条目
 
 ---

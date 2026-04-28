@@ -17,6 +17,10 @@ export const PROJECT_CONFIG_DEFINITIONS: ProjectConfigDefinitions = {
     defaultValue: undefined as unknown as string | undefined,
     description: 'worktree 创建后自动执行的命令，用于安装依赖等初始化操作',
   },
+  claudeCodeCommand: {
+    defaultValue: undefined as unknown as string | undefined,
+    description: 'Claude Code CLI 启动指令（未设置时回退到全局配置）',
+  },
 };
 
 /**

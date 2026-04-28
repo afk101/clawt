@@ -13,6 +13,7 @@ import {
   printSuccess,
   interactiveConfigEditor,
   safeStringify,
+  normalizeProjectConfig,
 } from '../utils/index.js';
 
 /**
@@ -62,7 +63,8 @@ async function handleInitShow(options: InitShowOptions): Promise<void> {
   );
 
   // 合并修改后的值并持久化
-  const updatedConfig: ProjectConfig = { ...config, [key]: newValue };
+  const mergedConfig: ProjectConfig = { ...config, [key]: newValue };
+  const updatedConfig = normalizeProjectConfig(mergedConfig, key as string, newValue);
   saveProjectConfig(updatedConfig);
 
   printSuccess(MESSAGES.INIT_SET_SUCCESS(key as string, String(newValue)));

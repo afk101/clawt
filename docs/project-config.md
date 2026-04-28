@@ -18,7 +18,8 @@
 {
   "clawtMainWorkBranch": "main",
   "validateRunCommand": "npm test",
-  "postCreate": "npm install"
+  "postCreate": "npm install",
+  "claudeCodeCommand": "claude --model opus"
 }
 ```
 
@@ -27,6 +28,7 @@
 | `clawtMainWorkBranch` | `string` | 是 | `""` | 项目的主工作分支名，用于 create 时检测当前分支是否为主分支，以及 sync、merge 等命令获取主分支名 |
 | `validateRunCommand` | `string` | 否 | `undefined` | validate 成功后自动执行的命令（作为 `-r` 选项的默认值）。不传 `-r` 时，validate 命令会自动从此项读取 |
 | `postCreate` | `string` | 否 | `undefined` | worktree 创建后自动执行的初始化命令（如安装依赖、生成配置文件、编译资源等）。详见 [post-create-hook.md](./post-create-hook.md) |
+| `claudeCodeCommand` | `string` | 否 | `undefined` | Claude Code CLI 启动指令，项目级覆盖全局配置。未设置时回退到全局配置 `claudeCodeCommand`（详见 [config-file.md](./config-file.md)）。优先级：项目级 > 全局级 |
 
 #### 配置项定义数据源
 
@@ -48,6 +50,10 @@ export const PROJECT_CONFIG_DEFINITIONS: ProjectConfigDefinitions = {
     defaultValue: undefined as unknown as string | undefined,
     description: 'worktree 创建后自动执行的命令，用于安装依赖等初始化操作',
   },
+  claudeCodeCommand: {
+    defaultValue: undefined as unknown as string | undefined,
+    description: 'Claude Code CLI 启动指令（未设置时回退到全局配置）',
+  },
 };
 
 /** 项目默认配置（从 PROJECT_CONFIG_DEFINITIONS 自动派生） */
@@ -63,7 +69,7 @@ export const PROJECT_CONFIG_DESCRIPTIONS: Record<keyof Required<ProjectConfig>, 
 
 | 类型 | 说明 |
 | --- | --- |
-| `ProjectConfig` | 项目级配置接口，包含 `clawtMainWorkBranch`（必填）、`validateRunCommand`（可选）和 `postCreate`（可选） |
+| `ProjectConfig` | 项目级配置接口，包含 `clawtMainWorkBranch`（必填）、`validateRunCommand`（可选）、`postCreate`（可选）和 `claudeCodeCommand`（可选） |
 | `ProjectConfigItemDefinition<T>` | 单个配置项定义，含 `defaultValue`（默认值）、`description`（描述）、可选 `allowedValues`（枚举值列表，仅对 string 类型有效） |
 | `ProjectConfigDefinitions` | 所有配置项的完整定义映射，键为 `ProjectConfig` 的所有属性名，值为对应的 `ProjectConfigItemDefinition` |
 
@@ -74,6 +80,7 @@ export interface ProjectConfig {
   clawtMainWorkBranch: string;
   validateRunCommand?: string;
   postCreate?: string;
+  claudeCodeCommand?: string;
 }
 
 export interface ProjectConfigItemDefinition<T> {
@@ -99,6 +106,8 @@ export type ProjectConfigDefinitions = {
 | `requireProjectConfig` | `() => ProjectConfig` | 获取当前项目配置，不存在或缺少 `clawtMainWorkBranch` 时抛出 `ClawtError` |
 | `getMainWorkBranch` | `() => string` | 从项目配置中获取主工作分支名（内部调用 `requireProjectConfig`） |
 | `getValidateRunCommand` | `() => string \| undefined` | 从项目配置中获取 validate 自动执行命令，未配置时返回 `undefined` |
+| `resolveClaudeCodeCommand` | `() => string` | 解析当前项目生效的 Claude Code 启动指令，优先级：项目级配置 > 全局配置 |
+| `normalizeProjectConfig` | `(config: ProjectConfig, key: string, value: unknown) => ProjectConfig` | 归一化项目配置：可选字段的空字符串等同于未设置，从对象中删除该键以保持 JSON 文件整洁 |
 
 #### 设置方式
 

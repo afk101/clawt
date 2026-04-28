@@ -1,10 +1,12 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PROJECTS_CONFIG_DIR, MESSAGES } from '../constants/index.js';
+import { PROJECTS_CONFIG_DIR, MESSAGES, PROJECT_CONFIG_DEFINITIONS } from '../constants/index.js';
 import { ClawtError } from '../errors/index.js';
 import { logger } from '../logger/index.js';
 import { getProjectName, checkBranchExists } from './git.js';
 import { ensureDir } from './fs.js';
+import { getConfigValue } from './config.js';
+import { safeStringify } from './json.js';
 import type { ProjectConfig } from '../types/index.js';
 
 /**
@@ -47,7 +49,7 @@ export function saveProjectConfig(config: ProjectConfig): void {
   // 确保项目子目录存在
   const projectDir = join(PROJECTS_CONFIG_DIR, projectName);
   ensureDir(projectDir);
-  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+  writeFileSync(configPath, safeStringify({ ...config }, 2), 'utf-8');
   logger.info(`项目配置已保存: ${configPath}`);
 }
 
@@ -98,4 +100,37 @@ export function guardMainWorkBranchExists(cwd?: string): void {
 export function getValidateRunCommand(): string | undefined {
   const config = loadProjectConfig();
   return config?.validateRunCommand || undefined;
+}
+
+/**
+ * 解析当前项目生效的 Claude Code 启动指令
+ * 优先级：项目级配置 > 全局配置
+ * @returns {string} 生效的 Claude Code 启动指令
+ */
+export function resolveClaudeCodeCommand(): string {
+  const projectConfig = loadProjectConfig();
+  if (projectConfig?.claudeCodeCommand) {
+    return projectConfig.claudeCodeCommand;
+  }
+  return getConfigValue('claudeCodeCommand');
+}
+
+/**
+ * 归一化项目配置：可选字段的空字符串等同于未设置，从对象中删除该键
+ * 保持 JSON 文件整洁，避免出现 "field": "" 的冗余条目
+ * @param {ProjectConfig} config - 原始项目配置
+ * @param {string} key - 被修改的配置项键名
+ * @param {unknown} value - 被修改的配置项新值
+ * @returns {ProjectConfig} 归一化后的项目配置
+ */
+export function normalizeProjectConfig(config: ProjectConfig, key: string, value: unknown): ProjectConfig {
+  if (value === '') {
+    const def = PROJECT_CONFIG_DEFINITIONS[key as keyof typeof PROJECT_CONFIG_DEFINITIONS];
+    if (def?.defaultValue === undefined) {
+      const normalized = { ...config };
+      delete (normalized as unknown as Record<string, unknown>)[key];
+      return normalized;
+    }
+  }
+  return config;
 }

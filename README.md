@@ -56,7 +56,7 @@ clawt init show           # Interactively view and modify project configuration
 clawt init show --json    # Output project configuration in JSON format
 ```
 
-Sets the project's main work branch. Re-running updates the main work branch configuration. `init show` provides an interactive panel for viewing and modifying project settings (e.g., commands to auto-run after validate succeeds, postCreate hook commands after worktree creation, etc.). `init show --json` outputs the current project configuration in JSON format.
+Sets the project's main work branch. Re-running updates the main work branch configuration. `init show` provides an interactive panel for viewing and modifying project settings (e.g., commands to auto-run after validate succeeds, postCreate hook commands after worktree creation, claudeCodeCommand, etc.). `init show --json` outputs the current project configuration in JSON format.
 
 ### `clawt run` — Create worktree and execute tasks
 
@@ -334,7 +334,7 @@ Configuration file is located at `~/.clawt/config.json`, auto-generated after in
 | Config Item | Default | Description |
 | ------ | ------ | ---- |
 | `autoDeleteBranch` | `false` | Auto-delete merged/removed branches |
-| `claudeCodeCommand` | `"claude"` | Claude Code CLI launch command |
+| `claudeCodeCommand` | `"claude"` | Claude Code CLI launch command (can be overridden per-project via `clawt init show`) |
 | `autoPullPush` | `false` | Auto pull/push after merge |
 | `confirmDestructiveOps` | `true` | Confirm before destructive operations |
 | `maxConcurrency` | `0` | Max concurrency for run command, `0` means unlimited |
