@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ClawtError } from '../errors/index.js';
-import { APPEND_SYSTEM_PROMPT, CLAUDE_PROJECTS_DIR } from '../constants/index.js';
+import { CLAUDE_PROJECTS_DIR } from '../constants/index.js';
 import { resolveClaudeCodeCommand } from './project-config.js';
 import { printInfo, printWarning } from './formatter.js';
 import { openCommandInNewTerminalTab } from './terminal.js';
@@ -56,8 +56,6 @@ export function launchInteractiveClaude(worktree: WorktreeInfo, options: LaunchC
   const cmd = parts[0];
   const args = [
     ...parts.slice(1),
-    '--append-system-prompt',
-    APPEND_SYSTEM_PROMPT,
   ];
 
   // 仅在启用 autoContinue 时检测历史会话并追加 --continue
@@ -101,20 +99,18 @@ function escapeShellSingleQuote(str: string): string {
 
 /**
  * 构建在指定 worktree 中启动 Claude Code 的完整 shell 命令
- * 生成格式：cd <path> && <claudeCommand> --append-system-prompt '...' [--continue]
+ * 生成格式：cd <path> && <claudeCommand> [--continue]
  * @param {WorktreeInfo} worktree - worktree 信息
  * @param {boolean} hasPreviousSession - 是否存在历史会话（由调用方预计算，避免重复 I/O）
  * @returns {string} 完整的 shell 命令字符串
  */
 export function buildClaudeCommand(worktree: WorktreeInfo, hasPreviousSession: boolean): string {
   const commandStr = resolveClaudeCodeCommand();
-  const systemPrompt = APPEND_SYSTEM_PROMPT;
 
   const escapedPath = escapeShellSingleQuote(worktree.path);
-  const escapedPrompt = escapeShellSingleQuote(systemPrompt);
   const continueFlag = hasPreviousSession ? ' --continue' : '';
 
-  return `cd '${escapedPath}' && ${commandStr} --append-system-prompt '${escapedPrompt}'${continueFlag}`;
+  return `cd '${escapedPath}' && ${commandStr}${continueFlag}`;
 }
 
 /**
