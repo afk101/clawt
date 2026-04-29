@@ -4,7 +4,7 @@
 
 postCreate hook 是在 worktree 创建完成后自动执行的钩子命令，可用于执行任意初始化操作（如安装依赖、生成配置文件、编译资源等）。`create` 和 `run` 命令在创建 worktree 之后，会尝试解析并执行 postCreate hook。
 
-hook 以 **fire-and-forget** 模式后台异步并行执行，不阻塞主流程（不 await）。执行结果仅写入日志，不影响后续 Claude Code 的启动。
+hook 以 **fire-and-forget** 模式后台异步并行执行，不阻塞主流程（不 await）。执行结果仅写入日志，不影响后续 Claude Code 的启动或系统提示。
 
 #### 配置方式
 
@@ -99,6 +99,10 @@ clawt run -b feat --no-post-create
 - **失败处理**：单个 worktree 的 hook 执行失败（非零退出码或异常）仅写入日志，不阻塞其他 worktree 和后续流程
 - **结果汇总**：后台执行完毕后通过 `.then()` 回调写入日志汇总（成功数 + 失败数）
 - **返回值**：`runPostCreateHooks()` 返回 `void`——以 fire-and-forget 模式后台执行，不等待结果
+
+#### 系统提示
+
+Claude Code 启动时统一使用 `APPEND_SYSTEM_PROMPT` 常量（定义在 `src/constants/config.ts`）作为 `--append-system-prompt` 参数值，内容为通用的 worktree 目录提示，不因 hook 执行结果而变化。
 
 #### 相关类型定义
 

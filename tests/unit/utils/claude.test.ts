@@ -33,6 +33,7 @@ import { launchInteractiveClaude, hasClaudeSessionHistory, buildClaudeCommand } 
 import { getConfigValue } from '../../../src/utils/config.js';
 import { printInfo, printWarning } from '../../../src/utils/formatter.js';
 import { ClawtError } from '../../../src/errors/index.js';
+import { APPEND_SYSTEM_PROMPT } from '../../../src/constants/config.js';
 import { createWorktreeInfo } from '../../helpers/fixtures.js';
 
 const mockedSpawnSync = vi.mocked(spawnSync);
@@ -103,7 +104,7 @@ describe('launchInteractiveClaude', () => {
     expect(mockedGetConfigValue).toHaveBeenCalledWith('claudeCodeCommand');
     expect(mockedSpawnSync).toHaveBeenCalledWith(
       'claude',
-      expect.any(Array),
+      expect.arrayContaining(['--append-system-prompt']),
       expect.objectContaining({
         cwd: '/tmp/test-worktree',
         stdio: 'inherit',
@@ -147,7 +148,7 @@ describe('launchInteractiveClaude', () => {
 
     expect(mockedSpawnSync).toHaveBeenCalledWith(
       'npx',
-      expect.arrayContaining(['claude']),
+      expect.arrayContaining(['claude', '--append-system-prompt']),
       expect.any(Object),
     );
   });
@@ -284,7 +285,7 @@ describe('launchInteractiveClaude', () => {
     expect(callArgs).not.toContain('--continue');
   });
 
-  it('不包含 --append-system-prompt 参数', () => {
+  it('固定使用 APPEND_SYSTEM_PROMPT 作为系统提示', () => {
     mockedGetConfigValue.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
@@ -300,7 +301,8 @@ describe('launchInteractiveClaude', () => {
     launchInteractiveClaude(worktree);
 
     const callArgs = mockedSpawnSync.mock.calls[0][1] as string[];
-    expect(callArgs).not.toContain('--append-system-prompt');
+    const promptIndex = callArgs.indexOf('--append-system-prompt');
+    expect(callArgs[promptIndex + 1]).toBe(APPEND_SYSTEM_PROMPT);
   });
 });
 
@@ -317,6 +319,7 @@ describe('buildClaudeCommand', () => {
 
     expect(cmd).toContain("cd '/tmp/test-worktree'");
     expect(cmd).toContain('claude');
+    expect(cmd).toContain('--append-system-prompt');
   });
 
   it('hasPreviousSession 为 true 时包含 --continue', () => {
@@ -335,12 +338,12 @@ describe('buildClaudeCommand', () => {
     expect(cmd).not.toContain('--continue');
   });
 
-  it('不包含 --append-system-prompt 参数', () => {
+  it('固定使用 APPEND_SYSTEM_PROMPT 作为系统提示', () => {
     mockedGetConfigValue.mockReturnValue('claude');
 
     const cmd = buildClaudeCommand(worktree, false);
 
-    expect(cmd).not.toContain('--append-system-prompt');
+    expect(cmd).toContain(APPEND_SYSTEM_PROMPT);
   });
 
   it('路径中的单引号被正确转义', () => {

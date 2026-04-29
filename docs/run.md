@@ -86,8 +86,9 @@ clawt run -b <branchName>
 5. 通过公共函数 `executeBatchTasks`（`src/utils/task-executor.ts`）启动批量任务执行，该函数负责进度面板渲染、SIGINT 中断处理、并发控制和汇总输出。对每个 worktree 并行启动 Claude Code CLI：
    ```bash
    cd ~/.clawt/worktrees/<project>/<branchName>-<i>
-   claude -p "<tasks[i]>" --output-format stream-json --verbose --permission-mode bypassPermissions
+   claude -p "<tasks[i]>" --output-format stream-json --verbose --permission-mode bypassPermissions --append-system-prompt "<系统提示>"
    ```
+   其中 `--append-system-prompt` 使用统一的 `APPEND_SYSTEM_PROMPT` 常量（定义在 `src/constants/config.ts`）。
    子进程通过 `spawnProcess()`（`src/utils/shell.ts`）启动，会自动注入环境变量 `CLAUDE_CODE_ENTRYPOINT="cli"`（通过 `getEnvWithoutNestedSessionFlag()` 函数），使会话支持通过 `--continue` 恢复。
    使用 `stream-json` 格式可实时获取 Claude Code 的流式事件（工具调用、文本输出、最终结果），用于在进度面板中显示每个任务的实时活动描述和结果预览。流式事件解析由 `src/utils/stream-parser.ts` 负责。
 6. 进入**事件监听通知**阶段（见 [5.3](#53-任务完成通知机制)）
