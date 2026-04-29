@@ -1,10 +1,6 @@
 import type { ClawtConfig, ConfigDefinitions } from '../types/index.js';
 import { VALID_TERMINAL_APPS } from './terminal.js';
 
-/** Claude Code 系统约束提示 */
-export const APPEND_SYSTEM_PROMPT =
-  'Currently, you are in the git worktree directory.';
-
 /**
  * 通过 clawt 启动的 Claude Code 非交互式会话（claude -p）的 entrypoint 标识
  * 设置为 'cli' 使 claude -p 启动的会话可以通过 --continue 恢复

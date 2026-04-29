@@ -5,7 +5,6 @@ import type { ClaudeCodeResult, TaskResult, TaskSummary, WorktreeInfo } from '..
 import { spawnProcess, killAllChildProcesses } from './shell.js';
 import { cleanupWorktrees } from './worktree.js';
 import { getConfigValue } from './config.js';
-import { APPEND_SYSTEM_PROMPT } from '../constants/index.js';
 import { printSuccess, printWarning, printInfo, printDoubleSeparator, confirmAction } from './formatter.js';
 import { ProgressRenderer } from './progress.js';
 import { createLineBuffer, parseStreamLine, parseStreamEvent, truncateText } from './stream-parser.js';
@@ -35,11 +34,8 @@ type ActivityCallback = (activityText: string) => void;
  * @returns {ClaudeTaskHandle} 包含子进程引用和结果 Promise
  */
 function executeClaudeTask(worktree: WorktreeInfo, task: string, onActivity?: ActivityCallback, continueSession?: boolean): ClaudeTaskHandle {
-  // 使用统一的系统提示常量
-  const systemPrompt = APPEND_SYSTEM_PROMPT;
-
   // 旧版使用 --output-format json，现改为 stream-json --verbose 以支持实时活动信息
-  const args = ['-p', task, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'bypassPermissions', '--append-system-prompt', systemPrompt];
+  const args = ['-p', task, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'bypassPermissions'];
 
   // 追问模式：追加 --continue 继续该目录下最新会话
   if (continueSession) {
