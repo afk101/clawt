@@ -275,7 +275,7 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
 
   logger.info(`validate 命令执行，分支: ${branchName}`);
 
-  // 移除目标 worktree 中指向外部路径的软链接（通常由 AI Agent 创建，会导致 patch apply 失败）
+  // 通常由 AI Agent 创建的指向外部的软链接会导致 patch apply 失败
   const removedSymlinks = removeExternalSymlinks(targetWorktreePath);
   if (removedSymlinks.length > 0) {
     printWarning(MESSAGES.VALIDATE_EXTERNAL_SYMLINKS_FOUND(removedSymlinks.length));

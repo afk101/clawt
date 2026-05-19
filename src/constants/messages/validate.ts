@@ -78,8 +78,6 @@ export const VALIDATE_MESSAGES = {
   /** 检测到外部软链接警告 */
   VALIDATE_EXTERNAL_SYMLINKS_FOUND: (count: number) =>
     `⚠ 检测到 ${count} 个指向 worktree 外部的软链接（可能由 AI Agent 创建），已自动移除`,
-  /** 无外部软链接时的调试日志 */
-  VALIDATE_NO_EXTERNAL_SYMLINKS: '未检测到外部软链接',
   /** 单命令（含 && 链）剪贴板错误格式 */
   VALIDATE_CLIPBOARD_SINGLE_ERROR: (command: string, stderr: string) =>
     `${command} 指令执行出错，错误信息：\n${stderr}`,
