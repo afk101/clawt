@@ -7,6 +7,10 @@ vi.mock('../../../src/logger/index.js', () => ({
 
 // mock node:child_process
 vi.mock('node:child_process', () => ({
+  exec: vi.fn(),
+  execSync: vi.fn(),
+  execFileSync: vi.fn(),
+  spawn: vi.fn(),
   spawnSync: vi.fn(),
 }));
 
@@ -21,6 +25,11 @@ vi.mock('../../../src/utils/config.js', () => ({
   getConfigValue: vi.fn(),
 }));
 
+// mock project-config（避免 resolveClaudeCodeCommand 调用 getGitTopLevel/execSync）
+vi.mock('../../../src/utils/project-config.js', () => ({
+  resolveClaudeCodeCommand: vi.fn(),
+}));
+
 // mock formatter
 vi.mock('../../../src/utils/formatter.js', () => ({
   printInfo: vi.fn(),
@@ -31,12 +40,14 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { launchInteractiveClaude, hasClaudeSessionHistory, buildClaudeCommand } from '../../../src/utils/claude.js';
 import { getConfigValue } from '../../../src/utils/config.js';
+import { resolveClaudeCodeCommand } from '../../../src/utils/project-config.js';
 import { printInfo, printWarning } from '../../../src/utils/formatter.js';
 import { ClawtError } from '../../../src/errors/index.js';
 import { createWorktreeInfo } from '../../helpers/fixtures.js';
 
 const mockedSpawnSync = vi.mocked(spawnSync);
 const mockedGetConfigValue = vi.mocked(getConfigValue);
+const mockedResolveClaudeCodeCommand = vi.mocked(resolveClaudeCodeCommand);
 const mockedPrintInfo = vi.mocked(printInfo);
 const mockedPrintWarning = vi.mocked(printWarning);
 const mockedExistsSync = vi.mocked(existsSync);
@@ -86,7 +97,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('正常启动 Claude Code（退出码为 0）', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: 0,
@@ -100,7 +111,7 @@ describe('launchInteractiveClaude', () => {
 
     launchInteractiveClaude(worktree);
 
-    expect(mockedGetConfigValue).toHaveBeenCalledWith('claudeCodeCommand');
+    expect(mockedResolveClaudeCodeCommand).toHaveBeenCalled();
     expect(mockedSpawnSync).toHaveBeenCalledWith(
       'claude',
       expect.any(Array),
@@ -112,7 +123,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('输出分支和路径信息', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: 0,
@@ -131,7 +142,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('支持带参数的命令（如 npx claude）', () => {
-    mockedGetConfigValue.mockReturnValue('npx claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('npx claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: 0,
@@ -153,7 +164,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('spawnSync 返回 error 时抛出 ClawtError', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: null,
@@ -170,7 +181,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('非零退出码时调用 printWarning', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: 1,
@@ -188,7 +199,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('退出码为 null 时不调用 printWarning', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: null,
@@ -206,7 +217,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('退出码为 0 时不调用 printWarning', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: 0,
@@ -224,7 +235,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('autoContinue 启用且有会话历史时追加 --continue 参数', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(true);
     mockedReaddirSync.mockReturnValue(['session-abc.jsonl'] as unknown as ReturnType<typeof readdirSync>);
     mockedSpawnSync.mockReturnValue({
@@ -245,7 +256,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('autoContinue 启用但无会话历史时不追加 --continue 参数', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: 0,
@@ -265,7 +276,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('不传 autoContinue 时即使有会话历史也不追加 --continue', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(true);
     mockedReaddirSync.mockReturnValue(['session-abc.jsonl'] as unknown as ReturnType<typeof readdirSync>);
     mockedSpawnSync.mockReturnValue({
@@ -285,7 +296,7 @@ describe('launchInteractiveClaude', () => {
   });
 
   it('不包含 --append-system-prompt 参数', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     mockedExistsSync.mockReturnValue(false);
     mockedSpawnSync.mockReturnValue({
       status: 0,
@@ -311,7 +322,7 @@ describe('buildClaudeCommand', () => {
   });
 
   it('生成包含 cd 和 claude 命令的字符串', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
 
     const cmd = buildClaudeCommand(worktree, false);
 
@@ -320,7 +331,7 @@ describe('buildClaudeCommand', () => {
   });
 
   it('hasPreviousSession 为 true 时包含 --continue', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
 
     const cmd = buildClaudeCommand(worktree, true);
 
@@ -328,7 +339,7 @@ describe('buildClaudeCommand', () => {
   });
 
   it('hasPreviousSession 为 false 时不包含 --continue', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
 
     const cmd = buildClaudeCommand(worktree, false);
 
@@ -336,7 +347,7 @@ describe('buildClaudeCommand', () => {
   });
 
   it('不包含 --append-system-prompt 参数', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
 
     const cmd = buildClaudeCommand(worktree, false);
 
@@ -344,7 +355,7 @@ describe('buildClaudeCommand', () => {
   });
 
   it('路径中的单引号被正确转义', () => {
-    mockedGetConfigValue.mockReturnValue('claude');
+    mockedResolveClaudeCodeCommand.mockReturnValue('claude');
     const wtWithQuote = createWorktreeInfo({
       path: "/tmp/test's-worktree",
       branch: 'feat',

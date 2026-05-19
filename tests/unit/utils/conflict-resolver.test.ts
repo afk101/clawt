@@ -18,7 +18,11 @@ vi.mock('../../../src/errors/index.js', () => ({
 
 // mock node:child_process
 vi.mock('node:child_process', () => ({
+  exec: vi.fn(),
+  execSync: vi.fn(),
   execFileSync: vi.fn(),
+  spawn: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 
 // mock constants（使用与 src/constants/messages/merge.ts 一致的消息文本）

@@ -236,9 +236,9 @@ describe('waitForGitIndexLockRetrySync', () => {
     waitForGitIndexLockRetrySync();
     const elapsed = Date.now() - startTime;
 
-    // 延迟时间应该接近 150ms（允许 50ms 误差）
-    expect(elapsed).toBeGreaterThanOrEqual(100);
-    expect(elapsed).toBeLessThanOrEqual(300);
+    // 延迟时间应该接近 1000ms（允许 500ms 误差，兼容 CI 环境的调度延迟）
+    expect(elapsed).toBeGreaterThanOrEqual(500);
+    expect(elapsed).toBeLessThanOrEqual(2000);
 
     stderrWriteSpy.mockRestore();
   });
