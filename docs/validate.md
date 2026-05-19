@@ -66,6 +66,21 @@ validate 命令引入了**快照（snapshot）机制**来支持增量对比。�
      - 多个匹配 → 通过交互式列表让用户从匹配结果中选择
   3. **无匹配** → 报错退出，并列出所有可用分支名
 
+##### 步骤 0.5：清理外部软链接
+
+在变更检测之前，自动扫描目标 worktree 根目录，移除指向 worktree 外部路径的软链接。
+
+**背景：** AI Agent（如 Claude Code）在 worktree 中执行任务时，可能会通过软链接（如 `node_modules → /path/to/main-worktree/node_modules`）引用主 worktree 或其他外部路径的依赖目录。这些指向外部的软链接会导致 `git diff` 和 `git apply` 的行为异常，进而使 patch apply 失败。validate 命令在变更检测前自动清理这些软链接，确保后续 patch 流程正常执行。
+
+**实现要点：**
+
+- `removeExternalSymlinks(dir)`（`src/utils/symlink-guard.ts`）：扫描目录中所有软链接，判断其目标路径是否在 worktree 根目录之外（通过 `path.relative` 判断是否以 `..` 开头），移除外部软链接并返回被移除的路径列表
+- 内部辅助函数 `isExternalSymlink(linkPath, worktreeRoot)` 判断软链接目标是否指向外部：先解析软链接目标（绝对路径直接使用，相对路径基于 worktreeRoot 解析），再通过 `relative` 判断目标是否在 worktree 之外
+- 安全措施：删除前通过 `lstatSync` 再次确认目标仍是软链接（而非已被替换的普通文件），缩小 TOCTOU 口
+- 不可读目录或删除失败时静默处理（仅输出 warn 日志），不中断 validate 流程
+- 如果移除了外部软链接，输出警告提示：`⚠ 检测到 N 个指向 worktree 外部的软链接（可能由 AI Agent 创建），已自动移除`
+- 消息常量：`MESSAGES.VALIDATE_EXTERNAL_SYMLINKS_FOUND`（`src/constants/messages/validate.ts`）
+
 ##### 步骤 1：检测目标分支变更
 
 统一检测目标 worktree 的未提交修改和已提交 commit：

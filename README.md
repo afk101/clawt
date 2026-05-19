@@ -159,6 +159,8 @@ clawt validate -b <branch> -r "pnpm test & pnpm build"  # Run multiple commands 
 
 Supports incremental mode: when re-validating the same branch, you can view incremental diffs between validations via `git diff`.
 
+Automatically removes external symlinks (e.g., `node_modules` links to the main worktree) before detecting changes — these symlinks, typically created by AI Agents, can cause patch apply failures.
+
 When patch apply fails (target branch diverges too much from main), it automatically prompts whether to run `sync` to synchronize the main branch to the target worktree — no manual action needed.
 
 The `-r, --run` option auto-executes a specified command in the main worktree after successful validation (e.g., tests, builds). Command failure does not affect the validation result. Without `-r`, it automatically reads from the project's `validateRunCommand` config (configurable via `clawt init show`). Use `&` to separate multiple commands for parallel execution:

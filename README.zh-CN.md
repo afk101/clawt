@@ -159,6 +159,8 @@ clawt validate -b <branch> -r "pnpm test & pnpm build"  # 并行执行多个命�
 
 支持增量模式：再次 validate 同一分支时，可通过 `git diff` 查看两次之间的增量差异。
 
+执行前会自动清理目标 worktree 中指向外部的软链接（如 AI Agent 创建的 `node_modules` 链接），这些软链接会导致 patch apply 失败。
+
 当 patch apply 失败（目标分支与主分支差异过大）时，会自动询问是否执行 `sync` 同步主分支到目标 worktree，无需手动操作。
 
 `-r, --run` 选项可在 validate 成功后自动在主 worktree 中执行指定命令（如测试、构建等），命令执行失败不影响 validate 结果。不传 `-r` 时会自动从项目配置的 `validateRunCommand` 读取（可通过 `clawt init show` 设置）。支持用 `&` 分隔多个命令并行执行：
