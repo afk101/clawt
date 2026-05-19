@@ -24,32 +24,6 @@ function isExternalSymlink(linkPath: string, worktreeRoot: string): boolean {
 }
 
 /**
- * 扫描目录中指向外部路径的软链接
- * 仅扫描顶层目录条目，不递归深入
- * @param {string} dir - 要扫描的目录绝对路径
- * @returns {string[]} 外部软链接的绝对路径列表
- */
-export function findExternalSymlinks(dir: string): string[] {
-  const externalSymlinks: string[] = [];
-
-  try {
-    const entries = readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.isSymbolicLink()) {
-        const fullPath = join(dir, entry.name);
-        if (isExternalSymlink(fullPath, dir)) {
-          externalSymlinks.push(fullPath);
-        }
-      }
-    }
-  } catch {
-    // 目录不可读时静默返回
-  }
-
-  return externalSymlinks;
-}
-
-/**
  * 移除目录中指向外部路径的软链接
  * 同一循环内边扫描边删除，缩小 TOCTOU 窗口；
  * 删除前用 lstatSync 确认目标仍是软链接，避免误删已被替换的普通文件

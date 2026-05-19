@@ -71,7 +71,7 @@ export { createWorktrees, getProjectWorktrees, getProjectWorktreeDir, cleanupWor
 export { loadConfig, writeDefaultConfig, writeConfig, saveConfig, getConfigValue, ensureClawtDirs, parseConcurrency } from './config.js';
 export { printSuccess, printError, printWarning, printInfo, printHint, printSeparator, printDoubleSeparator, confirmAction, confirmDestructiveAction, formatWorktreeStatus, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString, generateTaskFilename } from './formatter.js';
 export { ensureDir, removeEmptyDir, calculateDirSize } from './fs.js';
-export { findExternalSymlinks, removeExternalSymlinks } from './symlink-guard.js';
+export { removeExternalSymlinks } from './symlink-guard.js';
 export { multilineInput, promptCommitMessage } from './prompt.js';
 export { launchInteractiveClaude, hasClaudeSessionHistory, launchInteractiveClaudeInNewTerminal } from './claude.js';
 export { getSnapshotPath, hasSnapshot, getSnapshotModifiedTime, readSnapshotTreeHash, readSnapshot, writeSnapshot, removeSnapshot, removeProjectSnapshots, getProjectSnapshotBranches } from './validate-snapshot.js';
