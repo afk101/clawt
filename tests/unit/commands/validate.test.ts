@@ -46,6 +46,7 @@ vi.mock('../../../src/constants/index.js', () => ({
     VALIDATE_CONFIRM_AUTO_SYNC: (branch: string) => `是否自动 sync ${branch}`,
     VALIDATE_AUTO_SYNC_DECLINED: (branch: string) => `已跳过 ${branch} 的自动 sync`,
     VALIDATE_AUTO_SYNC_START: (branch: string) => `正在自动 sync ${branch}`,
+    VALIDATE_EXTERNAL_SYMLINKS_FOUND: (count: number) => `检测到 ${count} 个外部软链接`,
   },
 }));
 
@@ -94,6 +95,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   executeRunCommand: vi.fn(),
   guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   guardMainWorkBranchExists: vi.fn(),
+  removeExternalSymlinks: vi.fn().mockReturnValue([]),
 }));
 
 import { registerValidateCommand } from '../../../src/commands/validate.js';

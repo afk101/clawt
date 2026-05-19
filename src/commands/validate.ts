@@ -34,6 +34,7 @@ import {
   saveCurrentSnapshotTree,
   loadOldSnapshotToStage,
   switchToValidateBranch,
+  removeExternalSymlinks,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
 
@@ -273,6 +274,12 @@ async function handleValidate(options: ValidateOptions): Promise<void> {
   const targetWorktreePath = worktree.path;
 
   logger.info(`validate 命令执行，分支: ${branchName}`);
+
+  // 移除目标 worktree 中指向外部路径的软链接（通常由 AI Agent 创建，会导致 patch apply 失败）
+  const removedSymlinks = removeExternalSymlinks(targetWorktreePath);
+  if (removedSymlinks.length > 0) {
+    printWarning(MESSAGES.VALIDATE_EXTERNAL_SYMLINKS_FOUND(removedSymlinks.length));
+  }
 
   // 统一检测未提交修改 + 已提交 commit
   const hasUncommitted = !isWorkingDirClean(targetWorktreePath);
