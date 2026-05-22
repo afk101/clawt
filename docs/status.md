@@ -280,7 +280,7 @@ Worktree 按创建日期分组（复用 `groupWorktreesByDate()`），每组前�
 3. 以继承 stdio 的方式执行对应的 clawt 子命令（如 `clawt validate -b <branch>`）。其中 `c`（cover）命令不需要指定分支，直接执行 `clawt cover`
 4. 命令完成后，输出 `按 Enter 返回面板...` 提示
 5. 等待用户按 Enter 键
-6. 重新进入备选屏幕，刷新数据，恢复面板
+6. 重新进入备选屏幕，立即用旧数据渲染一帧（消除白屏等待），再异步刷新数据，恢复面板
 
 执行操作期间设置操作锁（`isOperating`），阻止其他按键响应。
 
@@ -303,6 +303,7 @@ Worktree 按创建日期分组（复用 `groupWorktreesByDate()`），每组前�
 - 使用同步输出序列（`SYNC_OUTPUT_START` / `SYNC_OUTPUT_END`）防止闪烁
 - 隐藏光标、禁用行换行，确保渲染效果整洁
 - 注册 `exit` 事件兜底处理器，确保异常退出时终端状态被恢复
+- 操作返回面板时，先立即用旧数据渲染一帧（消除备选屏幕进入后的白屏），再异步刷新数据并重新渲染
 - 每行通过 `truncateToTerminalWidth()` 截断以适配终端宽度
 
 **实现要点：**
