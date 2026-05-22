@@ -202,9 +202,15 @@ print_success "tag 已创建: ${TAG}"
 # ────────────────────────────────────────
 
 print_step "发布到 npm..."
-# 临时关闭 set -e，手动捕获 pnpm publish 的退出码
+# npm 开启 2FA 时需要 OTP，交互式获取
+read -rp "请输入 npm 2FA 验证码（OTP，可留空跳过）: " NPM_OTP
+PUBLISH_CMD="npm publish --access public --registry https://registry.npmjs.org/"
+if [ -n "$NPM_OTP" ]; then
+  PUBLISH_CMD="$PUBLISH_CMD --otp $NPM_OTP"
+fi
+# 临时关闭 set -e，手动捕获 npm publish 的退出码
 set +e
-NPM_OUTPUT=$(npm publish --access public --registry https://registry.npmjs.org/ 2>&1)
+NPM_OUTPUT=$($PUBLISH_CMD 2>&1)
 NPM_EXIT_CODE=$?
 set -e
 
