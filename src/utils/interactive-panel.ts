@@ -425,11 +425,13 @@ export class InteractivePanel {
 
     this.isOperating = false;
 
+    // 立即用旧数据渲染一帧，消除备选屏幕进入后的白屏
+    this.render();
+
     // 异步刷新数据并重新启动自动刷新
     await this.refreshData();
     this.startAutoRefresh();
 
-    // 渲染
     this.render();
   }
 
