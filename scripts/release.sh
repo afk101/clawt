@@ -204,7 +204,7 @@ print_success "tag 已创建: ${TAG}"
 print_step "发布到 npm..."
 # 临时关闭 set -e，手动捕获 pnpm publish 的退出码
 set +e
-NPM_OUTPUT=$(pnpm publish --access public --registry https://registry.npmjs.org/ --no-git-checks 2>&1)
+NPM_OUTPUT=$(npm publish --access public --registry https://registry.npmjs.org/ 2>&1)
 NPM_EXIT_CODE=$?
 set -e
 
