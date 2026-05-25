@@ -12,6 +12,11 @@ export const CLAUDE_CODE_ENTRYPOINT_VALUE = 'cli';
  * 新增配置项时只需在此处维护，DEFAULT_CONFIG 和 CONFIG_DESCRIPTIONS 会自动同步
  */
 export const CONFIG_DEFINITIONS: ConfigDefinitions = {
+  language: {
+    defaultValue: 'en',
+    description: '界面语言：en（英文）、zh-CN（中文）',
+    allowedValues: ['en', 'zh-CN'] as const,
+  },
   autoDeleteBranch: {
     defaultValue: false,
     description: '移除 worktree 时是否自动删除对应本地分支',
