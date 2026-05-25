@@ -45,13 +45,13 @@ describe('validateMainWorktree', () => {
     mockedIsInsideGitRepo.mockReturnValue(true);
     mockedGetGitCommonDir.mockReturnValue('/path/to/.git');
     expect(() => validateMainWorktree()).toThrow(ClawtError);
-    expect(() => validateMainWorktree()).toThrow('请在主 worktree 的根目录下执行 clawt');
+    expect(() => validateMainWorktree()).toThrow('Please run clawt in the root directory of the main worktree');
   });
 
   it('不在 git 仓库中时抛出 NOT_GIT_REPO 错误', () => {
     mockedIsInsideGitRepo.mockReturnValue(false);
     expect(() => validateMainWorktree()).toThrow(ClawtError);
-    expect(() => validateMainWorktree()).toThrow('当前目录不是 git 仓库');
+    expect(() => validateMainWorktree()).toThrow('Current directory is not a git repository');
   });
 });
 

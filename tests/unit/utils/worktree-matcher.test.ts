@@ -25,6 +25,8 @@ vi.mock('../../../src/utils/git.js', () => ({
 // mock node:fs 的 statSync，分组测试中按需控制返回值
 vi.mock('node:fs', () => ({
   statSync: vi.fn().mockReturnValue({ birthtime: new Date('2026-02-27T10:00:00') }),
+  existsSync: vi.fn().mockReturnValue(false),
+  mkdirSync: vi.fn(),
 }));
 
 import { statSync } from 'node:fs';

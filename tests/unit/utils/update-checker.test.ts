@@ -6,6 +6,8 @@ import { EventEmitter } from 'node:events';
 vi.mock('node:fs', () => ({
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
+  existsSync: vi.fn().mockReturnValue(false),
+  mkdirSync: vi.fn(),
 }));
 
 // mock node:child_process
