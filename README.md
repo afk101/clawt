@@ -42,7 +42,7 @@ clawt status -i
 | `q` | Quit panel | — |
 
 Example:
-![](https://p3.ssl.qhimg.com/d/inn/8a3779be2486/upload_screenshot_1772675658.png)
+![](https://p1.ssl.qhimg.com/d/inn/5c6aaa8400cf/upload_screenshot_1779703026.png)
 > All operations can also be executed via standalone commands — see "Command Reference" below.
 
 ## Command Reference
