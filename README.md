@@ -6,6 +6,82 @@
 
 Run multiple Claude Code Agent tasks in parallel based on Git Worktree — all agents' code changes are fully isolated from each other.
 
+> When AI coding assistants are already smart enough, the bottleneck is no longer "can it do this" — it's "how many things can you have it do at once."
+
+## Why Clawt
+
+Claude Code can independently complete feature development, bug fixes, and refactoring. But in real projects, you rarely face a single task — you face an entire iteration cycle with **multiple independent tasks that could run in parallel**:
+
+- Replace message list with virtual list
+- Implement publish/deploy dialog
+- Fix navbar flicker bug
+- ………………
+
+This is how most developers use Claude Code today — **serial execution**:
+
+![Serial timeline](https://p5.ssl.qhimg.com/d/inn/20812850b163/2026-03-22-16-00-00-serial-timeline.png)
+
+**3 tasks total ≈ 49.5 min.** The biggest problem: **while Claude is working on task A, B, C — you're just waiting.**
+
+Running multiple tasks in the same repo simultaneously isn't recommended either — there's only one Git working tree, files can conflict, and commits would mix multiple independent tasks together.
+
+## Clawt's Parallel Mode
+
+The core idea is simple:
+
+> **Use Git Worktree to create an isolated working directory for each task, letting multiple Claude Code Agents work in parallel on their own branches — without interfering with each other.**
+
+Same 3 tasks, with Clawt:
+
+![Parallel timeline](https://p5.ssl.qhimg.com/d/inn/737a5d53c9a0/2026-03-22-15-34-32-parallel-timeline.png)
+
+**3 tasks total ≈ 26.5 min (parallel execution, sequential review)**
+
+| Mode | 3 tasks | 10 tasks |
+|------|---------|----------|
+| Serial | ~49.5 min | ~165 min |
+| **Clawt parallel** | **~26.5 min** | **~65 min** |
+| Speedup | **1.9×** | **2.5×** |
+
+The more tasks, the bigger the advantage. In serial mode, **you wait for AI**. In parallel mode, **AI waits for you**.
+
+## Why Git Worktree?
+
+Can't you just open multiple terminals and clone multiple copies? You can — but Git Worktree is the cleaner solution:
+
+| Approach | Disk usage | Git history | Branch mgmt | Merge |
+|----------|-----------|-------------|-------------|-------|
+| Multiple `git clone` | Full copy per repo (hundreds of MB ~ GB) | Independent, needs remote sync | Separate, messy | Requires push/pull across repos |
+| **Git Worktree** | Shared `.git` objects, minimal overhead | **Shared** | **Unified** | Local branch merge, instant |
+
+Git Worktree is a native Git mechanism (`git worktree add`) that creates multiple working directories under one repo, each on its own branch, sharing the same `.git` object database — low disk usage, fast local operations.
+
+## Design Philosophy
+
+> **Human's job: think about requirements, write prompts, review code. AI's job: write code. Git Worktree is the isolation layer between them.**
+
+![Architecture](https://p0.ssl.qhimg.com/t11b673bcd66632b91c744dad9c.png)
+
+> **Clawt does not modify, replace, or wrap Claude Code itself. It only manages "where" and "how many" Claude Code instances run — at a higher level.**
+
+![Layer architecture](https://p4.ssl.qhimg.com/d/inn/1e5b09fd7000/clawt-layer-architecture.png)
+
+Everything you use inside each worktree is vanilla Claude Code — same interaction, same commands, same `CLAUDE.md`, same MCP config. Any Claude Code update automatically benefits Clawt with zero adaptation needed.
+
+The workflow maps directly to standard Git practices:
+
+```
+┌─────────────┐    ┌──────────────────┐    ┌───────────────┐
+│  clawt run   │───►│ clawt validate   │───►│  clawt merge   │
+│  AI develops │    │  Human reviews   │    │  Merge to main │
+│  on branch   │    │  in main worktree│    │  Clean branch  │
+└─────────────┘    └──────────────────┘    └───────────────┘
+```
+
+- **`validate`**: equivalent to Code Review — view diff, run tests in the main worktree (works perfectly with hot reload)
+- **`cover`**: for simple fixes (styling, constants), edit directly in the main worktree and push changes back to the target worktree
+- **`merge`**: merge to main, each merge maps to one clear feature/fix — clean Git history
+
 ## Installation
 
 ```bash
