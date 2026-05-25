@@ -19,7 +19,7 @@ Claude Code can independently complete feature development, bug fixes, and refac
 
 This is how most developers use Claude Code today — **serial execution**:
 
-![Serial timeline](https://p5.ssl.qhimg.com/d/inn/20812850b163/2026-03-22-16-00-00-serial-timeline.png)
+![Serial timeline](https://p5.ssl.qhimg.com/d/inn/73aa5b47265e/upload_screenshot_1779706665.png)
 
 **3 tasks total ≈ 49.5 min.** The biggest problem: **while Claude is working on task A, B, C — you're just waiting.**
 
@@ -60,7 +60,7 @@ Git Worktree is a native Git mechanism (`git worktree add`) that creates multipl
 
 > **Human's job: think about requirements, write prompts, review code(Optional). AI's job: write code. Git Worktree is the isolation layer between them.**
 
-![Architecture](https://p0.ssl.qhimg.com/t11b673bcd66632b91c744dad9c.png)
+![Architecture](https://p2.ssl.qhimg.com/d/inn/52b6ed48d33f/upload_screenshot_1779706749.png)
 
 > **Clawt does not modify, replace, or wrap Claude Code itself. It only manages "where" and "how many" Claude Code instances run — at a higher level.**
 

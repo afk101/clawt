@@ -19,7 +19,7 @@ Claude Code 可以独立完成需求开发、Bug 修复、代码重构等任务�
 
 这是大多数开发者使用 Claude Code 的现状——**串行执行**：
 
-![串行模式时间轴](https://p5.ssl.qhimg.com/d/inn/20812850b163/2026-03-22-16-00-00-serial-timeline.png)
+![串行模式时间轴](https://p5.ssl.qhimg.com/d/inn/73aa5b47265e/upload_screenshot_1779706665.png)
 
 **3 个任务总耗时 ≈ 49.5 分钟**。最大的问题是：**Claude 在执行任务的时候，你完全在干等。**
 
@@ -62,7 +62,7 @@ Git Worktree 是 Git 原生支持的机制（`git worktree add`），它允许�
 
 > **人做的事情：思考需求、写 Prompt、审查代码（可选）。AI 做的事情：写代码。用 Git Worktree 作为两者之间的隔离层。**
 
-![架构图](https://p0.ssl.qhimg.com/t11b673bcd66632b91c744dad9c.png)
+![架构图](https://p2.ssl.qhimg.com/d/inn/52b6ed48d33f/upload_screenshot_1779706749.png)
 
 > **Clawt 不修改、不替换、不包装 Claude Code 本身。它只是在更高一层管理"在哪里"以及"同时启动多少个" Claude Code。**
 
