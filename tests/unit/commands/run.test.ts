@@ -6,6 +6,17 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+// 同时导出 createMessages 供 constants 模块使用
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+    resetLanguageCache: vi.fn(),
+  };
+});
+
 vi.mock('../../../src/errors/index.js', () => ({
   ClawtError: class ClawtError extends Error {
     exitCode: number;
@@ -42,6 +53,12 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       DRY_RUN_INTERACTIVE_MODE: '模式: 交互式（无预设任务）',
       DRY_RUN_READY: '预览完成，无冲突。移除 --dry-run 即可正式执行。',
       DRY_RUN_HAS_CONFLICT: '存在分支冲突，实际执行时将会报错。请先处理冲突的分支。',
+      // i18n 新增的消息键（task-executor.ts 中使用）
+      ALL_TASKS_COMPLETED: (total: number) => `全部任务已完成 (${total}/${total})`,
+      SUCCESS_LABEL: '成功:',
+      FAILURE_LABEL: '失败:',
+      TOTAL_DURATION_LABEL: '总耗时:',
+      TOTAL_COST_LABEL: '总花费:',
     },
   };
 });

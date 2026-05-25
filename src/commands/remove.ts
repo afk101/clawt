@@ -26,6 +26,7 @@ import {
   getCurrentBranch,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /** remove 命令的分支解析消息配置 */
 const REMOVE_RESOLVE_MESSAGES: WorktreeMultiResolveMessages = {
@@ -42,9 +43,9 @@ const REMOVE_RESOLVE_MESSAGES: WorktreeMultiResolveMessages = {
 export function registerRemoveCommand(program: Command): void {
   program
     .command('remove')
-    .description('移除 worktree（支持模糊匹配/多选/全部）')
-    .option('--all', '移除当前项目下所有 worktree')
-    .option('-b, --branch <branchName>', '指定分支名（支持模糊匹配，不传则列出所有分支）')
+    .description(getCurrentLanguage() === 'en' ? 'Remove worktrees (supports fuzzy match / multi-select / all)' : '移除 worktree（支持模糊匹配/多选/全部）')
+    .option('--all', getCurrentLanguage() === 'en' ? 'Remove all worktrees in the current project' : '移除当前项目下所有 worktree')
+    .option('-b, --branch <branchName>', getCurrentLanguage() === 'en' ? 'Specify branch name (supports fuzzy match, lists all branches if not provided)' : '指定分支名（支持模糊匹配，不传则列出所有分支）')
     .action(async (options: RemoveOptions) => {
       await handleRemove(options);
     });
@@ -89,9 +90,9 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   }
 
   // 列出即将移除的 worktree
-  printInfo('即将移除以下 worktree 及本地分支：\n');
+  printInfo(getCurrentLanguage() === 'en' ? 'The following worktrees and local branches will be removed:\n' : '即将移除以下 worktree 及本地分支：\n');
   worktreesToRemove.forEach((wt, index) => {
-    printInfo(`  ${index + 1}. ${wt.path}  →  分支: ${wt.branch}  验证分支: ${getValidateBranchName(wt.branch)}`);
+    printInfo(getCurrentLanguage() === 'en' ? `  ${index + 1}. ${wt.path}  →  branch: ${wt.branch}  validate branch: ${getValidateBranchName(wt.branch)}` : `  ${index + 1}. ${wt.path}  →  分支: ${wt.branch}  验证分支: ${getValidateBranchName(wt.branch)}`);
   });
   printInfo('');
 
@@ -141,7 +142,7 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
   if (failures.length > 0) {
     printError(MESSAGES.REMOVE_PARTIAL_FAILURE(failures));
     throw new ClawtError(
-      `${failures.length} 个 worktree 移除失败`,
+      getCurrentLanguage() === 'en' ? `${failures.length} worktree removal(s) failed` : `${failures.length} 个 worktree 移除失败`,
     );
   }
 }

@@ -69,11 +69,11 @@ export function printDryRunPreview(branchNames: string[], tasks: string[], concu
     }
 
     // 路径行（2空格缩进）
-    printInfo(`  ${chalk.gray('路径:')} ${worktreePath}`);
+    printInfo(`  ${chalk.gray(MESSAGES.PATH_LABEL)} ${worktreePath}`);
 
     // 任务描述行（2空格缩进，非交互式模式）
     if (!isInteractive) {
-      printInfo(`  ${chalk.gray('任务:')} ${truncateTaskDesc(tasks[i])}`);
+      printInfo(`  ${chalk.gray(MESSAGES.TASK_LABEL)} ${truncateTaskDesc(tasks[i])}`);
     }
 
     printInfo('');

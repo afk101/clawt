@@ -112,7 +112,7 @@ export async function promptConfigValue(
  */
 export function formatConfigValue(value: unknown): string {
   if (value === undefined || value === null) {
-    return chalk.dim('(未设置)');
+    return chalk.dim(MESSAGES.NOT_SET);
   }
   if (typeof value === 'boolean') {
     return value ? chalk.green('true') : chalk.yellow('false');
@@ -136,7 +136,7 @@ export async function interactiveConfigEditor<T extends object>(
 ): Promise<{ key: keyof T; newValue: unknown }> {
   // 非交互模式下无法进行配置编辑，引导使用 config set 命令
   if (isNonInteractive()) {
-    throw new ClawtError('非交互模式下无法使用交互式配置编辑器，请使用 clawt config set <key> <value>');
+    throw new ClawtError(MESSAGES.NON_INTERACTIVE_CONFIG_EDITOR);
   }
 
   const keys = Object.keys(definitions);
@@ -203,7 +203,7 @@ async function promptNumberValue(key: string, currentValue: number): Promise<num
     message: MESSAGES.CONFIG_INPUT_PROMPT(key),
     initial: String(currentValue),
     validate: (val: string) => {
-      if (Number.isNaN(Number(val))) return '请输入有效的数字';
+      if (Number.isNaN(Number(val))) return MESSAGES.INVALID_NUMBER_PROMPT;
       return true;
     },
   }).run();

@@ -22,6 +22,7 @@ import {
   isWorkingDirClean,
   confirmAction,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 cover-validate 命令：将验证分支上的修改覆盖回目标 worktree
@@ -30,7 +31,7 @@ import {
 export function registerCoverValidateCommand(program: Command): void {
   program
     .command('cover')
-    .description('将验证分支上的修改覆盖回目标 worktree（自动推导目标分支）')
+    .description(getCurrentLanguage() === 'en' ? 'Overwrite changes from the validation branch back to the target worktree (auto-detect target branch)' : '将验证分支上的修改覆盖回目标 worktree（自动推导目标分支）')
     .action(async () => {
       await handleCoverValidate();
     });
@@ -113,7 +114,7 @@ async function handleCoverValidate(): Promise<void> {
   // 步骤 3.5：工作区干净时提示确认，避免误操作
   if (isWorkingDirClean(mainWorktreePath)) {
     printInfo(MESSAGES.COVER_VALIDATE_WORKING_DIR_CLEAN);
-    const confirmed = await confirmAction('是否继续执行覆盖？');
+    const confirmed = await confirmAction(getCurrentLanguage() === 'en' ? 'Proceed with cover?' : '是否继续执行覆盖？');
     if (!confirmed) return;
   }
 

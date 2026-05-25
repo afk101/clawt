@@ -24,6 +24,7 @@ import {
   loadProjectConfig,
   checkBranchExists,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 status 命令：显示项目全局状态总览
@@ -32,9 +33,9 @@ import {
 export function registerStatusCommand(program: Command): void {
   program
     .command('status')
-    .description('显示项目全局状态总览（支持 --json 格式输出）')
-    .option('--json', '以 JSON 格式输出')
-    .option('-i, --interactive', '交互式面板模式')
+    .description(getCurrentLanguage() === 'en' ? 'Show project global status overview (supports --json output)' : '显示项目全局状态总览（支持 --json 格式输出）')
+    .option('--json', getCurrentLanguage() === 'en' ? 'Output in JSON format' : '以 JSON 格式输出')
+    .option('-i, --interactive', getCurrentLanguage() === 'en' ? 'Interactive panel mode' : '交互式面板模式')
     .action(async (options: StatusOptions) => {
       await handleStatus(options);
     });
@@ -291,12 +292,13 @@ function printStatusAsText(result: StatusResult): void {
  * @param {MainWorktreeStatus} main - 主 worktree 状态
  */
 function printMainSection(main: MainWorktreeStatus): void {
+  const lang = getCurrentLanguage();
   printInfo(`  ${chalk.bold('◆')} ${chalk.bold(MESSAGES.STATUS_MAIN_SECTION)}`);
-  printInfo(`    分支: ${chalk.bold(main.branch)}`);
+  printInfo(`    ${lang === 'en' ? 'Branch' : '分支'}: ${chalk.bold(main.branch)}`);
   if (main.isClean) {
-    printInfo(`    状态: ${chalk.green('✓ 干净')}`);
+    printInfo(`    ${lang === 'en' ? 'Status' : '状态'}: ${chalk.green(lang === 'en' ? '✓ Clean' : '✓ 干净')}`);
   } else {
-    printInfo(`    状态: ${chalk.yellow('✗ 有未提交修改')}`);
+    printInfo(`    ${lang === 'en' ? 'Status' : '状态'}: ${chalk.yellow(lang === 'en' ? '✗ Uncommitted changes' : '✗ 有未提交修改')}`);
   }
 
   // 配置分支信息展示
@@ -319,7 +321,8 @@ function printMainSection(main: MainWorktreeStatus): void {
  * @param {number} total - worktree 总数
  */
 function printWorktreesSection(worktrees: WorktreeDetailedStatus[], total: number): void {
-  printInfo(`  ${chalk.bold('◆')} ${chalk.bold(MESSAGES.STATUS_WORKTREES_SECTION)} (${total} 个)`);
+  const lang = getCurrentLanguage();
+  printInfo(`  ${chalk.bold('◆')} ${chalk.bold(MESSAGES.STATUS_WORKTREES_SECTION)} (${total} ${lang === 'en' ? 'items' : '个'})`);
   printInfo('');
 
   if (worktrees.length === 0) {
@@ -337,6 +340,7 @@ function printWorktreesSection(worktrees: WorktreeDetailedStatus[], total: numbe
  * @param {WorktreeDetailedStatus} wt - worktree 详细状态
  */
 function printWorktreeItem(wt: WorktreeDetailedStatus): void {
+  const lang = getCurrentLanguage();
   // 分支名 + 变更状态标签
   const statusLabel = formatChangeStatusLabel(wt.changeStatus);
   printInfo(`  ${chalk.bold('●')} ${chalk.bold(wt.branch)}   [${statusLabel}]`);
@@ -348,14 +352,14 @@ function printWorktreeItem(wt: WorktreeDetailedStatus): void {
 
   // 本地提交数
   if (wt.commitsAhead > 0) {
-    printInfo(`    ${chalk.yellow(`${wt.commitsAhead} 个本地提交`)}`);
+    printInfo(`    ${chalk.yellow(lang === 'en' ? `${wt.commitsAhead} local commit(s)` : `${wt.commitsAhead} 个本地提交`)}`);
   }
 
   // 与主分支的同步状态
   if (wt.commitsBehind > 0) {
-    printInfo(`    ${chalk.yellow(`落后主分支 ${wt.commitsBehind} 个提交`)}`);
+    printInfo(`    ${chalk.yellow(lang === 'en' ? `Behind main by ${wt.commitsBehind} commit(s)` : `落后主分支 ${wt.commitsBehind} 个提交`)}`);
   } else {
-    printInfo(`    ${chalk.green('与主分支同步')}`);
+    printInfo(`    ${chalk.green(lang === 'en' ? 'In sync with main' : '与主分支同步')}`);
   }
 
   // 分支创建时间
@@ -402,7 +406,8 @@ function formatChangeStatusLabel(status: WorktreeDetailedStatus['changeStatus'])
  * @param {SnapshotSummary} snapshots - 快照摘要信息
  */
 function printSnapshotsSection(snapshots: SnapshotSummary): void {
-  printInfo(`  ${chalk.bold('◆')} ${chalk.bold(MESSAGES.STATUS_SNAPSHOTS_SECTION)} (${snapshots.total} 个)`);
+  const lang = getCurrentLanguage();
+  printInfo(`  ${chalk.bold('◆')} ${chalk.bold(MESSAGES.STATUS_SNAPSHOTS_SECTION)} (${snapshots.total} ${lang === 'en' ? 'items' : '个'})`);
   if (snapshots.orphaned > 0) {
     printInfo(`    ${chalk.yellow(MESSAGES.STATUS_SNAPSHOT_ORPHANED(snapshots.orphaned))}`);
   }

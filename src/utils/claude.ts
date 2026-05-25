@@ -2,10 +2,11 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { ClawtError } from '../errors/index.js';
-import { CLAUDE_PROJECTS_DIR } from '../constants/index.js';
+import { CLAUDE_PROJECTS_DIR, MESSAGES } from '../constants/index.js';
 import { resolveClaudeCodeCommand } from './project-config.js';
 import { printInfo, printWarning } from './formatter.js';
 import { openCommandInNewTerminalTab } from './terminal.js';
+import { getCurrentLanguage } from './i18n.js';
 import type { WorktreeInfo } from '../types/index.js';
 
 /**
@@ -64,12 +65,12 @@ export function launchInteractiveClaude(worktree: WorktreeInfo, options: LaunchC
     args.push('--continue');
   }
 
-  printInfo(`正在 worktree 中启动 Claude Code 交互式界面...`);
-  printInfo(`  分支: ${worktree.branch}`);
-  printInfo(`  路径: ${worktree.path}`);
-  printInfo(`  指令: ${commandStr}`);
+  printInfo(MESSAGES.STARTING_CLAUDE_INTERACTIVE);
+  printInfo(`  ${MESSAGES.BRANCH_LABEL} ${worktree.branch}`);
+  printInfo(`  ${MESSAGES.PATH_LABEL_RESUME} ${worktree.path}`);
+  printInfo(`  ${MESSAGES.COMMAND_LABEL} ${commandStr}`);
   if (options.autoContinue) {
-    printInfo(`  模式: ${hasPreviousSession ? '继续上次对话' : '新对话'}`);
+    printInfo(`  ${MESSAGES.MODE_LABEL} ${hasPreviousSession ? MESSAGES.CONTINUE_SESSION : MESSAGES.NEW_SESSION}`);
   }
   printInfo('');
 
@@ -79,11 +80,11 @@ export function launchInteractiveClaude(worktree: WorktreeInfo, options: LaunchC
   });
 
   if (result.error) {
-    throw new ClawtError(`启动 Claude Code 失败: ${result.error.message}`);
+    throw new ClawtError(MESSAGES.CLAUDE_START_FAILED(result.error.message));
   }
 
   if (result.status !== null && result.status !== 0) {
-    printWarning(`Claude Code 退出码: ${result.status}`);
+    printWarning(getCurrentLanguage() === 'en' ? `Claude Code exit code: ${result.status}` : `Claude Code 退出码: ${result.status}`);
   }
 }
 
@@ -121,7 +122,7 @@ export function buildClaudeCommand(worktree: WorktreeInfo, hasPreviousSession: b
  */
 export function launchInteractiveClaudeInNewTerminal(worktree: WorktreeInfo, hasPreviousSession: boolean): void {
   const command = buildClaudeCommand(worktree, hasPreviousSession);
-  const modeLabel = hasPreviousSession ? '继续' : '新对话';
+  const modeLabel = hasPreviousSession ? MESSAGES.CONTINUE_SESSION : MESSAGES.NEW_SESSION;
   const tabTitle = `clawt: ${worktree.branch}`;
 
   openCommandInNewTerminalTab(command, tabTitle);

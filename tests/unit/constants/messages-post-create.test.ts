@@ -1,4 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+vi.mock('../../../src/utils/i18n.js', () => ({
+  getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+  resetLanguageCache: vi.fn(),
+  setCurrentLanguage: vi.fn(),
+  createMessages: vi.fn((i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+    const result: any = {};
+    for (const key of Object.keys(i18nMap)) {
+      result[key] = i18nMap[key]['zh-CN'];
+    }
+    return result;
+  }),
+}));
+
 import { POST_CREATE_MESSAGES } from '../../../src/constants/messages/post-create.js';
 
 describe('POST_CREATE_MESSAGES', () => {
@@ -108,5 +123,82 @@ describe('POST_CREATE_MESSAGES', () => {
     it('存在新的 POST_CREATE_SCRIPT_AUTO_CHMOD 键', () => {
       expect('POST_CREATE_SCRIPT_AUTO_CHMOD' in POST_CREATE_MESSAGES).toBe(true);
     });
+  });
+});
+
+/**
+ * 英文版 post-create 消息测试
+ * 使用 vi.resetModules + vi.doMock 动态切换语言为 en，
+ * 然后重新加载 POST_CREATE_MESSAGES 模块验证英文版消息内容
+ */
+describe('POST_CREATE_MESSAGES — 英文版', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('纯字符串消息在英文版下返回英文文本', async () => {
+    vi.doMock('../../../src/utils/i18n.js', () => ({
+      getCurrentLanguage: () => 'en',
+      resetLanguageCache: vi.fn(),
+      setCurrentLanguage: vi.fn(),
+      createMessages: (i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+        const result: any = {};
+        for (const key of Object.keys(i18nMap)) {
+          result[key] = i18nMap[key]['en'];
+        }
+        return result;
+      },
+    }));
+
+    const { POST_CREATE_MESSAGES: EN_MSGS } = await import('../../../src/constants/messages/post-create.js');
+
+    // HOOK_SKIPPED 英文版包含 Skipped
+    expect(EN_MSGS.HOOK_SKIPPED).toContain('Skipped');
+
+    // HOOK_NOT_CONFIGURED 英文版包含 "not configured" 和 "skipping"
+    expect(EN_MSGS.HOOK_NOT_CONFIGURED).toContain('not configured');
+    expect(EN_MSGS.HOOK_NOT_CONFIGURED).toContain('skipping');
+  });
+
+  it('模板函数消息在英文版下返回英文文本', async () => {
+    vi.doMock('../../../src/utils/i18n.js', () => ({
+      getCurrentLanguage: () => 'en',
+      resetLanguageCache: vi.fn(),
+      setCurrentLanguage: vi.fn(),
+      createMessages: (i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+        const result: any = {};
+        for (const key of Object.keys(i18nMap)) {
+          result[key] = i18nMap[key]['en'];
+        }
+        return result;
+      },
+    }));
+
+    const { POST_CREATE_MESSAGES: EN_MSGS } = await import('../../../src/constants/messages/post-create.js');
+
+    // HOOK_SOURCE_INFO 英文版包含 "postCreate hook source"
+    expect(EN_MSGS.HOOK_SOURCE_INFO('project config')).toContain('postCreate hook source');
+
+    // HOOK_SUCCESS 英文版包含 "successfully" 而非 "成功"
+    expect(EN_MSGS.HOOK_SUCCESS('feat-login')).toContain('successfully');
+    expect(EN_MSGS.HOOK_SUCCESS('feat-login')).not.toContain('成功');
+
+    // HOOK_FAILED 英文版包含 "failed" 而非 "失败"
+    expect(EN_MSGS.HOOK_FAILED('feat-login', 'error')).toContain('failed');
+    expect(EN_MSGS.HOOK_FAILED('feat-login', 'error')).not.toContain('失败');
+
+    // HOOK_SUMMARY 英文版包含 "succeeded"/"failed" 而非 "成功"/"失败"
+    const summary = EN_MSGS.HOOK_SUMMARY(5, 0);
+    expect(summary).toContain('5 succeeded');
+    expect(summary).toContain('0 failed');
+
+    // POST_CREATE_SCRIPT_NOT_EXECUTABLE 英文版包含 "not executable"
+    expect(EN_MSGS.POST_CREATE_SCRIPT_NOT_EXECUTABLE('/repo/.clawt/postCreate.sh')).toContain('not executable');
+
+    // POST_CREATE_SCRIPT_AUTO_CHMOD 英文版包含 "auto-added execute permission"
+    expect(EN_MSGS.POST_CREATE_SCRIPT_AUTO_CHMOD('/repo/.clawt/postCreate.sh')).toContain('auto-added execute permission');
+
+    // HOOK_BACKGROUND_START 英文版包含 "running in background"
+    expect(EN_MSGS.HOOK_BACKGROUND_START(3, 'npm install')).toContain('running in background');
   });
 });

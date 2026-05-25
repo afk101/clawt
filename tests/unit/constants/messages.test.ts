@@ -1,4 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+vi.mock('../../../src/utils/i18n.js', () => ({
+  getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+  resetLanguageCache: vi.fn(),
+  setCurrentLanguage: vi.fn(),
+  createMessages: vi.fn((i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+    const result: any = {};
+    for (const key of Object.keys(i18nMap)) {
+      result[key] = i18nMap[key]['zh-CN'];
+    }
+    return result;
+  }),
+}));
+
 import { MESSAGES } from '../../../src/constants/messages/index.js';
 
 describe('MESSAGES', () => {
@@ -269,5 +284,74 @@ describe('MESSAGES', () => {
       const result = MESSAGES.ALIAS_TARGET_NOT_FOUND('xxx');
       expect(result).toContain('xxx');
     });
+  });
+});
+
+/**
+ * 英文版消息测试
+ * 使用 vi.resetModules + vi.doMock 动态切换语言为 en，
+ * 然后重新加载 MESSAGES 模块验证英文版消息内容
+ */
+describe('MESSAGES — 英文版', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('纯字符串消息在英文版下返回英文文本', async () => {
+    vi.doMock('../../../src/utils/i18n.js', () => ({
+      getCurrentLanguage: () => 'en',
+      resetLanguageCache: vi.fn(),
+      setCurrentLanguage: vi.fn(),
+      createMessages: (i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+        const result: any = {};
+        for (const key of Object.keys(i18nMap)) {
+          result[key] = i18nMap[key]['en'];
+        }
+        return result;
+      },
+    }));
+
+    const { MESSAGES: EN_MESSAGES } = await import('../../../src/constants/messages/index.js');
+
+    // 验证部分关键纯字符串消息是英文而非中文
+    expect(EN_MESSAGES.NO_WORKTREES).toBe('(No worktrees)');
+    expect(EN_MESSAGES.MAIN_WORKTREE_DIRTY).toBe('Main worktree has uncommitted changes. Please resolve first');
+    expect(EN_MESSAGES.MERGE_CONFLICT).toContain('Merge has conflicts');
+    expect(EN_MESSAGES.DESTRUCTIVE_OP_CANCELLED).toBe('Operation cancelled');
+    expect(EN_MESSAGES.CONFIG_CORRUPTED).toContain('Config file corrupted');
+    expect(EN_MESSAGES.PULL_CONFLICT).toContain('Conflict during auto-pull');
+    expect(EN_MESSAGES.PUSH_FAILED).toContain('Auto-push failed');
+    expect(EN_MESSAGES.ALIAS_LIST_EMPTY).toBe('(No aliases)');
+    expect(EN_MESSAGES.ALIAS_LIST_TITLE).toBe('Current aliases:');
+  });
+
+  it('模板函数消息在英文版下返回英文文本', async () => {
+    vi.doMock('../../../src/utils/i18n.js', () => ({
+      getCurrentLanguage: () => 'en',
+      resetLanguageCache: vi.fn(),
+      setCurrentLanguage: vi.fn(),
+      createMessages: (i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+        const result: any = {};
+        for (const key of Object.keys(i18nMap)) {
+          result[key] = i18nMap[key]['en'];
+        }
+        return result;
+      },
+    }));
+
+    const { MESSAGES: EN_MESSAGES } = await import('../../../src/constants/messages/index.js');
+
+    // MERGE_SUCCESS 英文版用 "Pushed to remote" 而非 "已推送"
+    expect(EN_MESSAGES.MERGE_SUCCESS('feat-a', 'fix bug', true)).toContain('Pushed to remote');
+    expect(EN_MESSAGES.MERGE_SUCCESS('feat-a', 'fix bug', false)).not.toContain('Pushed to remote');
+
+    // BRANCH_EXISTS 英文版包含 "already exists"
+    expect(EN_MESSAGES.BRANCH_EXISTS('feature-a')).toContain('already exists');
+
+    // WORKTREE_CREATED 英文版用 "Created" 而非 "已创建"
+    expect(EN_MESSAGES.WORKTREE_CREATED(3)).toContain('Created');
+
+    // ALIAS_SET_SUCCESS 英文版用 "Alias set" 而非 "已设置别名"
+    expect(EN_MESSAGES.ALIAS_SET_SUCCESS('ls', 'list')).toContain('Alias set');
   });
 });

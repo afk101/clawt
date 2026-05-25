@@ -36,7 +36,7 @@ function buildSingleErrorClipboard(command: string, stderr: string, exitCode: nu
   if (stderr.trim()) {
     return MESSAGES.VALIDATE_CLIPBOARD_SINGLE_ERROR(command, stderr.trim());
   }
-  return `${command} 指令执行出错，退出码: ${exitCode}`;
+  return MESSAGES.COMMAND_EXEC_ERROR(command, exitCode);
 }
 
 /**
@@ -94,7 +94,7 @@ function reportParallelResults(results: ParallelCommandResultWithStderr[]): void
       // 收集错误信息用于剪贴板
       const errorContent = result.stderr.trim()
         ? result.stderr.trim()
-        : `退出码: ${result.exitCode}`;
+        : MESSAGES.EXIT_CODE_LABEL(result.exitCode);
       errorClipboardParts.push(
         MESSAGES.VALIDATE_CLIPBOARD_PARALLEL_ERROR(result.command, errorContent),
       );

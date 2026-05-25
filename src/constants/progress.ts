@@ -1,3 +1,5 @@
+import { getCurrentLanguage } from '../utils/i18n.js';
+
 /** Braille spinner 帧序列 */
 export const SPINNER_FRAMES: readonly string[] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
@@ -20,22 +22,31 @@ export const TASK_STATUS_ICONS = {
   FAILED: '✗',
 } as const;
 
-/** 任务状态标签 */
+/** 任务状态标签（根据语言返回） */
+export function getTaskStatusLabels() {
+  const lang = getCurrentLanguage();
+  return lang === 'en'
+    ? { PENDING: 'Pending', RUNNING: 'Running', DONE: 'Done', FAILED: 'Failed' }
+    : { PENDING: '排队中', RUNNING: '运行中', DONE: '完成', FAILED: '失败' };
+}
+
+/** 兼容旧代码：保留静态常量，默认中文（仅用于非动态场景） */
 export const TASK_STATUS_LABELS = {
-  /** 排队中 */
   PENDING: '排队中',
-  /** 运行中 */
   RUNNING: '运行中',
-  /** 完成 */
   DONE: '完成',
-  /** 失败 */
   FAILED: '失败',
 } as const;
 
 /** 活动描述文本的最大字符数 */
 export const ACTIVITY_TEXT_MAX_LENGTH = 30;
 
-/** 文本类型活动的前缀 */
+/** 文本类型活动的前缀（根据语言返回） */
+export function getTextActivityPrefix() {
+  return getCurrentLanguage() === 'en' ? 'Thinking' : '思考中';
+}
+
+/** 兼容旧代码：保留静态常量 */
 export const TEXT_ACTIVITY_PREFIX = '思考中';
 
 /** 结果预览文本的最大字符数 */

@@ -43,14 +43,18 @@ beforeEach(() => {
 /** 构造默认配置 mock 数据 */
 function mockDefaultConfig(aliases: Record<string, string> = {}) {
   return {
+    language: 'en' as const,
     autoDeleteBranch: false,
     claudeCodeCommand: 'claude',
     autoPullPush: false,
     confirmDestructiveOps: true,
     maxConcurrency: 0,
     terminalApp: 'auto',
+    resumeInPlace: false,
     aliases,
     autoUpdate: true,
+    conflictResolveMode: 'ask' as const,
+    conflictResolveTimeoutMs: 900000,
   };
 }
 

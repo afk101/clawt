@@ -22,6 +22,7 @@ import {
   printDryRunPreview,
   runPostCreateHooks,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 run 命令：批量创建 worktree + 启动 Claude Code 执行任务（支持任务文件）
@@ -30,13 +31,13 @@ import {
 export function registerRunCommand(program: Command): void {
   program
     .command('run')
-    .description('批量创建 worktree + 启动 Claude Code 执行任务（支持任务文件）')
-    .option('-b, --branch <branchName>', '分支名')
-    .option('--tasks <task...>', '任务列表（可多次指定），不传则在 worktree 中打开 Claude Code 交互式界面')
-    .option('-c, --concurrency <n>', '最大并发数，0 表示不限制')
-    .option('-f, --file <path>', '从任务文件读取任务列表（与 --tasks 互斥）')
-    .option('--dry-run', '预览模式，仅展示任务计划不实际执行')
-    .option('--post-create', '执行 postCreate hook（默认开启，--no-post-create 跳过）', true)
+    .description(getCurrentLanguage() === 'en' ? 'Batch create worktrees + launch Claude Code to execute tasks (supports task files)' : '批量创建 worktree + 启动 Claude Code 执行任务（支持任务文件）')
+    .option('-b, --branch <branchName>', getCurrentLanguage() === 'en' ? 'Branch name' : '分支名')
+    .option('--tasks <task...>', getCurrentLanguage() === 'en' ? 'Task list (can be specified multiple times); opens Claude Code interactive UI in worktree if omitted' : '任务列表（可多次指定），不传则在 worktree 中打开 Claude Code 交互式界面')
+    .option('-c, --concurrency <n>', getCurrentLanguage() === 'en' ? 'Max concurrency, 0 means unlimited' : '最大并发数，0 表示不限制')
+    .option('-f, --file <path>', getCurrentLanguage() === 'en' ? 'Read task list from file (mutually exclusive with --tasks)' : '从任务文件读取任务列表（与 --tasks 互斥）')
+    .option('--dry-run', getCurrentLanguage() === 'en' ? 'Preview mode, show task plan without executing' : '预览模式，仅展示任务计划不实际执行')
+    .option('--post-create', getCurrentLanguage() === 'en' ? 'Execute postCreate hook (enabled by default, use --no-post-create to skip)' : '执行 postCreate hook（默认开启，--no-post-create 跳过）', true)
     .action(async (options: RunOptions) => {
       await handleRun(options);
     });

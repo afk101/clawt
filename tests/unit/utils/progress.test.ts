@@ -1,4 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// mock i18n 模块，使 getCurrentLanguage 返回 'en' 以匹配英文断言
+// 同时重写 createMessages 使其直接选择 'en' 分支，确保 constants 模块加载时生成英文消息
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('en'),
+    resetLanguageCache: vi.fn(),
+    createMessages: <T extends Record<string, { en: any; 'zh-CN': any }>>(
+      i18nMap: T,
+    ) => {
+      const result: any = {};
+      for (const key of Object.keys(i18nMap)) {
+        result[key] = i18nMap[key]['en'];
+      }
+      return result;
+    },
+  };
+});
+
 import { ProgressRenderer } from '../../../src/utils/progress.js';
 
 describe('ProgressRenderer', () => {
@@ -66,7 +87,7 @@ describe('ProgressRenderer', () => {
       // 第二列应显示路径
       expect(allOutput).toContain('/path/feat-1');
       expect(allOutput).toContain('/path/feat-2');
-      expect(allOutput).toContain('运行中');
+      expect(allOutput).toContain('Running');
       // running 状态下不显示额外路径信息
 
       renderer.stop();
@@ -82,7 +103,7 @@ describe('ProgressRenderer', () => {
 
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
       expect(allOutput).toContain('✓');
-      expect(allOutput).toContain('完成');
+      expect(allOutput).toContain('Done');
       expect(allOutput).toContain('5.0s');
       expect(allOutput).toContain('$0.05');
       // 第二列显示路径
@@ -101,7 +122,7 @@ describe('ProgressRenderer', () => {
 
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
       expect(allOutput).toContain('✓');
-      expect(allOutput).toContain('完成');
+      expect(allOutput).toContain('Done');
       expect(allOutput).toContain('5.0s');
       expect(allOutput).toContain('$0.05');
       // 第二列仍显示路径
@@ -118,7 +139,7 @@ describe('ProgressRenderer', () => {
 
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
       expect(allOutput).toContain('✗');
-      expect(allOutput).toContain('失败');
+      expect(allOutput).toContain('Failed');
       expect(allOutput).toContain('3.0s');
       // 第二列显示路径
       expect(allOutput).toContain('/path/feat-1');
@@ -136,7 +157,7 @@ describe('ProgressRenderer', () => {
 
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
       expect(allOutput).toContain('✗');
-      expect(allOutput).toContain('失败');
+      expect(allOutput).toContain('Failed');
       expect(allOutput).toContain('3.0s');
       // 第二列仍显示路径
       expect(allOutput).toContain('/path/feat-1');
@@ -161,7 +182,7 @@ describe('ProgressRenderer', () => {
 
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
       expect(allOutput).toContain('◦');
-      expect(allOutput).toContain('排队中');
+      expect(allOutput).toContain('Pending');
 
       renderer.stop();
     });
@@ -175,9 +196,9 @@ describe('ProgressRenderer', () => {
       renderer.stop();
 
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
-      expect(allOutput).toContain('运行中');
+      expect(allOutput).toContain('Running');
       // 第二个任务仍为排队中
-      expect(allOutput).toContain('排队中');
+      expect(allOutput).toContain('Pending');
     });
 
     it('allRunning=false 时面板包含汇总行', () => {
@@ -187,7 +208,7 @@ describe('ProgressRenderer', () => {
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
       // 汇总行应包含排队中的计数
       expect(allOutput).toContain('3/3');
-      expect(allOutput).toContain('排队中');
+      expect(allOutput).toContain('Pending');
 
       renderer.stop();
     });
@@ -230,7 +251,7 @@ describe('ProgressRenderer', () => {
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
       // 第二列显示路径
       expect(allOutput).toContain('/path/feat-1');
-      expect(allOutput).toContain('运行中');
+      expect(allOutput).toContain('Running');
     });
 
     it('任务完成后活动文本不再显示', () => {
@@ -269,7 +290,7 @@ describe('ProgressRenderer', () => {
       const allOutput = writeSpy.mock.calls.map((c) => c[0]).join('');
       // pending 状态第二列应显示路径，末尾无额外路径
       expect(allOutput).toContain('/path/feat-1');
-      expect(allOutput).toContain('排队中');
+      expect(allOutput).toContain('Pending');
 
       renderer.stop();
     });
@@ -336,7 +357,7 @@ describe('ProgressRenderer', () => {
 
       expect(logSpy).toHaveBeenCalledTimes(2);
       expect(logSpy.mock.calls[0][0]).toContain('feat-1');
-      expect(logSpy.mock.calls[0][0]).toContain('启动');
+      expect(logSpy.mock.calls[0][0]).toContain('started');
       expect(logSpy.mock.calls[1][0]).toContain('feat-2');
 
       renderer.stop();
@@ -351,7 +372,7 @@ describe('ProgressRenderer', () => {
 
       expect(logSpy).toHaveBeenCalledTimes(1);
       expect(logSpy.mock.calls[0][0]).toContain('✓');
-      expect(logSpy.mock.calls[0][0]).toContain('完成');
+      expect(logSpy.mock.calls[0][0]).toContain('done');
       expect(logSpy.mock.calls[0][0]).toContain('5.0s');
       expect(logSpy.mock.calls[0][0]).toContain('$0.05');
       // 末尾显示结果预览
@@ -369,7 +390,7 @@ describe('ProgressRenderer', () => {
 
       expect(logSpy).toHaveBeenCalledTimes(1);
       expect(logSpy.mock.calls[0][0]).toContain('✓');
-      expect(logSpy.mock.calls[0][0]).toContain('完成');
+      expect(logSpy.mock.calls[0][0]).toContain('done');
       // 无 resultPreview 时回退到 path
       expect(logSpy.mock.calls[0][0]).toContain('/path/feat-1');
 
@@ -385,7 +406,7 @@ describe('ProgressRenderer', () => {
 
       expect(logSpy).toHaveBeenCalledTimes(1);
       expect(logSpy.mock.calls[0][0]).toContain('✗');
-      expect(logSpy.mock.calls[0][0]).toContain('失败');
+      expect(logSpy.mock.calls[0][0]).toContain('failed');
       expect(logSpy.mock.calls[0][0]).toContain('3.0s');
       // 末尾显示结果预览
       expect(logSpy.mock.calls[0][0]).toContain('执行过程中发生错误');
@@ -402,7 +423,7 @@ describe('ProgressRenderer', () => {
 
       expect(logSpy).toHaveBeenCalledTimes(1);
       expect(logSpy.mock.calls[0][0]).toContain('✗');
-      expect(logSpy.mock.calls[0][0]).toContain('失败');
+      expect(logSpy.mock.calls[0][0]).toContain('failed');
       expect(logSpy.mock.calls[0][0]).toContain('3.0s');
       // 无 resultPreview 时回退到 path
       expect(logSpy.mock.calls[0][0]).toContain('/path/feat-1');
@@ -438,7 +459,7 @@ describe('ProgressRenderer', () => {
 
       expect(logSpy).toHaveBeenCalledTimes(1);
       expect(logSpy.mock.calls[0][0]).toContain('feat-1');
-      expect(logSpy.mock.calls[0][0]).toContain('启动');
+      expect(logSpy.mock.calls[0][0]).toContain('started');
 
       renderer.stop();
     });
@@ -528,7 +549,7 @@ describe('ProgressRenderer', () => {
       // ALT_SCREEN_LEAVE 之后应有面板最终状态输出
       const afterLeave = allCalls.slice(leaveIndex + 1).join('');
       expect(afterLeave).toContain('✓');
-      expect(afterLeave).toContain('完成');
+      expect(afterLeave).toContain('Done');
       expect(afterLeave).toContain('/path/feat-1');
       expect(afterLeave).toContain('代码审查完成');
     });

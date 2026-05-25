@@ -1,19 +1,49 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'en' 以匹配英文断言
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('en'),
+    resetLanguageCache: vi.fn(),
+    createMessages: <T extends Record<string, { en: any; 'zh-CN': any }>>(
+      i18nMap: T,
+    ) => {
+      const result: any = {};
+      for (const key of Object.keys(i18nMap)) {
+        result[key] = i18nMap[key]['en'];
+      }
+      return result;
+    },
+  };
+});
+
 vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    TASK_INIT_FILE_EXISTS: (path: string) => `文件已存在: ${path}，如需覆盖请先删除`,
-    TASK_INIT_SUCCESS: (path: string) => `✓ 任务模板已生成: ${path}`,
-    TASK_INIT_HINT: (path: string) => `使用 clawt run -f ${path} 执行任务`,
-  },
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      ...actual.MESSAGES,
+      TASK_INIT_FILE_EXISTS: (path: string) => `File already exists: ${path}, delete it first to overwrite`,
+      TASK_INIT_SUCCESS: (path: string) => `✓ Task template generated: ${path}`,
+      TASK_INIT_HINT: (path: string) =>
+        `Run task:\n  clawt run -f ${path}     # Create worktree and execute\n  clawt resume -f ${path}  # Resume in existing worktree`,
+    },
+  };
+});
+
+// mock tasks-template 模块，使 getTaskTemplateContent 返回英文模板
+vi.mock('../../../src/constants/tasks-template.js', () => ({
+  getTaskTemplateContent: vi.fn().mockReturnValue('# Template content'),
+  TASK_TEMPLATE_CONTENT: '# Template content',
   TASK_TEMPLATE_OUTPUT_DIR: '.clawt/tasks',
   TASK_TEMPLATE_FILENAME_PREFIX: 'clawt-tasks',
-  TASK_TEMPLATE_CONTENT: '# 模板内容',
 }));
 
 const mockExistsSync = vi.fn();
@@ -93,7 +123,7 @@ describe('handleTasksInit', () => {
     // 默认路径应输出到 .clawt/tasks/ 目录下
     expect(mockWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining('.clawt/tasks/clawt-tasks-2026-01-01-00-00-00.md'),
-      '# 模板内容',
+      '# Template content',
       'utf-8',
     );
     expect(mockedPrintSuccess).toHaveBeenCalledWith(
@@ -115,7 +145,7 @@ describe('handleTasksInit', () => {
     expect(mockGenerateTaskFilename).not.toHaveBeenCalled();
     expect(mockWriteFileSync).toHaveBeenCalledWith(
       expect.stringContaining('my-tasks.md'),
-      '# 模板内容',
+      '# Template content',
       'utf-8',
     );
     expect(mockedPrintSuccess).toHaveBeenCalledWith(

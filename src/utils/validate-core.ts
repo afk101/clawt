@@ -1,6 +1,7 @@
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
+import { getCurrentLanguage } from './i18n.js';
 import {
   gitAddAll,
   gitCommit,
@@ -137,7 +138,7 @@ export function loadOldSnapshotToStage(oldTreeHash: string, oldHeadCommitHash: s
         return { success: true, stagedTreeHash };
       } else if (oldChangePatch.length > 0) {
         // 有冲突：降级为全量模式（暂存区保持为空）
-        logger.warn('旧变更 patch 与当前 HEAD 冲突，降级为全量模式');
+        logger.warn(getCurrentLanguage() === 'en' ? 'Old changes patch conflicts with current HEAD, falling back to full mode' : '旧变更 patch 与当前 HEAD 冲突，降级为全量模式');
         return { success: false, stagedTreeHash: '' };
       }
       // oldChangePatch 为空表示旧变更为空，暂存区保持干净即可

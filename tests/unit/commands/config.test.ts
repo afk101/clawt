@@ -45,52 +45,81 @@ vi.mock('../../../src/utils/index.js', async (importOriginal) => {
 vi.mock('../../../src/constants/index.js', () => ({
   CONFIG_PATH: '/mock/.clawt/config.json',
   DEFAULT_CONFIG: {
+    language: 'en',
     autoDeleteBranch: false,
     claudeCodeCommand: 'claude',
     autoPullPush: false,
     confirmDestructiveOps: true,
     maxConcurrency: 0,
     terminalApp: 'auto',
+    resumeInPlace: false,
     aliases: {},
     autoUpdate: true,
+    conflictResolveMode: 'ask',
+    conflictResolveTimeoutMs: 900000,
   },
   CONFIG_DESCRIPTIONS: {
-    autoDeleteBranch: '自动删除分支',
-    claudeCodeCommand: 'Claude Code CLI 命令',
-    autoPullPush: '自动 pull/push',
-    confirmDestructiveOps: '破坏性操作确认',
-    maxConcurrency: '最大并发数',
-    terminalApp: '终端应用',
-    aliases: '命令别名映射',
-    autoUpdate: '自动更新',
+    language: 'Interface language',
+    autoDeleteBranch: 'Whether to auto-delete the local branch when removing a worktree',
+    claudeCodeCommand: 'Claude Code CLI launch command',
+    autoPullPush: 'Whether to auto-run git pull and git push after merge',
+    confirmDestructiveOps: 'Whether to prompt for confirmation before destructive operations',
+    maxConcurrency: 'Default max concurrency for run command, 0 means unlimited',
+    terminalApp: 'Terminal app for batch resume',
+    resumeInPlace: 'Whether to resume in current terminal',
+    aliases: 'Command alias mapping',
+    autoUpdate: 'Whether to enable auto-update checks',
+    conflictResolveMode: 'Merge conflict resolution mode',
+    conflictResolveTimeoutMs: 'Claude Code conflict resolution timeout',
   },
   CONFIG_DEFINITIONS: {
-    autoDeleteBranch: { defaultValue: false, description: '自动删除分支' },
-    claudeCodeCommand: { defaultValue: 'claude', description: 'Claude Code CLI 命令' },
-    autoPullPush: { defaultValue: false, description: '自动 pull/push' },
-    confirmDestructiveOps: { defaultValue: true, description: '破坏性操作确认' },
-    maxConcurrency: { defaultValue: 0, description: '最大并发数' },
-    terminalApp: { defaultValue: 'auto', description: '终端应用', allowedValues: ['auto', 'iterm2', 'terminal'] },
-    aliases: { defaultValue: {}, description: '命令别名映射' },
-    autoUpdate: { defaultValue: true, description: '自动更新' },
+    language: { defaultValue: 'en', description: 'Interface language', allowedValues: ['en', 'zh-CN'] },
+    autoDeleteBranch: { defaultValue: false, description: 'Whether to auto-delete the local branch when removing a worktree' },
+    claudeCodeCommand: { defaultValue: 'claude', description: 'Claude Code CLI launch command' },
+    autoPullPush: { defaultValue: false, description: 'Whether to auto-run git pull and git push after merge' },
+    confirmDestructiveOps: { defaultValue: true, description: 'Whether to prompt for confirmation before destructive operations' },
+    maxConcurrency: { defaultValue: 0, description: 'Default max concurrency for run command, 0 means unlimited' },
+    terminalApp: { defaultValue: 'auto', description: 'Terminal app for batch resume', allowedValues: ['auto', 'iterm2', 'terminal'] },
+    resumeInPlace: { defaultValue: false, description: 'Whether to resume in current terminal' },
+    aliases: { defaultValue: {}, description: 'Command alias mapping' },
+    autoUpdate: { defaultValue: true, description: 'Whether to enable auto-update checks' },
+    conflictResolveMode: { defaultValue: 'ask', description: 'Merge conflict resolution mode', allowedValues: ['ask', 'auto', 'manual'] },
+    conflictResolveTimeoutMs: { defaultValue: 900000, description: 'Claude Code conflict resolution timeout' },
   },
-  CONFIG_ALIAS_DISABLED_HINT: '(通过 clawt alias 命令管理)',
+  CONFIG_ALIAS_DISABLED_HINT: '(Manage via clawt alias command)',
+  getI18nConfigDescriptions: () => ({
+    autoDeleteBranch: 'Whether to auto-delete the local branch when removing a worktree',
+    claudeCodeCommand: 'Claude Code CLI launch command',
+    autoPullPush: 'Whether to auto-run git pull and git push after merge',
+    confirmDestructiveOps: 'Whether to prompt for confirmation before destructive operations',
+    maxConcurrency: 'Default max concurrency for run command, 0 means unlimited',
+    terminalApp: 'Terminal app for batch resume',
+    aliases: 'Command alias mapping',
+    autoUpdate: 'Whether to enable auto-update checks',
+    resumeInPlace: 'Whether to resume in current terminal',
+    conflictResolveMode: 'Merge conflict resolution mode',
+    conflictResolveTimeoutMs: 'Claude Code conflict resolution timeout',
+    language: 'Interface language',
+  }),
   MESSAGES: {
-    CONFIG_RESET_SUCCESS: '配置已恢复为默认值',
-    DESTRUCTIVE_OP_CANCELLED: '已取消操作',
-    CONFIG_SET_SUCCESS: (key: string, value: string) => `✓ ${key} 已设置为 ${value}`,
+    CONFIG_RESET_SUCCESS: 'Configuration reset to defaults',
+    DESTRUCTIVE_OP_CANCELLED: 'Operation cancelled',
+    CONFIG_SET_SUCCESS: (key: string, value: string) => `✓ ${key} set to ${value}`,
     CONFIG_GET_VALUE: (key: string, value: string) => `${key} = ${value}`,
     CONFIG_INVALID_KEY: (key: string, validKeys: string[]) =>
-      `无效的配置项: ${key}\n可用的配置项: ${validKeys.join(', ')}`,
+      `Invalid config key: ${key}\nAvailable keys: ${validKeys.join(', ')}`,
     CONFIG_INVALID_BOOLEAN: (key: string) =>
-      `配置项 ${key} 为布尔类型，仅接受 true 或 false`,
+      `Config key ${key} is boolean, only true or false accepted`,
     CONFIG_INVALID_NUMBER: (key: string) =>
-      `配置项 ${key} 为数字类型，请输入有效的数字`,
+      `Config key ${key} is number, please enter a valid number`,
     CONFIG_INVALID_ENUM: (key: string, validValues: readonly string[]) =>
-      `配置项 ${key} 仅接受以下值: ${validValues.join(', ')}`,
-    CONFIG_SELECT_PROMPT: '选择要修改的配置项',
-    CONFIG_INPUT_PROMPT: (key: string) => `输入 ${key} 的新值`,
-    CONFIG_MISSING_VALUE: (key: string) => `缺少配置值，用法: clawt config set ${key} <value>`,
+      `Config key ${key} only accepts: ${validValues.join(', ')}`,
+    CONFIG_SELECT_PROMPT: 'Select a config key to modify',
+    CONFIG_INPUT_PROMPT: (key: string) => `Enter new value for ${key}`,
+    CONFIG_MISSING_VALUE: (key: string) => `Missing value, usage: clawt config set ${key} <value>`,
+    CONFIG_RESET_WARNING: 'This will reset all configuration to defaults',
+    NON_INTERACTIVE_CONFIG_EDITOR: 'Cannot edit config in non-interactive mode',
+    NOT_SET: '(not set)',
   },
 }));
 
@@ -108,14 +137,18 @@ const mockedConfirmDestructiveAction = vi.mocked(confirmDestructiveAction);
 /** 创建默认配置对象用于 mock */
 function createMockConfig() {
   return {
+    language: 'en' as const,
     autoDeleteBranch: false,
     claudeCodeCommand: 'claude',
     autoPullPush: false,
     confirmDestructiveOps: true,
     maxConcurrency: 0,
     terminalApp: 'auto',
+    resumeInPlace: false,
     aliases: {},
     autoUpdate: true,
+    conflictResolveMode: 'ask' as const,
+    conflictResolveTimeoutMs: 900000,
   };
 }
 
@@ -403,7 +436,7 @@ describe('handleConfigSet — 交互模式', () => {
     const selectOpts = mockSelectConstructorArgs[0] as { choices: Array<{ name: string; disabled?: string }> };
     const aliasesChoice = selectOpts.choices.find((c) => c.name === 'aliases');
     expect(aliasesChoice).toBeDefined();
-    expect(aliasesChoice!.disabled).toBe('(通过 clawt alias 命令管理)');
+    expect(aliasesChoice!.disabled).toBe('(Manage via clawt alias command)');
 
     // 普通配置项不应有 disabled 属性
     const normalChoice = selectOpts.choices.find((c) => c.name === 'autoDeleteBranch');

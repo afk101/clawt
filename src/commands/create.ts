@@ -13,6 +13,7 @@ import {
   printSeparator,
   runPostCreateHooks,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 create 命令：批量创建 worktree 及对应分支（含验证分支）
@@ -21,10 +22,10 @@ import {
 export function registerCreateCommand(program: Command): void {
   program
     .command('create')
-    .description('批量创建 worktree 及对应分支（含验证分支）')
-    .requiredOption('-b, --branch <branchName>', '分支名')
-    .option('-n, --number <count>', '创建数量', '1')
-    .option('--post-create', '执行 postCreate hook（默认开启，--no-post-create 跳过）', true)
+    .description(getCurrentLanguage() === 'en' ? 'Batch create worktrees and corresponding branches (including validation branches)' : '批量创建 worktree 及对应分支（含验证分支）')
+    .requiredOption('-b, --branch <branchName>', getCurrentLanguage() === 'en' ? 'Branch name' : '分支名')
+    .option('-n, --number <count>', getCurrentLanguage() === 'en' ? 'Number of worktrees to create' : '创建数量', '1')
+    .option('--post-create', getCurrentLanguage() === 'en' ? 'Execute postCreate hook (enabled by default, use --no-post-create to skip)' : '执行 postCreate hook（默认开启，--no-post-create 跳过）', true)
     .action(async (options: CreateOptions) => {
       await handleCreate(options);
     });
@@ -58,10 +59,10 @@ async function handleCreate(options: CreateOptions): Promise<void> {
   printInfo('');
 
   worktrees.forEach((wt, index) => {
-    printInfo(`目录路径${index + 1}：`);
+    printInfo(getCurrentLanguage() === 'en' ? `Directory path ${index + 1}:` : `目录路径${index + 1}：`);
     printInfo(`  ${wt.path}`);
-    printInfo(`  分支名: ${wt.branch}`);
-    printInfo(`  验证分支: ${getValidateBranchName(wt.branch)}`);
+    printInfo(getCurrentLanguage() === 'en' ? `  Branch: ${wt.branch}` : `  分支名: ${wt.branch}`);
+    printInfo(getCurrentLanguage() === 'en' ? `  Validation branch: ${getValidateBranchName(wt.branch)}` : `  验证分支: ${getValidateBranchName(wt.branch)}`);
     printSeparator();
   });
 }

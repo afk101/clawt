@@ -1,4 +1,5 @@
 import type { ProjectConfig, ProjectConfigDefinitions } from '../types/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 项目级配置项完整定义（单一数据源）
@@ -52,3 +53,19 @@ export const PROJECT_DEFAULT_CONFIG: Required<ProjectConfig> = deriveDefaultConf
 
 /** 项目配置项描述映射 */
 export const PROJECT_CONFIG_DESCRIPTIONS: Record<keyof Required<ProjectConfig>, string> = deriveConfigDescriptions(PROJECT_CONFIG_DEFINITIONS);
+
+/** 项目配置项英文描述映射 */
+const PROJECT_CONFIG_DESCRIPTIONS_EN: Record<keyof Required<ProjectConfig>, string> = {
+  clawtMainWorkBranch: 'Main worktree branch name',
+  validateRunCommand: 'Command to auto-run after validate success (default for -r)',
+  postCreate: 'Command to auto-run after worktree creation (e.g. install dependencies)',
+  claudeCodeCommand: 'Claude Code CLI launch command (falls back to global config if unset)',
+};
+
+/**
+ * 获取国际化项目配置项描述映射
+ * @returns {Record<keyof Required<ProjectConfig>, string>} 当前语言的配置项描述映射
+ */
+export function getI18nProjectConfigDescriptions(): Record<keyof Required<ProjectConfig>, string> {
+  return getCurrentLanguage() === 'en' ? PROJECT_CONFIG_DESCRIPTIONS_EN : PROJECT_CONFIG_DESCRIPTIONS;
+}

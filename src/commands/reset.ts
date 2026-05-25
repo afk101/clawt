@@ -12,6 +12,7 @@ import {
   printSuccess,
   printInfo,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 reset 命令：重置主 worktree 工作区和暂存区
@@ -20,7 +21,7 @@ import {
 export function registerResetCommand(program: Command): void {
   program
     .command('reset')
-    .description('重置主 worktree 工作区和暂存区（保留 validate 快照）')
+    .description(getCurrentLanguage() === 'en' ? 'Reset main worktree working directory and staging area (preserves validate snapshots)' : '重置主 worktree 工作区和暂存区（保留 validate 快照）')
     .action(async () => {
       await handleReset();
     });
@@ -40,7 +41,7 @@ async function handleReset(): Promise<void> {
     if (getConfigValue('confirmDestructiveOps')) {
       const confirmed = await confirmDestructiveAction(
         'git reset --hard + git clean -fd',
-        '丢弃所有未提交的更改',
+        getCurrentLanguage() === 'en' ? 'Discard all uncommitted changes' : '丢弃所有未提交的更改',
       );
       if (!confirmed) {
         printInfo(MESSAGES.DESTRUCTIVE_OP_CANCELLED);

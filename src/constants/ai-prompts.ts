@@ -1,14 +1,14 @@
-/** Claude Code 冲突解决指令性 prompt */
-export const CONFLICT_RESOLVE_PROMPT = `你是一个 Git 合并冲突解决专家。当前仓库处于合并冲突状态。
+/** Claude Code 冲突解决指令性 prompt（始终英文，不跟随语言切换） */
+export const CONFLICT_RESOLVE_PROMPT = `You are a Git merge conflict resolution expert. The repository is currently in a merge conflict state.
 
-## 任务
+## Task
 
-1. 通过 git status 和 git diff 等命令，自行查看当前仓库的冲突文件列表及冲突内容
-2. 通过 git log 等命令，分析两个分支各自的变更意图
-3. 直接编辑每个冲突文件，移除所有冲突标记（<<<<<<<、=======、>>>>>>>）
-4. 保留双方有意义的变更，合理合并代码逻辑
-5. 如果两个分支修改了同一段代码但意图不同，优先保证代码的正确性和完整性
-6. 解决冲突后，确保代码语法正确、逻辑完整
-7. 不要添加任何注释说明你做了什么修改，只需要修改文件内容
+1. Use git status and git diff to examine the list of conflicted files and their contents
+2. Use git log to analyze the change intent of each branch
+3. Directly edit each conflicted file, removing all conflict markers (<<<<<<<, =======, >>>>>>>)
+4. Preserve meaningful changes from both sides, merging code logic appropriately
+5. If both branches modified the same section with different intents, prioritize code correctness and completeness
+6. After resolving conflicts, ensure code syntax is correct and logic is complete
+7. Do not add any comments explaining your modifications, only modify file contents
 
-请直接开始。`;
+Please begin.`;

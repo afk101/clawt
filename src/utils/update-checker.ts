@@ -144,7 +144,7 @@ function printUpdateNotification(currentVersion: string, latestVersion: string):
     chalk.green(latestVersion),
   );
   const pm = detectPackageManager();
-  const updateCommand = UPDATE_COMMANDS[pm] || UPDATE_COMMANDS.npm;
+  const updateCommand = (UPDATE_COMMANDS as Record<string, string>)[pm] || UPDATE_COMMANDS.npm;
   const commandText = UPDATE_MESSAGES.UPDATE_HINT(chalk.cyan(updateCommand));
 
   const updateTextWidth = stringWidth(updateText);

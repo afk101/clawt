@@ -5,6 +5,17 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+// 同时导出 createMessages 供 constants 模块使用
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+    resetLanguageCache: vi.fn(),
+  };
+});
+
 vi.mock('../../../src/errors/index.js', () => ({
   ClawtError: class ClawtError extends Error {
     exitCode: number;
@@ -40,6 +51,9 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
       MERGE_SUCCESS: (branch: string, message: string, autoPullPush: boolean) => `合并成功: ${branch}`,
       MERGE_SUCCESS_NO_MESSAGE: (branch: string, autoPullPush: boolean) => `合并成功: ${branch}`,
       WORKTREE_CLEANED: (branch: string) => `已清理: ${branch}`,
+      // i18n 新增的消息键（merge.ts shouldCleanupAfterMerge 中使用）
+      AUTO_DELETE_CONFIGURED: (branch: string) => `已配置自动删除，merge 成功后将自动清理 worktree 和分支: ${branch}`,
+      CONFIRM_DELETE_WORKTREE_BRANCH: (branch: string) => `是否删除对应的 worktree 和分支 (${branch})？`,
     },
     AUTO_SAVE_COMMIT_MESSAGE_PREFIX: 'clawt: auto-save before merging',
   };

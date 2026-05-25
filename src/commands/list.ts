@@ -12,6 +12,7 @@ import {
   isWorktreeIdle,
   printInfo,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 // getWorktreeStatus 和 formatWorktreeStatus 仅在文本模式下使用
 
 /**
@@ -21,8 +22,8 @@ import {
 export function registerListCommand(program: Command): void {
   program
     .command('list')
-    .description('列出当前项目所有 worktree（支持 --json 格式输出）')
-    .option('--json', '以 JSON 格式输出')
+    .description(getCurrentLanguage() === 'en' ? 'List all worktrees for the current project (supports --json output)' : '列出当前项目所有 worktree（支持 --json 格式输出）')
+    .option('--json', getCurrentLanguage() === 'en' ? 'Output in JSON format' : '以 JSON 格式输出')
     .action(async (options: ListOptions) => {
       await handleList(options);
     });
@@ -72,7 +73,8 @@ function printListAsJson(projectName: string, worktrees: import('../types/index.
  * @param {import('../types/index.js').WorktreeInfo[]} worktrees - worktree 列表
  */
 function printListAsText(projectName: string, worktrees: import('../types/index.js').WorktreeInfo[]): void {
-  printInfo(`当前项目: ${projectName}\n`);
+  const lang = getCurrentLanguage();
+  printInfo(`${lang === 'en' ? 'Current project' : '当前项目'}: ${projectName}\n`);
 
   if (worktrees.length === 0) {
     printInfo(`  ${MESSAGES.NO_WORKTREES}`);
@@ -95,6 +97,6 @@ function printListAsText(projectName: string, worktrees: import('../types/index.
 
       printInfo('');
     }
-    printInfo(`共 ${worktrees.length} 个 worktree`);
+    printInfo(`${worktrees.length} ${lang === 'en' ? 'worktree(s)' : '个 worktree'}`);
   }
 }

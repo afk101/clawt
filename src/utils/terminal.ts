@@ -2,8 +2,9 @@ import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { ClawtError } from '../errors/index.js';
 import { logger } from '../logger/index.js';
-import { VALID_TERMINAL_APPS, ITERM2_APP_PATH } from '../constants/index.js';
+import { VALID_TERMINAL_APPS, ITERM2_APP_PATH, MESSAGES } from '../constants/index.js';
 import { getConfigValue } from './config.js';
+import { getCurrentLanguage } from './i18n.js';
 
 /** 终端应用类型 */
 type TerminalApp = 'iterm2' | 'terminal' | 'cmux';
@@ -124,8 +125,7 @@ function openCommandInCmuxSurface(command: string, title: string): void {
   // 环境检查：只需要检查 WORKSPACE_ID
   if (!isCmuxEnvironment()) {
     throw new ClawtError(
-      '当前不在 cmux 环境中，无法创建 surface\n' +
-      '请确保在 cmux 终端中执行 clawt resume 命令，或修改 terminalApp 配置'
+      MESSAGES.NOT_IN_CMUX
     );
   }
 
@@ -152,7 +152,7 @@ function openCommandInCmuxSurface(command: string, title: string): void {
     // 需要灵活匹配
     const match = newSurfaceResult.match(/(?:OK\s+)?(surface:\d+)/i);
     if (!match) {
-      throw new Error(`无法解析 cmux new-split 输出: ${newSurfaceResult}`);
+      throw new Error(getCurrentLanguage() === 'en' ? `Failed to parse cmux new-split output: ${newSurfaceResult}` : `无法解析 cmux new-split 输出: ${newSurfaceResult}`);
     }
     const surfaceRef = match[1];
 
@@ -173,7 +173,7 @@ function openCommandInCmuxSurface(command: string, title: string): void {
 
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new ClawtError(`在 cmux 中创建 surface 失败: ${message}`);
+    throw new ClawtError(getCurrentLanguage() === 'en' ? `Failed to create surface in cmux: ${message}` : `在 cmux 中创建 surface 失败: ${message}`);
   }
 }
 
@@ -195,9 +195,9 @@ function executeAppleScript(script: string, terminalApp: 'iterm2' | 'terminal'):
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const accessibilityHint = terminalApp === 'terminal'
-      ? '\n提示：Terminal.app 需要辅助功能权限，请在「系统设置 → 隐私与安全性 → 辅助功能」中授权终端应用'
+      ? MESSAGES.TERMINAL_ACCESSIBILITY_HINT
       : '';
-    throw new ClawtError(`打开终端 Tab 失败: ${message}${accessibilityHint}`);
+    throw new ClawtError(getCurrentLanguage() === 'en' ? `Failed to open terminal tab: ${message}${accessibilityHint}` : `打开终端 Tab 失败: ${message}${accessibilityHint}`);
   }
 }
 
@@ -212,7 +212,7 @@ function executeAppleScript(script: string, terminalApp: 'iterm2' | 'terminal'):
  */
 export function openCommandInNewTerminalTab(command: string, tabTitle: string): void {
   if (process.platform !== 'darwin') {
-    throw new ClawtError('批量 resume 目前仅支持 macOS 平台');
+    throw new ClawtError(MESSAGES.BATCH_RESUME_MACOS_ONLY);
   }
 
   const terminalApp = detectTerminalApp();
@@ -230,6 +230,6 @@ export function openCommandInNewTerminalTab(command: string, tabTitle: string): 
       executeAppleScript(terminalScript, 'terminal');
       break;
     default:
-      throw new ClawtError(`不支持的终端类型: ${terminalApp}`);
+      throw new ClawtError(getCurrentLanguage() === 'en' ? `Unsupported terminal type: ${terminalApp}` : `不支持的终端类型: ${terminalApp}`);
   }
 }

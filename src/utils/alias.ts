@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import type { ClawtConfig } from '../types/index.js';
 import { logger } from '../logger/index.js';
+import { getCurrentLanguage } from './i18n.js';
 
 /**
  * 根据配置中的别名映射，为已注册的命令添加 Commander.js 别名
@@ -14,7 +15,7 @@ export function applyAliases(program: Command, aliases: ClawtConfig['aliases']):
       targetCmd.alias(alias);
       logger.debug(`已注册别名: ${alias} → ${commandName}`);
     } else {
-      logger.warn(`别名 "${alias}" 的目标命令 "${commandName}" 不存在，已跳过`);
+      logger.warn(getCurrentLanguage() === 'en' ? `Alias "${alias}" targets non-existent command "${commandName}", skipped` : `别名 "${alias}" 的目标命令 "${commandName}" 不存在，已跳过`);
     }
   }
 }

@@ -1,5 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+// 同时重写 createMessages 使其直接选择 'zh-CN' 分支，确保 constants 模块加载时生成中文消息
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+    resetLanguageCache: vi.fn(),
+    createMessages: <T extends Record<string, { en: any; 'zh-CN': any }>>(
+      i18nMap: T,
+    ) => {
+      const result: any = {};
+      for (const key of Object.keys(i18nMap)) {
+        result[key] = i18nMap[key]['zh-CN'];
+      }
+      return result;
+    },
+  };
+});
+
 // mock enquirer（必须在所有 import 之前）
 const { mockSelectRun, mockInputRun } = vi.hoisted(() => {
   const mockSelectRun = vi.fn();
@@ -49,6 +69,7 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
         `配置项 ${key} 仅接受以下值: ${validValues.join(', ')}`,
       CONFIG_INPUT_PROMPT: (key: string) => `输入 ${key} 的新值`,
       CONFIG_SELECT_PROMPT: '选择要修改的配置项',
+      NOT_SET: '(未设置)',
     },
   };
 });

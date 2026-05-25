@@ -5,6 +5,20 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// mock i18n 模块，避免循环依赖导致 currentLanguage 未初始化
+vi.mock('../../../src/utils/i18n.js', () => ({
+  getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+  resetLanguageCache: vi.fn(),
+  setCurrentLanguage: vi.fn(),
+  createMessages: vi.fn((i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+    const result: any = {};
+    for (const key of Object.keys(i18nMap)) {
+      result[key] = i18nMap[key]['zh-CN'];
+    }
+    return result;
+  }),
+}));
+
 import { applyAliases } from '../../../src/utils/alias.js';
 
 describe('applyAliases', () => {

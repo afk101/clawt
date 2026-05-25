@@ -1,5 +1,5 @@
 import type { Command } from 'commander';
-import { DEFAULT_CONFIG, CONFIG_DEFINITIONS, MESSAGES, CONFIG_ALIAS_DISABLED_HINT } from '../constants/index.js';
+import { DEFAULT_CONFIG, CONFIG_DEFINITIONS, MESSAGES, CONFIG_ALIAS_DISABLED_HINT, getI18nConfigDescriptions } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import {
   loadConfig,
@@ -14,6 +14,7 @@ import {
   parseConfigValue,
   interactiveConfigEditor,
 } from '../utils/index.js';
+import { getCurrentLanguage, resetLanguageCache } from '../utils/i18n.js';
 
 /**
  * 注册 config 命令组：查看和管理全局配置
@@ -22,28 +23,28 @@ import {
 export function registerConfigCommand(program: Command): void {
   const configCmd = program
     .command('config')
-    .description('交互式查看和修改全局配置')
+    .description(getCurrentLanguage() === 'en' ? 'Interactively view and modify global configuration' : '交互式查看和修改全局配置')
     .action(async () => {
       await handleConfigSet();
     });
 
   configCmd
     .command('reset')
-    .description('将配置恢复为默认值')
+    .description(getCurrentLanguage() === 'en' ? 'Reset configuration to default values' : '将配置恢复为默认值')
     .action(async () => {
       await handleConfigReset();
     });
 
   configCmd
     .command('set [key] [value]')
-    .description('修改配置项（无参数进入交互式配置）')
+    .description(getCurrentLanguage() === 'en' ? 'Modify configuration (enter interactive mode without arguments)' : '修改配置项（无参数进入交互式配置）')
     .action(async (key?: string, value?: string) => {
       await handleConfigSet(key, value);
     });
 
   configCmd
     .command('get <key>')
-    .description('获取单个配置项的值')
+    .description(getCurrentLanguage() === 'en' ? 'Get the value of a single configuration item' : '获取单个配置项的值')
     .action((key: string) => {
       handleConfigGet(key);
     });
@@ -57,7 +58,7 @@ async function handleConfigReset(): Promise<void> {
 
   const confirmed = await confirmDestructiveAction(
     'config reset',
-    '当前配置将被覆盖为默认值',
+    MESSAGES.CONFIG_RESET_WARNING,
   );
 
   if (!confirmed) {
@@ -66,6 +67,7 @@ async function handleConfigReset(): Promise<void> {
   }
 
   writeDefaultConfig();
+  resetLanguageCache();
   printSuccess(MESSAGES.CONFIG_RESET_SUCCESS);
 }
 
@@ -105,6 +107,11 @@ async function handleConfigSet(key?: string, value?: string): Promise<void> {
   (config as unknown as Record<string, unknown>)[key] = result.value;
   saveConfig(config);
 
+  // 语言配置变更时刷新缓存，使后续消息立即使用新语言
+  if (key === 'language') {
+    resetLanguageCache();
+  }
+
   logger.info(`config set 命令执行，设置 ${key} = ${String(result.value)}`);
   printSuccess(MESSAGES.CONFIG_SET_SUCCESS(key, String(result.value)));
 }
@@ -125,13 +132,24 @@ async function handleInteractiveConfigSet(): Promise<void> {
     }
   }
 
-  const { key, newValue } = await interactiveConfigEditor(config, CONFIG_DEFINITIONS, {
+  // 使用 i18n 后的描述替换 CONFIG_DEFINITIONS 中的中文 description
+  const i18nDescriptions = getI18nConfigDescriptions();
+  const i18nDefinitions = Object.fromEntries(
+    Object.entries(CONFIG_DEFINITIONS).map(([k, def]) => [k, { ...def, description: i18nDescriptions[k as keyof typeof i18nDescriptions] }]),
+  ) as typeof CONFIG_DEFINITIONS;
+
+  const { key, newValue } = await interactiveConfigEditor(config, i18nDefinitions, {
     disabledKeys,
   });
 
   // 持久化并提示成功
   (config as unknown as Record<string, unknown>)[key as string] = newValue;
   saveConfig(config);
+
+  // 语言配置变更时刷新缓存，使后续消息立即使用新语言
+  if (key === 'language') {
+    resetLanguageCache();
+  }
 
   printSuccess(MESSAGES.CONFIG_SET_SUCCESS(key as string, String(newValue)));
 }

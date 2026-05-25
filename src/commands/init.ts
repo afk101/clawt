@@ -15,6 +15,7 @@ import {
   safeStringify,
   normalizeProjectConfig,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 init 命令：初始化项目级配置，设置主工作分支
@@ -23,8 +24,8 @@ import {
 export function registerInitCommand(program: Command): void {
   const initCmd = program
     .command('init')
-    .description('初始化项目级配置，设置主工作分支')
-    .option('-b, --branch <branchName>', '指定主工作分支名（默认使用当前分支）')
+    .description(getCurrentLanguage() === 'en' ? 'Initialize project configuration and set the main work branch' : '初始化项目级配置，设置主工作分支')
+    .option('-b, --branch <branchName>', getCurrentLanguage() === 'en' ? 'Specify the main work branch name (defaults to current branch)' : '指定主工作分支名（默认使用当前分支）')
     .action(async (options: InitOptions) => {
       await handleInit(options);
     });
@@ -32,8 +33,8 @@ export function registerInitCommand(program: Command): void {
   // 注册 show 子命令：交互式查看和修改项目配置（支持 --json 格式输出）
   initCmd.addCommand(
     new Cmd('show')
-      .description('交互式查看和修改项目配置（支持 --json 格式输出）')
-      .option('--json', '以 JSON 格式输出')
+      .description(getCurrentLanguage() === 'en' ? 'Interactively view and modify project configuration (supports --json output)' : '交互式查看和修改项目配置（支持 --json 格式输出）')
+      .option('--json', getCurrentLanguage() === 'en' ? 'Output in JSON format' : '以 JSON 格式输出')
       .action(async (options: InitShowOptions) => {
         await handleInitShow(options);
       }),

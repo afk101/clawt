@@ -3,6 +3,7 @@ import { MESSAGES } from '../constants/index.js';
 import { createInterface } from 'node:readline';
 import type { WorktreeStatus } from '../types/index.js';
 import { isNonInteractive } from './interactive.js';
+import { getCurrentLanguage } from './i18n.js';
 
 /**
  * 输出成功信息
@@ -89,8 +90,11 @@ export function confirmAction(question: string, nonInteractiveDefault: boolean =
  * @returns {Promise<boolean>} 用户是否确认
  */
 export function confirmDestructiveAction(dangerousCommand: string, description: string): Promise<boolean> {
-  printWarning(`即将执行 ${chalk.red.bold(dangerousCommand)}，${description}`);
-  return confirmAction('是否继续？');
+  const lang = getCurrentLanguage();
+  const continuePrompt = lang === 'en' ? 'Continue?' : '是否继续？';
+  const warningPrefix = lang === 'en' ? `About to execute ${chalk.red.bold(dangerousCommand)}, ` : `即将执行 ${chalk.red.bold(dangerousCommand)}，`;
+  printWarning(`${warningPrefix}${description}`);
+  return confirmAction(continuePrompt);
 }
 
 /**
@@ -111,14 +115,16 @@ export function isWorktreeIdle(status: WorktreeStatus): boolean {
  * @returns {string} 格式化后的状态字符串
  */
 export function formatWorktreeStatus(status: WorktreeStatus): string {
+  const lang = getCurrentLanguage();
   const parts: string[] = [];
 
   // 提交数（黄色）
-  parts.push(chalk.yellow(`${status.commitCount} 个提交`));
+  const commitLabel = lang === 'en' ? `${status.commitCount} commit${status.commitCount !== 1 ? 's' : ''}` : `${status.commitCount} 个提交`;
+  parts.push(chalk.yellow(commitLabel));
 
   // 变更统计
   if (status.insertions === 0 && status.deletions === 0) {
-    parts.push('无变更');
+    parts.push(lang === 'en' ? 'No changes' : '无变更');
   } else {
     const diffParts: string[] = [];
     diffParts.push(chalk.green(`+${status.insertions}`));
@@ -128,7 +134,7 @@ export function formatWorktreeStatus(status: WorktreeStatus): string {
 
   // 未提交修改提示（灰色）
   if (status.hasDirtyFiles) {
-    parts.push(chalk.gray('(未提交修改)'));
+    parts.push(chalk.gray(lang === 'en' ? '(uncommitted changes)' : '(未提交修改)'));
   }
 
   return parts.join('   ');
@@ -157,6 +163,7 @@ export function formatDuration(ms: number): string {
  * @returns {string | null} 中文相对时间描述，无效日期时返回 null
  */
 export function formatRelativeTime(isoDateString: string): string | null {
+  const lang = getCurrentLanguage();
   const date = new Date(isoDateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -168,7 +175,7 @@ export function formatRelativeTime(isoDateString: string): string | null {
 
   // 未来时间或不到 1 分钟
   if (diffMs < 0 || diffMs < 60 * 1000) {
-    return '刚刚';
+    return lang === 'en' ? 'just now' : '刚刚';
   }
 
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
@@ -176,20 +183,20 @@ export function formatRelativeTime(isoDateString: string): string | null {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffHours < 1) {
-    return `${diffMinutes} 分钟前`;
+    return lang === 'en' ? `${diffMinutes} min ago` : `${diffMinutes} 分钟前`;
   }
   if (diffDays < 1) {
-    return `${diffHours} 小时前`;
+    return lang === 'en' ? `${diffHours} hr ago` : `${diffHours} 小时前`;
   }
   if (diffDays < 30) {
-    return `${diffDays} 天前`;
+    return lang === 'en' ? `${diffDays} day${diffDays > 1 ? 's' : ''} ago` : `${diffDays} 天前`;
   }
   if (diffDays < 365) {
     const months = Math.floor(diffDays / 30);
-    return `${months} 个月前`;
+    return lang === 'en' ? `${months} month${months > 1 ? 's' : ''} ago` : `${months} 个月前`;
   }
   const years = Math.floor(diffDays / 365);
-  return `${years} 年前`;
+  return lang === 'en' ? `${years} year${years > 1 ? 's' : ''} ago` : `${years} 年前`;
 }
 
 /**

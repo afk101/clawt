@@ -1,5 +1,28 @@
 import { describe, it, expect, vi } from 'vitest';
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'en' 以匹配英文断言
+// 需要同时提供 createMessages 的真实实现，以便 constants 模块加载时能正确生成英文消息
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  // 在 createMessages 调用前就 mock getCurrentLanguage
+  const mockGetCurrentLanguage = vi.fn().mockReturnValue('en');
+  return {
+    ...actual,
+    getCurrentLanguage: mockGetCurrentLanguage,
+    resetLanguageCache: vi.fn(),
+    // 重写 createMessages 使其使用 mock 的 getCurrentLanguage
+    createMessages: <T extends Record<string, { en: any; 'zh-CN': any }>>(
+      i18nMap: T,
+    ) => {
+      const result: any = {};
+      for (const key of Object.keys(i18nMap)) {
+        result[key] = i18nMap[key]['en'];
+      }
+      return result;
+    },
+  };
+});
+
 // mock 非交互模式判断函数
 const { mockIsNonInteractive } = vi.hoisted(() => {
   return { mockIsNonInteractive: vi.fn().mockReturnValue(false) };
@@ -95,7 +118,7 @@ describe('promptCommitMessage', () => {
 
     await expect(
       promptCommitMessage('请输入提交信息', '非交互模式错误'),
-    ).rejects.toThrow('提交信息不能为空');
+    ).rejects.toThrow('Commit message cannot be empty');
   });
 
   it('用户输入仅空白字符时抛出 ClawtError', async () => {
@@ -104,7 +127,7 @@ describe('promptCommitMessage', () => {
 
     await expect(
       promptCommitMessage('请输入提交信息', '非交互模式错误'),
-    ).rejects.toThrow('提交信息不能为空');
+    ).rejects.toThrow('Commit message cannot be empty');
   });
 
   it('返回 trim 后的用户输入', async () => {

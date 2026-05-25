@@ -1,10 +1,12 @@
 import { resolve, dirname, join } from 'node:path';
 import { existsSync, writeFileSync } from 'node:fs';
 import type { Command } from 'commander';
-import { MESSAGES, TASK_TEMPLATE_OUTPUT_DIR, TASK_TEMPLATE_FILENAME_PREFIX, TASK_TEMPLATE_CONTENT } from '../constants/index.js';
+import { MESSAGES, TASK_TEMPLATE_OUTPUT_DIR, TASK_TEMPLATE_FILENAME_PREFIX } from '../constants/index.js';
+import { getTaskTemplateContent } from '../constants/tasks-template.js';
 import { ClawtError } from '../errors/index.js';
 import { logger } from '../logger/index.js';
 import { printSuccess, printHint, ensureDir, generateTaskFilename } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 tasks 命令组及其子命令
@@ -13,12 +15,12 @@ import { printSuccess, printHint, ensureDir, generateTaskFilename } from '../uti
 export function registerTasksCommand(program: Command): void {
   const taskCmd = program
     .command('tasks')
-    .description('任务文件管理');
+    .description(getCurrentLanguage() === 'en' ? 'Task file management' : '任务文件管理');
 
   taskCmd
     .command('init')
-    .description('生成任务模板文件')
-    .argument('[path]', '输出文件路径')
+    .description(getCurrentLanguage() === 'en' ? 'Generate task template file' : '生成任务模板文件')
+    .argument('[path]', getCurrentLanguage() === 'en' ? 'Output file path' : '输出文件路径')
     .action(async (path?: string) => {
       // 未指定路径时，默认输出到 .clawt/tasks/ 目录下
       const filePath = path ?? join(TASK_TEMPLATE_OUTPUT_DIR, generateTaskFilename(TASK_TEMPLATE_FILENAME_PREFIX));
@@ -43,8 +45,8 @@ async function handleTasksInit(filePath: string): Promise<void> {
   // 确保父目录存在
   ensureDir(dirname(absolutePath));
 
-  // 写入模板内容
-  writeFileSync(absolutePath, TASK_TEMPLATE_CONTENT, 'utf-8');
+  // 写入模板内容（根据语言动态生成）
+  writeFileSync(absolutePath, getTaskTemplateContent(), 'utf-8');
 
   printSuccess(MESSAGES.TASK_INIT_SUCCESS(filePath));
   printHint(MESSAGES.TASK_INIT_HINT(filePath));

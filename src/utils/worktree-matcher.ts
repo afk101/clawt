@@ -12,6 +12,7 @@ import {
 import type { WorktreeInfo } from '../types/index.js';
 import { promptSelectBranch, promptGroupedMultiSelectBranches } from './ui-prompts.js';
 import type { GroupedChoice } from './ui-prompts.js';
+import { getCurrentLanguage } from './i18n.js';
 
 /**
  * 分支解析时使用的消息文案配置
@@ -213,26 +214,27 @@ export function getWorktreeCreatedTime(dirPath: string): string | null {
 }
 
 /**
- * 将 YYYY-MM-DD 日期字符串格式化为中文相对日期描述
+ * 将 YYYY-MM-DD 日期字符串格式化为相对日期描述
  * 基于自然日计算，适用于日期分组场景
  * @param {string} dateStr - YYYY-MM-DD 格式的日期字符串
- * @returns {string} 中文相对日期描述，如"今天"、"昨天"、"3 天前"
+ * @returns {string} 相对日期描述，如"今天"/"Today"、"昨天"/"Yesterday"、"3 天前"/"3 days ago"
  */
 export function formatRelativeDate(dateStr: string): string {
+  const lang = getCurrentLanguage();
   const today = formatLocalDate(new Date());
   const todayMs = new Date(today).getTime();
   const targetMs = new Date(dateStr).getTime();
   const diffDays = Math.round((todayMs - targetMs) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return '今天';
-  if (diffDays === 1) return '昨天';
-  if (diffDays < 30) return `${diffDays} 天前`;
+  if (diffDays === 0) return lang === 'en' ? 'Today' : '今天';
+  if (diffDays === 1) return lang === 'en' ? 'Yesterday' : '昨天';
+  if (diffDays < 30) return lang === 'en' ? `${diffDays} day${diffDays > 1 ? 's' : ''} ago` : `${diffDays} 天前`;
   if (diffDays < 365) {
     const months = Math.floor(diffDays / 30);
-    return `${months} 个月前`;
+    return lang === 'en' ? `${months} month${months > 1 ? 's' : ''} ago` : `${months} 个月前`;
   }
   const years = Math.floor(diffDays / 365);
-  return `${years} 年前`;
+  return lang === 'en' ? `${years} year${years > 1 ? 's' : ''} ago` : `${years} 年前`;
 }
 
 /**

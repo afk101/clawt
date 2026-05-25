@@ -1,5 +1,6 @@
 import type { ClawtConfig, ConfigDefinitions } from '../types/index.js';
 import { VALID_TERMINAL_APPS } from './terminal.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 通过 clawt 启动的 Claude Code 非交互式会话（claude -p）的 entrypoint 标识
@@ -94,3 +95,27 @@ export const DEFAULT_CONFIG: ClawtConfig = deriveDefaultConfig(CONFIG_DEFINITION
 
 /** 配置项描述映射 */
 export const CONFIG_DESCRIPTIONS: Record<keyof ClawtConfig, string> = deriveConfigDescriptions(CONFIG_DEFINITIONS);
+
+/** 配置项英文描述映射 */
+const CONFIG_DESCRIPTIONS_EN: Record<keyof ClawtConfig, string> = {
+  language: 'Interface language: en (English), zh-CN (Chinese)',
+  autoDeleteBranch: 'Whether to auto-delete the local branch when removing a worktree',
+  claudeCodeCommand: 'Claude Code CLI launch command',
+  autoPullPush: 'Whether to auto-run git pull and git push after merge',
+  confirmDestructiveOps: 'Whether to prompt for confirmation before destructive operations (reset, validate --clean)',
+  maxConcurrency: 'Default max concurrency for run command, 0 means unlimited',
+  terminalApp: 'Terminal app for batch resume: auto (auto-detect), iterm2, terminal, cmux (macOS)',
+  resumeInPlace: 'Whether to resume in current terminal (single select), false opens in new tab via terminalApp',
+  aliases: 'Command alias mapping',
+  autoUpdate: 'Whether to enable auto-update checks (every 24 hours via npm registry)',
+  conflictResolveMode: 'Merge conflict resolution mode: ask (prompt for AI), auto (auto AI resolve), manual (manual resolve)',
+  conflictResolveTimeoutMs: 'Claude Code conflict resolution timeout (ms), default 900000 (15 min)',
+};
+
+/**
+ * 获取国际化配置项描述映射
+ * @returns {Record<keyof ClawtConfig, string>} 当前语言的配置项描述映射
+ */
+export function getI18nConfigDescriptions(): Record<keyof ClawtConfig, string> {
+  return getCurrentLanguage() === 'en' ? CONFIG_DESCRIPTIONS_EN : CONFIG_DESCRIPTIONS;
+}

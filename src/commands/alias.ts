@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { MESSAGES } from '../constants/index.js';
 import { logger } from '../logger/index.js';
 import { loadConfig, writeConfig, printInfo, printSuccess, printError, printSeparator } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 从 Commander 实例动态获取所有已注册的命令名
@@ -104,28 +105,28 @@ function handleAliasRemove(alias: string): void {
 export function registerAliasCommand(program: Command): void {
   const aliasCmd = program
     .command('alias')
-    .description('管理命令别名（列出 / 设置 / 移除）')
+    .description(getCurrentLanguage() === 'en' ? 'Manage command aliases (list / set / remove)' : '管理命令别名（列出 / 设置 / 移除）')
     .action(() => {
       handleAliasList();
     });
 
   aliasCmd
     .command('list')
-    .description('列出所有别名')
+    .description(getCurrentLanguage() === 'en' ? 'List all aliases' : '列出所有别名')
     .action(() => {
       handleAliasList();
     });
 
   aliasCmd
     .command('set <alias> <command>')
-    .description('设置命令别名')
+    .description(getCurrentLanguage() === 'en' ? 'Set a command alias' : '设置命令别名')
     .action((alias: string, command: string) => {
       handleAliasSet(program, alias, command);
     });
 
   aliasCmd
     .command('remove <alias>')
-    .description('移除命令别名')
+    .description(getCurrentLanguage() === 'en' ? 'Remove a command alias' : '移除命令别名')
     .action((alias: string) => {
       handleAliasRemove(alias);
     });

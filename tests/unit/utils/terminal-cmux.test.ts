@@ -20,6 +20,21 @@ vi.mock('../../../src/utils/config.js', () => ({
   getConfigValue: vi.fn(),
 }));
 
+// mock i18n 模块，避免循环依赖导致 currentLanguage 未初始化
+// 返回 'en' 以匹配测试中的英文断言
+vi.mock('../../../src/utils/i18n.js', () => ({
+  getCurrentLanguage: vi.fn().mockReturnValue('en'),
+  resetLanguageCache: vi.fn(),
+  setCurrentLanguage: vi.fn(),
+  createMessages: vi.fn((i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+    const result: any = {};
+    for (const key of Object.keys(i18nMap)) {
+      result[key] = i18nMap[key]['en'];
+    }
+    return result;
+  }),
+}));
+
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import {
@@ -180,7 +195,7 @@ describe('cmux surface 创建', () => {
     mockedGetConfigValue.mockReturnValue('cmux');
 
     expect(() => openCommandInNewTerminalTab('claude', 'test-title')).toThrow(
-      /当前不在 cmux 环境中/
+      /Not currently in a cmux environment/
     );
   });
 
@@ -192,7 +207,7 @@ describe('cmux surface 创建', () => {
     mockedExecFileSync.mockReturnValueOnce('invalid output format');
 
     expect(() => openCommandInNewTerminalTab('claude', 'test-title')).toThrow(
-      /无法解析 cmux new-split 输出/
+      /Failed to parse cmux new-split output/
     );
   });
 
@@ -207,7 +222,7 @@ describe('cmux surface 创建', () => {
     });
 
     expect(() => openCommandInNewTerminalTab('claude', 'test-title')).toThrow(
-      /在 cmux 中创建 surface 失败/
+      /Failed to create surface in cmux/
     );
   });
 
@@ -215,7 +230,7 @@ describe('cmux surface 创建', () => {
     Object.defineProperty(process, 'platform', { value: 'linux' });
 
     expect(() => openCommandInNewTerminalTab('claude', 'test-title')).toThrow(
-      /仅支持 macOS 平台/
+      /Batch resume is only supported on macOS/
     );
   });
 });

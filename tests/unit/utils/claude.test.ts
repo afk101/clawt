@@ -1,5 +1,25 @@
 import { describe, it, expect, vi } from 'vitest';
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'en' 以匹配英文断言
+// 同时重写 createMessages 使其直接选择 'en' 分支，确保 constants 模块加载时生成英文消息
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('en'),
+    resetLanguageCache: vi.fn(),
+    createMessages: <T extends Record<string, { en: any; 'zh-CN': any }>>(
+      i18nMap: T,
+    ) => {
+      const result: any = {};
+      for (const key of Object.keys(i18nMap)) {
+        result[key] = i18nMap[key]['en'];
+      }
+      return result;
+    },
+  };
+});
+
 // mock logger（避免测试时写日志文件）
 vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -177,7 +197,7 @@ describe('launchInteractiveClaude', () => {
     });
 
     expect(() => launchInteractiveClaude(worktree)).toThrow(ClawtError);
-    expect(() => launchInteractiveClaude(worktree)).toThrow('启动 Claude Code 失败');
+    expect(() => launchInteractiveClaude(worktree)).toThrow('Failed to start Claude Code');
   });
 
   it('非零退出码时调用 printWarning', () => {
@@ -195,7 +215,7 @@ describe('launchInteractiveClaude', () => {
 
     launchInteractiveClaude(worktree);
 
-    expect(mockedPrintWarning).toHaveBeenCalledWith(expect.stringContaining('退出码: 1'));
+    expect(mockedPrintWarning).toHaveBeenCalledWith(expect.stringContaining('exit code: 1'));
   });
 
   it('退出码为 null 时不调用 printWarning', () => {
@@ -252,7 +272,7 @@ describe('launchInteractiveClaude', () => {
 
     const callArgs = mockedSpawnSync.mock.calls[0][1] as string[];
     expect(callArgs).toContain('--continue');
-    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('继续上次对话'));
+    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('Continue previous session'));
   });
 
   it('autoContinue 启用但无会话历史时不追加 --continue 参数', () => {
@@ -272,7 +292,7 @@ describe('launchInteractiveClaude', () => {
 
     const callArgs = mockedSpawnSync.mock.calls[0][1] as string[];
     expect(callArgs).not.toContain('--continue');
-    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('新对话'));
+    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('New session'));
   });
 
   it('不传 autoContinue 时即使有会话历史也不追加 --continue', () => {

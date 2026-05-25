@@ -23,6 +23,7 @@ import {
   executeBatchTasks,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /** resume 命令的多选分支解析消息配置 */
 const RESUME_RESOLVE_MESSAGES: WorktreeMultiResolveMessages = {
@@ -39,11 +40,11 @@ const RESUME_RESOLVE_MESSAGES: WorktreeMultiResolveMessages = {
 export function registerResumeCommand(program: Command): void {
   program
     .command('resume')
-    .description('在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复）')
-    .option('-b, --branch <branchName>', '要恢复的分支名（支持模糊匹配，不传则列出所有分支）')
-    .option('--prompt <content>', '非交互式追问（需配合 -b 指定分支）')
-    .option('-f, --file <path>', '从任务文件批量追问（通过 branch 名匹配已有 worktree）')
-    .option('-c, --concurrency <n>', '批量追问最大并发数，0 表示不限制')
+    .description(getCurrentLanguage() === 'en' ? 'Resume Claude Code sessions in existing worktrees (supports multi-select batch resume)' : '在已有 worktree 中恢复 Claude Code 会话（支持多选批量恢复）')
+    .option('-b, --branch <branchName>', getCurrentLanguage() === 'en' ? 'Branch name to resume (supports fuzzy match, lists all branches if not provided)' : '要恢复的分支名（支持模糊匹配，不传则列出所有分支）')
+    .option('--prompt <content>', getCurrentLanguage() === 'en' ? 'Non-interactive follow-up prompt (requires -b to specify branch)' : '非交互式追问（需配合 -b 指定分支）')
+    .option('-f, --file <path>', getCurrentLanguage() === 'en' ? 'Batch follow-up from task file (matches existing worktrees by branch name)' : '从任务文件批量追问（通过 branch 名匹配已有 worktree）')
+    .option('-c, --concurrency <n>', getCurrentLanguage() === 'en' ? 'Max concurrency for batch follow-ups, 0 means unlimited' : '批量追问最大并发数，0 表示不限制')
     .action(async (options: ResumeOptions) => {
       await handleResume(options);
     });
@@ -179,9 +180,11 @@ async function handleNonInteractiveBatchResume(filePath: string, options: Resume
  * @param {Map<string, boolean>} sessionMap - worktree 路径 → 是否存在历史会话的映射
  */
 function printBatchResumePreview(worktrees: WorktreeInfo[], sessionMap: Map<string, boolean>): void {
-  printInfo('即将恢复的分支：');
+  printInfo(getCurrentLanguage() === 'en' ? 'Branches to resume:' : '即将恢复的分支：');
   for (const wt of worktrees) {
-    const modeLabel = sessionMap.get(wt.path) ? '继续上次对话' : '新对话';
+    const modeLabel = sessionMap.get(wt.path)
+      ? (getCurrentLanguage() === 'en' ? 'continue' : '继续上次对话')
+      : (getCurrentLanguage() === 'en' ? 'new session' : '新对话');
     printInfo(`  - ${wt.branch} (${modeLabel})`);
   }
   printInfo('');

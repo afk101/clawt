@@ -40,14 +40,22 @@ export function resetLanguageCache(): void {
 }
 
 /**
+ * 从 i18n 双语映射条目中提取当前语言对应的值类型
+ */
+type ExtractLang<T> = T extends { en: infer V; 'zh-CN': infer V } ? V : never;
+
+/**
  * 创建国际化消息对象
  * 根据当前语言从双语映射中选择对应的文本或函数
- * @param {Record<string, { en: T; 'zh-CN': T }>} i18nMap - 双语消息映射
- * @returns {Record<string, T>} 当前语言的消息对象
+ * 保留精确的键名和值类型，确保合并后的 MESSAGES 对象类型正确
+ * @param {T} i18nMap - 双语消息映射，每个键包含 en 和 zh-CN 两个版本
+ * @returns {{ [K in keyof T]: ExtractLang<T[K]> }} 当前语言的消息对象，键名和值类型与原始映射一致
  */
-export function createMessages<T>(i18nMap: Record<string, { en: T; 'zh-CN': T }>): Record<string, T> {
+export function createMessages<T extends Record<string, { en: any; 'zh-CN': any }>>(
+  i18nMap: T
+): { [K in keyof T]: ExtractLang<T[K]> } {
   const lang = getCurrentLanguage();
-  const result: Record<string, T> = {};
+  const result: any = {};
   for (const key of Object.keys(i18nMap)) {
     result[key] = i18nMap[key][lang];
   }

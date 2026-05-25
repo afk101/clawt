@@ -4,6 +4,7 @@ import { ClawtError } from './errors/index.js';
 import { logger, enableConsoleTransport } from './logger/index.js';
 import { EXIT_CODES } from './constants/index.js';
 import { printError, ensureClawtDirs, loadConfig, applyAliases, checkForUpdates, setNonInteractive } from './utils/index.js';
+import { getCurrentLanguage } from './utils/i18n.js';
 import { registerListCommand } from './commands/list.js';
 import { registerCreateCommand } from './commands/create.js';
 import { registerRemoveCommand } from './commands/remove.js';
@@ -34,10 +35,10 @@ const program = new Command();
 
 program
   .name('clawt')
-  .description('本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具')
+  .description(getCurrentLanguage() === 'en' ? 'Run multiple Claude Code Agent tasks in parallel — a CLI tool integrating Git Worktree with Claude Code CLI' : '本地并行执行多个Claude Code Agent任务，融合 Git Worktree 与 Claude Code CLI 的命令行工具')
   .version(version)
-  .option('--debug', '输出详细调试信息到终端')
-  .option('-y, --yes', '跳过所有交互式确认，适用于脚本/CI 环境');
+  .option('--debug', getCurrentLanguage() === 'en' ? 'Output detailed debug information to terminal' : '输出详细调试信息到终端')
+  .option('-y, --yes', getCurrentLanguage() === 'en' ? 'Skip all interactive confirmations, suitable for scripts/CI environments' : '跳过所有交互式确认，适用于脚本/CI 环境');
 
 // 在子命令 action 执行前检查 --debug 选项，按需启用控制台日志
 program.hook('preAction', (thisCommand) => {
@@ -81,7 +82,7 @@ process.on('uncaughtException', (error) => {
     logger.error(error.message);
     process.exit(error.exitCode);
   }
-  printError(error.message || '未知错误');
+  printError(error.message || (getCurrentLanguage() === 'en' ? 'Unknown error' : '未知错误'));
   logger.error(`未捕获异常: ${error.message}\n${error.stack}`);
   process.exit(EXIT_CODES.ERROR);
 });
@@ -93,7 +94,7 @@ process.on('unhandledRejection', (reason) => {
     logger.error(error.message);
     process.exit(error.exitCode);
   }
-  printError(error.message || '未知错误');
+  printError(error.message || (getCurrentLanguage() === 'en' ? 'Unknown error' : '未知错误'));
   logger.error(`未处理的 Promise 拒绝: ${error.message}`);
   process.exit(EXIT_CODES.ERROR);
 });

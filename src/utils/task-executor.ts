@@ -3,6 +3,7 @@ import { logger } from '../logger/index.js';
 import { MESSAGES } from '../constants/index.js';
 import type { ClaudeCodeResult, TaskResult, TaskSummary, WorktreeInfo } from '../types/index.js';
 import { spawnProcess, killAllChildProcesses } from './shell.js';
+import { getCurrentLanguage } from './i18n.js';
 import { cleanupWorktrees } from './worktree.js';
 import { getConfigValue } from './config.js';
 import { printSuccess, printWarning, printInfo, printDoubleSeparator, confirmAction } from './formatter.js';
@@ -107,7 +108,7 @@ function executeClaudeTask(worktree: WorktreeInfo, task: string, onActivity?: Ac
         worktreePath: worktree.path,
         success,
         result: finalResult,
-        error: success ? undefined : stderr || '任务执行失败',
+        error: success ? undefined : stderr || MESSAGES.TASK_FAILED,
       });
     });
 
@@ -132,11 +133,11 @@ function executeClaudeTask(worktree: WorktreeInfo, task: string, onActivity?: Ac
  */
 function printTaskSummary(summary: TaskSummary): void {
   printDoubleSeparator();
-  printInfo(`全部任务已完成 (${summary.total}/${summary.total})`);
-  printInfo(`  成功: ${summary.succeeded}`);
-  printInfo(`  失败: ${summary.failed}`);
-  printInfo(`  总耗时: ${(summary.totalDurationMs / 1000).toFixed(1)}s`);
-  printInfo(`  总花费: $${summary.totalCostUsd.toFixed(2)}`);
+  printInfo(MESSAGES.ALL_TASKS_COMPLETED(summary.total));
+  printInfo(`  ${MESSAGES.SUCCESS_LABEL} ${summary.succeeded}`);
+  printInfo(`  ${MESSAGES.FAILURE_LABEL} ${summary.failed}`);
+  printInfo(`  ${MESSAGES.TOTAL_DURATION_LABEL} ${(summary.totalDurationMs / 1000).toFixed(1)}s`);
+  printInfo(`  ${MESSAGES.TOTAL_COST_LABEL} $${summary.totalCostUsd.toFixed(2)}`);
   printDoubleSeparator();
 }
 
@@ -342,7 +343,9 @@ export async function executeBatchTasks(
   // 校验 continueFlags 长度与 worktrees 一致，防止调用方传入不匹配的数组
   if (continueFlags && continueFlags.length !== count) {
     throw new ClawtError(
-      `continueFlags 长度 (${continueFlags.length}) 与任务数 (${count}) 不一致`,
+      getCurrentLanguage() === 'en'
+        ? `continueFlags length (${continueFlags.length}) does not match task count (${count})`
+        : `continueFlags 长度 (${continueFlags.length}) 与任务数 (${count}) 不一致`,
     );
   }
 

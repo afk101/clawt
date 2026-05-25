@@ -21,6 +21,7 @@ import {
   printSeparator,
   printError,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 projects 命令：统一管理多个项目的 worktree 状态
@@ -29,8 +30,8 @@ import {
 export function registerProjectsCommand(program: Command): void {
   program
     .command('projects [name]')
-    .description('展示所有项目的 worktree 概览，或查看指定项目的 worktree 详情')
-    .option('--json', '以 JSON 格式输出')
+    .description(getCurrentLanguage() === 'en' ? 'Show worktree overview across projects, or view details for a specific project' : '展示所有项目的 worktree 概览，或查看指定项目的 worktree 详情')
+    .option('--json', getCurrentLanguage() === 'en' ? 'Output in JSON format' : '以 JSON 格式输出')
     .action((name: string | undefined, options: { json?: boolean }) => {
       handleProjects({ name, json: options.json });
     });
@@ -258,7 +259,8 @@ function printProjectsOverviewAsText(result: ProjectsOverviewResult): void {
 
   printSeparator();
   printInfo('');
-  printInfo(`  共 ${chalk.bold(String(result.totalProjects))} 个项目   ${chalk.gray(MESSAGES.PROJECTS_TOTAL_DISK_USAGE(formatDiskSize(result.totalDiskUsage)))}`);
+  const lang = getCurrentLanguage();
+  printInfo(`  ${chalk.bold(String(result.totalProjects))} ${lang === 'en' ? 'project(s)' : '个项目'}   ${chalk.gray(MESSAGES.PROJECTS_TOTAL_DISK_USAGE(formatDiskSize(result.totalDiskUsage)))}`);
   printInfo('');
   printDoubleSeparator();
 }

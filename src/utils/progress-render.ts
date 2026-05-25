@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import stringWidth from 'string-width';
-import { TASK_STATUS_ICONS, TASK_STATUS_LABELS } from '../constants/index.js';
+import { TASK_STATUS_ICONS, getTaskStatusLabels } from '../constants/index.js';
 import { formatDuration } from './formatter.js';
 
 /** ANSI 颜色/样式转义序列的匹配正则 */
@@ -106,27 +106,28 @@ export function getMaxPathWidth(tasks: TaskProgress[]): number {
 export function renderTaskLine(task: TaskProgress, total: number, maxPathWidth: number, spinnerChar: string): string {
   const indexStr = `[${task.index}/${total}]`;
   const pathStr = task.path.padEnd(maxPathWidth);
+  const labels = getTaskStatusLabels();
 
   switch (task.status) {
     case 'pending': {
-      return `${indexStr} ${pathStr}  ${chalk.gray(TASK_STATUS_ICONS.PENDING)} ${chalk.gray(TASK_STATUS_LABELS.PENDING)}`;
+      return `${indexStr} ${pathStr}  ${chalk.gray(TASK_STATUS_ICONS.PENDING)} ${chalk.gray(labels.PENDING)}`;
     }
     case 'running': {
       const elapsed = formatDuration(Date.now() - task.startedAt);
       // 仅显示活动信息，不显示路径（路径已在第二列显示）
       const detail = task.activity ? `  ${chalk.dim(task.activity)}` : '';
-      return `${indexStr} ${pathStr}  ${chalk.cyan(spinnerChar)} ${chalk.cyan(TASK_STATUS_LABELS.RUNNING)} ${chalk.gray(elapsed)}${detail}`;
+      return `${indexStr} ${pathStr}  ${chalk.cyan(spinnerChar)} ${chalk.cyan(labels.RUNNING)} ${chalk.gray(elapsed)}${detail}`;
     }
     case 'done': {
       const duration = task.durationMs != null ? formatDuration(task.durationMs) : 'N/A';
       const cost = task.costUsd != null ? `$${task.costUsd.toFixed(2)}` : '';
       const preview = task.resultPreview ? `  ${chalk.dim(task.resultPreview)}` : '';
-      return `${indexStr} ${pathStr}  ${chalk.green(TASK_STATUS_ICONS.DONE)} ${chalk.green(TASK_STATUS_LABELS.DONE)}   ${chalk.gray(duration)}  ${chalk.yellow(cost)}${preview}`;
+      return `${indexStr} ${pathStr}  ${chalk.green(TASK_STATUS_ICONS.DONE)} ${chalk.green(labels.DONE)}   ${chalk.gray(duration)}  ${chalk.yellow(cost)}${preview}`;
     }
     case 'failed': {
       const duration = task.durationMs != null ? formatDuration(task.durationMs) : 'N/A';
       const preview = task.resultPreview ? `  ${chalk.dim(task.resultPreview)}` : '';
-      return `${indexStr} ${pathStr}  ${chalk.red(TASK_STATUS_ICONS.FAILED)} ${chalk.red(TASK_STATUS_LABELS.FAILED)}   ${chalk.gray(duration)}${preview}`;
+      return `${indexStr} ${pathStr}  ${chalk.red(TASK_STATUS_ICONS.FAILED)} ${chalk.red(labels.FAILED)}   ${chalk.gray(duration)}${preview}`;
     }
   }
 }
@@ -143,12 +144,13 @@ export function renderSummaryLine(tasks: TaskProgress[], total: number): string 
   const done = tasks.filter((t) => t.status === 'done').length;
   const failed = tasks.filter((t) => t.status === 'failed').length;
   const pending = tasks.filter((t) => t.status === 'pending').length;
+  const labels = getTaskStatusLabels();
 
   const parts: string[] = [];
-  if (running > 0) parts.push(chalk.cyan(`${running}/${total} ${TASK_STATUS_LABELS.RUNNING}`));
-  if (done > 0) parts.push(chalk.green(`${done}/${total} ${TASK_STATUS_LABELS.DONE}`));
-  if (failed > 0) parts.push(chalk.red(`${failed}/${total} ${TASK_STATUS_LABELS.FAILED}`));
-  if (pending > 0) parts.push(chalk.gray(`${pending}/${total} ${TASK_STATUS_LABELS.PENDING}`));
+  if (running > 0) parts.push(chalk.cyan(`${running}/${total} ${labels.RUNNING}`));
+  if (done > 0) parts.push(chalk.green(`${done}/${total} ${labels.DONE}`));
+  if (failed > 0) parts.push(chalk.red(`${failed}/${total} ${labels.FAILED}`));
+  if (pending > 0) parts.push(chalk.gray(`${pending}/${total} ${labels.PENDING}`));
 
   return `[${parts.join(', ')}]`;
 }

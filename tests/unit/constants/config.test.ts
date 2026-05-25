@@ -1,4 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// mock i18n 模块，避免循环依赖导致 currentLanguage 未初始化
+vi.mock('../../../src/utils/i18n.js', () => ({
+  getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+  resetLanguageCache: vi.fn(),
+  setCurrentLanguage: vi.fn(),
+  createMessages: vi.fn((i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+    const result: any = {};
+    for (const key of Object.keys(i18nMap)) {
+      result[key] = i18nMap[key]['zh-CN'];
+    }
+    return result;
+  }),
+}));
+
 import { CONFIG_DEFINITIONS, DEFAULT_CONFIG, CONFIG_DESCRIPTIONS } from '../../../src/constants/config.js';
 import { VALID_TERMINAL_APPS } from '../../../src/constants/terminal.js';
 

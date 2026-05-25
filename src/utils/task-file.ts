@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
+import { getCurrentLanguage } from './i18n.js';
 import type { TaskFileEntry, ParseTaskFileOptions } from '../types/index.js';
 
 /** 匹配任务块的正则：<!-- CLAWT-TASKS:START --> ... <!-- CLAWT-TASKS:END --> */
@@ -11,7 +12,7 @@ const TASK_BLOCK_REGEX = /<!-- CLAWT-TASKS:START -->([\s\S]*?)<!-- CLAWT-TASKS:E
 const BRANCH_LINE_REGEX = /^#\s*branch:\s*(.+)$/;
 
 /** 任务列表为空时的错误提示 */
-const EMPTY_TASKS_MESSAGE = '任务列表不能为空';
+const EMPTY_TASKS_MESSAGE = getCurrentLanguage() === 'en' ? 'Task list cannot be empty' : '任务列表不能为空';
 
 /**
  * 从命令行 --tasks 选项中解析出有效的任务列表

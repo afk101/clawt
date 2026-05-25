@@ -5,6 +5,7 @@ import { checkBranchExists, createBranch, deleteBranch, getCurrentBranch, gitChe
 import { getMainWorkBranch } from './project-config.js';
 import { printWarning, confirmAction } from './formatter.js';
 import { ClawtError } from '../errors/index.js';
+import { getCurrentLanguage } from './i18n.js';
 import { isNonInteractive } from './interactive.js';
 
 /**
@@ -94,35 +95,41 @@ export async function handleDirtyWorkingDir(cwd?: string): Promise<void> {
     gitAddAll(cwd);
     gitStashPush('clawt:auto-stash', cwd);
     if (!isWorkingDirClean(cwd)) {
-      throw new ClawtError('工作区仍然不干净，请手动处理');
+      throw new ClawtError(MESSAGES.WORKSPACE_STILL_DIRTY);
     }
     return;
   }
 
-  printWarning('当前分支有未提交的更改，请选择处理方式：\n');
+  printWarning(MESSAGES.UNCOMMITTED_CHANGES_ON_BRANCH);
 
   // @ts-expect-error enquirer 类型声明未导出 Select 类，但运行时存在
   const choice = await new Enquirer.Select({
-    message: '选择处理方式',
+    message: MESSAGES.SELECT_ACTION,
     choices: [
       {
         name: 'reset',
-        message: 'reset        - 丢弃所有更改 (git reset --hard HEAD && git clean -fd)',
+        message: getCurrentLanguage() === 'en'
+          ? 'reset        - Discard all changes (git reset --hard HEAD && git clean -fd)'
+          : 'reset        - 丢弃所有更改 (git reset --hard HEAD && git clean -fd)',
       },
       {
         name: 'stash',
-        message: 'stash        - 暂存更改 (git add . && git stash)',
+        message: getCurrentLanguage() === 'en'
+          ? 'stash        - Stash changes (git add . && git stash)'
+          : 'stash        - 暂存更改 (git add . && git stash)',
       },
       {
         name: 'exit',
-        message: 'exit         - 退出，手动处理',
+        message: getCurrentLanguage() === 'en'
+          ? 'exit         - Exit, handle manually'
+          : 'exit         - 退出，手动处理',
       },
     ],
     initial: 0,
   }).run();
 
   if (choice === 'exit') {
-    throw new ClawtError('用户选择退出，请手动处理工作区更改后重试');
+    throw new ClawtError(MESSAGES.USER_CHOSE_EXIT);
   }
 
   if (choice === 'reset') {
@@ -135,7 +142,7 @@ export async function handleDirtyWorkingDir(cwd?: string): Promise<void> {
 
   // 再次检查是否干净
   if (!isWorkingDirClean(cwd)) {
-    throw new ClawtError('工作区仍然不干净，请手动处理');
+    throw new ClawtError(MESSAGES.WORKSPACE_STILL_DIRTY);
   }
 }
 
@@ -171,7 +178,7 @@ export async function ensureOnMainWorkBranch(cwd?: string): Promise<void> {
   // 当前在其他分支上，警告并确认后处理脏工作区再切换
   printWarning(MESSAGES.GUARD_BRANCH_MISMATCH(mainBranch, currentBranch));
   // 非交互模式下自动确认继续
-  const confirmed = isNonInteractive() ? true : await confirmAction('是否继续执行？');
+  const confirmed = isNonInteractive() ? true : await confirmAction(MESSAGES.CONFIRM_CONTINUE_VALIDATE);
   if (!confirmed) {
     throw new ClawtError(MESSAGES.DESTRUCTIVE_OP_CANCELLED);
   }

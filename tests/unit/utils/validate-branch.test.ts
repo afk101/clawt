@@ -1,5 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+// 同时重写 createMessages 使其直接选择 'zh-CN' 分支，确保 constants 模块加载时生成中文消息
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+    resetLanguageCache: vi.fn(),
+    createMessages: <T extends Record<string, { en: any; 'zh-CN': any }>>(
+      i18nMap: T,
+    ) => {
+      const result: any = {};
+      for (const key of Object.keys(i18nMap)) {
+        result[key] = i18nMap[key]['zh-CN'];
+      }
+      return result;
+    },
+  };
+});
+
 // mock logger
 vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -16,13 +36,18 @@ vi.mock('../../../src/errors/index.js', () => ({
   },
 }));
 
-// mock constants
+// mock constants（补充 handleDirtyWorkingDir 和 ensureOnMainWorkBranch 使用的消息键）
 vi.mock('../../../src/constants/index.js', () => ({
   VALIDATE_BRANCH_PREFIX: 'clawt-validate-',
   MESSAGES: {
     GUARD_BRANCH_MISMATCH: (mainBranch: string, currentBranch: string) =>
       `当前分支 ${currentBranch} 与配置的主工作分支 ${mainBranch} 不一致`,
     DESTRUCTIVE_OP_CANCELLED: '已取消操作',
+    WORKSPACE_STILL_DIRTY: '工作区仍然不干净，请手动处理',
+    USER_CHOSE_EXIT: '用户选择退出，请手动处理工作区更改后重试',
+    UNCOMMITTED_CHANGES_ON_BRANCH: '当前分支有未提交的更改，请选择处理方式：\n',
+    SELECT_ACTION: '选择处理方式',
+    CONFIRM_CONTINUE_VALIDATE: '是否继续执行？',
   },
 }));
 

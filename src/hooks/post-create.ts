@@ -6,6 +6,7 @@ import { MESSAGES } from '../constants/index.js';
 import { loadProjectConfig } from '../utils/project-config.js';
 import { getMainWorktreePath } from '../utils/git.js';
 import { printInfo, printSuccess, printWarning } from '../utils/formatter.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 import type { WorktreeInfo, ResolvedHook, PostCreateHookResult } from '../types/index.js';
 
 /** 项目仓库中的 postCreate 脚本相对路径 */
@@ -86,7 +87,9 @@ export function resolvePostCreateHook(): ResolvedHook | null {
  * @returns {string} 来源描述文本
  */
 function getSourceLabel(hook: ResolvedHook): string {
-  return hook.source === 'projectConfig' ? '项目配置 (postCreate)' : '.clawt/postCreate.sh';
+  return hook.source === 'projectConfig'
+    ? (getCurrentLanguage() === 'en' ? 'Project config (postCreate)' : '项目配置 (postCreate)')
+    : '.clawt/postCreate.sh';
 }
 
 /**
@@ -122,7 +125,7 @@ function executeOneHook(worktree: WorktreeInfo, hook: ResolvedHook): Promise<Pos
       child.on('close', (code) => {
         if (code !== null && code !== 0) {
           result.success = false;
-          result.error = `命令退出码: ${code}`;
+          result.error = getCurrentLanguage() === 'en' ? `Command exit code: ${code}` : `命令退出码: ${code}`;
           logger.error(`postCreate hook 失败: ${hook.command} (退出码: ${code}) @ ${worktree.path}`);
         } else {
           logger.info(`postCreate hook 成功: ${hook.command} @ ${worktree.path}`);

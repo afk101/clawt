@@ -1,5 +1,7 @@
 # Clawt
 
+[![npm version](https://img.shields.io/npm/v/clawt.svg)](https://www.npmjs.com/package/clawt) [![GitHub](https://img.shields.io/badge/GHub-afk101%2Fclawt-blue)](https://github.com/afk101/clawt)
+
 [English](./README.md) | **[中文](./README.zh-CN.md)**
 
 基于 Git Worktree 并行执行多个 Claude Code Agent 任务，所有 Agent 的代码修改互不干扰。
@@ -335,6 +337,7 @@ clawt alias remove l
 
 | 配置项 | 默认值 | 说明 |
 | ------ | ------ | ---- |
+| `language` | `"en"` | 界面语言：`en`（英文） / `zh-CN`（中文） |
 | `autoDeleteBranch` | `false` | 自动删除已合并/已移除的分支 |
 | `claudeCodeCommand` | `"claude"` | Claude Code CLI 启动命令 |
 | `autoPullPush` | `false` | merge 后自动 pull/push |

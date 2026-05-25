@@ -23,6 +23,7 @@ import {
   buildAutoSaveCommitMessage,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 sync 命令：将主分支最新代码同步到目标 worktree（含验证分支重建）
@@ -31,8 +32,8 @@ import type { WorktreeResolveMessages } from '../utils/index.js';
 export function registerSyncCommand(program: Command): void {
   program
     .command('sync')
-    .description('将主分支最新代码同步到目标 worktree')
-    .option('-b, --branch <branchName>', '要同步的分支名（支持模糊匹配，不传则列出所有分支）')
+    .description(getCurrentLanguage() === 'en' ? 'Sync the latest code from the main branch to the target worktree' : '将主分支最新代码同步到目标 worktree')
+    .option('-b, --branch <branchName>', getCurrentLanguage() === 'en' ? 'Branch name to sync (supports fuzzy match, lists all branches if not provided)' : '要同步的分支名（支持模糊匹配，不传则列出所有分支）')
     .action(async (options: SyncOptions) => {
       await handleSync(options);
     });
@@ -75,7 +76,7 @@ function mergeMainBranch(worktreePath: string, mainBranch: string): boolean {
       return true;
     }
     // 非冲突错误则向上抛出
-    throw new ClawtError(`合并 ${mainBranch} 失败`);
+    throw new ClawtError(getCurrentLanguage() === 'en' ? `Merge of ${mainBranch} failed` : `合并 ${mainBranch} 失败`);
   }
 }
 

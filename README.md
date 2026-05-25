@@ -1,5 +1,7 @@
 # Clawt
 
+[![npm version](https://img.shields.io/npm/v/clawt.svg)](https://www.npmjs.com/package/clawt) [![GitHub](https://img.shields.io/badge/GHub-afk101%2Fclawt-blue)](https://github.com/afk101/clawt)
+
 **[English](./README.md)** | [中文](./README.zh-CN.md)
 
 Run multiple Claude Code Agent tasks in parallel based on Git Worktree — all agents' code changes are fully isolated from each other.
@@ -335,6 +337,7 @@ Configuration file is located at `~/.clawt/config.json`, auto-generated after in
 
 | Config Item | Default | Description |
 | ------ | ------ | ---- |
+| `language` | `"en"` | Interface language: `en` (English) / `zh-CN` (Chinese) |
 | `autoDeleteBranch` | `false` | Auto-delete merged/removed branches |
 | `claudeCodeCommand` | `"claude"` | Claude Code CLI launch command (can be overridden per-project via `clawt init show`) |
 | `autoPullPush` | `false` | Auto pull/push after merge |

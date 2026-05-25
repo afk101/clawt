@@ -1,10 +1,28 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseTaskFile, loadTaskFile, parseTasksFromOptions } from '../../../src/utils/task-file.js';
 import { existsSync, readFileSync } from 'node:fs';
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
+}));
+
+vi.mock('../../../src/logger/index.js', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+// mock i18n 模块，避免循环依赖导致 currentLanguage 未初始化
+// 返回 'zh-CN' 以匹配测试中的中文断言
+vi.mock('../../../src/utils/i18n.js', () => ({
+  getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+  resetLanguageCache: vi.fn(),
+  setCurrentLanguage: vi.fn(),
+  createMessages: vi.fn((i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+    const result: any = {};
+    for (const key of Object.keys(i18nMap)) {
+      result[key] = i18nMap[key]['zh-CN'];
+    }
+    return result;
+  }),
 }));
 
 vi.mock('../../../src/errors/index.js', () => ({
@@ -17,15 +35,60 @@ vi.mock('../../../src/errors/index.js', () => ({
   },
 }));
 
-vi.mock('../../../src/constants/index.js', () => ({
-  MESSAGES: {
-    TASK_FILE_NOT_FOUND: (path: string) => `任务文件不存在: ${path}`,
-    TASK_FILE_EMPTY: '任务文件中没有解析到有效任务',
-    TASK_FILE_MISSING_BRANCH: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少分支名`,
-    TASK_FILE_MISSING_TASK: (branch: string) => `分支 ${branch} 缺少任务描述`,
-    TASK_FILE_MISSING_TASK_BY_INDEX: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少任务描述`,
-  },
-}));
+// mock constants/index.js，使用固定的中文 mock 来匹配测试断言中的中文错误消息
+// 同时保留必要的路径常量导出（避免 logger 等模块加载时报错）
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  // 仅从 paths.js 获取路径常量，不触发 messages 模块加载
+  const { CLAWT_HOME, CONFIG_PATH, LOGS_DIR, WORKTREES_DIR, VALIDATE_SNAPSHOTS_DIR, CLAUDE_PROJECTS_DIR, UPDATE_CHECK_PATH, PROJECTS_CONFIG_DIR } = await import('../../../src/constants/paths.js');
+  const { INVALID_BRANCH_CHARS, VALIDATE_BRANCH_PREFIX } = await import('../../../src/constants/branch.js');
+  const { EXIT_CODES } = await import('../../../src/constants/exitCodes.js');
+  const { VALID_TERMINAL_APPS, ITERM2_APP_PATH, ENABLE_BRACKETED_PASTE, DISABLE_BRACKETED_PASTE, PASTE_THRESHOLD_MS } = await import('../../../src/constants/terminal.js');
+  return {
+    CLAWT_HOME,
+    CONFIG_PATH,
+    LOGS_DIR,
+    WORKTREES_DIR,
+    VALIDATE_SNAPSHOTS_DIR,
+    CLAUDE_PROJECTS_DIR,
+    UPDATE_CHECK_PATH,
+    PROJECTS_CONFIG_DIR,
+    INVALID_BRANCH_CHARS,
+    VALIDATE_BRANCH_PREFIX,
+    EXIT_CODES,
+    VALID_TERMINAL_APPS,
+    ITERM2_APP_PATH,
+    ENABLE_BRACKETED_PASTE,
+    DISABLE_BRACKETED_PASTE,
+    PASTE_THRESHOLD_MS,
+    // 使用固定的中文 mock MESSAGES
+    MESSAGES: {
+      TASK_FILE_NOT_FOUND: (path: string) => `任务文件不存在: ${path}`,
+      TASK_FILE_EMPTY: '任务文件中没有解析到有效任务',
+      TASK_FILE_MISSING_BRANCH: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少分支名`,
+      TASK_FILE_MISSING_TASK: (branch: string) => `分支 ${branch} 缺少任务描述`,
+      TASK_FILE_MISSING_TASK_BY_INDEX: (blockIndex: number) => `第 ${blockIndex} 个任务块缺少任务描述`,
+    },
+    // 其他测试不需要的导出设为空对象或空字符串
+    DEFAULT_CONFIG: {},
+    CONFIG_DESCRIPTIONS: {},
+    CONFIG_DEFINITIONS: {},
+    CLAUDE_CODE_ENTRYPOINT_VALUE: 'cli',
+    getI18nConfigDescriptions: vi.fn(),
+    AUTO_SAVE_COMMIT_MESSAGE_PREFIX: '[clawt-auto-save]',
+    DEBUG_LOG_PREFIX: '[clawt]',
+    DEBUG_TIMESTAMP_FORMAT: 'YYYY-MM-DD HH:mm:ss',
+    UPDATE_CHECK_INTERVAL_MS: 86400000,
+    NPM_REGISTRY_URL: 'https://registry.npmjs.org',
+    NPM_REGISTRY_TIMEOUT_MS: 5000,
+    PACKAGE_NAME: 'clawt',
+    CONFLICT_RESOLVE_PROMPT: '',
+    CONFIG_ALIAS_DISABLED_HINT: '',
+    UPDATE_MESSAGES: {},
+    UPDATE_COMMANDS: {},
+  };
+});
+
+import { parseTaskFile, loadTaskFile, parseTasksFromOptions } from '../../../src/utils/task-file.js';
 
 const mockedExistsSync = vi.mocked(existsSync);
 const mockedReadFileSync = vi.mocked(readFileSync);

@@ -1,4 +1,25 @@
 import { describe, it, expect, vi } from 'vitest';
+
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+// 同时重写 createMessages 使其直接选择 'zh-CN' 分支，确保 constants 模块加载时生成中文消息
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+    resetLanguageCache: vi.fn(),
+    createMessages: <T extends Record<string, { en: any; 'zh-CN': any }>>(
+      i18nMap: T,
+    ) => {
+      const result: any = {};
+      for (const key of Object.keys(i18nMap)) {
+        result[key] = i18nMap[key]['zh-CN'];
+      }
+      return result;
+    },
+  };
+});
+
 import { formatWorktreeStatus, printSuccess, printError, printWarning, printInfo, printSeparator, printDoubleSeparator, isWorktreeIdle, formatDuration, formatRelativeTime, formatDiskSize, formatLocalISOString, generateTaskFilename } from '../../../src/utils/formatter.js';
 import { createWorktreeStatus } from '../../helpers/fixtures.js';
 

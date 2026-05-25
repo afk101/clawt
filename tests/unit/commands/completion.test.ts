@@ -28,6 +28,20 @@ vi.mock('../../../src/logger/index.js', () => ({
 }));
 vi.mock('../../../src/utils/fs.js', () => ({}));
 
+// mock i18n 模块，避免循环依赖导致 currentLanguage 未初始化
+vi.mock('../../../src/utils/i18n.js', () => ({
+  getCurrentLanguage: vi.fn().mockReturnValue('en'),
+  resetLanguageCache: vi.fn(),
+  setCurrentLanguage: vi.fn(),
+  createMessages: vi.fn((i18nMap: Record<string, { en: any; 'zh-CN': any }>) => {
+    const result: any = {};
+    for (const key of Object.keys(i18nMap)) {
+      result[key] = i18nMap[key]['en'];
+    }
+    return result;
+  }),
+}));
+
 /**
  * 创建 statSync 的 mock 返回值
  * @param {boolean} isDir - 是否为目录

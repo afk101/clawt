@@ -7,6 +7,7 @@ import { MESSAGES } from '../constants/messages/index.js';
 import { printSuccess, printInfo, printWarning, printError } from '../utils/index.js';
 import { getBashScript, getZshScript } from '../utils/completion-scripts.js';
 import { generateCompletions } from '../utils/completion-engine.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 向文件中追加内容（如果不存在），或者创建新文件
@@ -89,7 +90,7 @@ export function registerCompletionCommand(program: Command): void {
   completionCommand
     .command('_complete [args...]')
     .allowUnknownOption()
-    .description('内部使用的动态补全方法，不对外公开')
+    .description(getCurrentLanguage() === 'en' ? 'Internal dynamic completion method, not for public use' : '内部使用的动态补全方法，不对外公开')
     .action((args: string[]) => {
       // args 中包含了: shell, cword, ...words
       if (!args || args.length < 2) return;

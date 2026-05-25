@@ -5,6 +5,38 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+// 同时导出 createMessages 供 constants 模块使用
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+    resetLanguageCache: vi.fn(),
+  };
+});
+
+// mock constants 消息（post-create.ts 通过 MESSAGES 使用了 i18n 消息）
+vi.mock('../../../src/constants/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/constants/index.js')>();
+  return {
+    ...actual,
+    MESSAGES: {
+      ...actual.MESSAGES,
+      // 覆盖 post-create 相关的 MESSAGES，确保中文输出
+      POST_CREATE_SCRIPT_AUTO_CHMOD: (path: string) =>
+        `${path} 不可执行，已自动添加执行权限`,
+      POST_CREATE_SCRIPT_NOT_EXECUTABLE: (path: string) =>
+        `检测到 ${path} 但不可执行，自动添加权限失败，请手动执行 chmod +x ${path}`,
+      HOOK_SKIPPED: '已跳过 postCreate hook（--no-post-create）',
+      HOOK_NOT_CONFIGURED: '未配置 postCreate hook，跳过',
+      HOOK_SOURCE_INFO: (source: string) => `postCreate hook 来源: ${source}`,
+      HOOK_BACKGROUND_START: (count: number, command: string) =>
+        `postCreate hook 正在后台执行 (${count} 个 worktree): ${command}`,
+    },
+  };
+});
+
 // mock node:fs
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),

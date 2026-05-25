@@ -39,6 +39,7 @@ import {
   isNonInteractive,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 merge 命令：合并验证过的分支到主 worktree
@@ -47,10 +48,10 @@ import type { WorktreeResolveMessages } from '../utils/index.js';
 export function registerMergeCommand(program: Command): void {
   program
     .command('merge')
-    .description('合并某个已验证的 worktree 分支到主 worktree')
-    .option('-b, --branch <branchName>', '要合并的分支名（支持模糊匹配，不传则列出所有分支供选择）')
-    .option('-m, --message <commitMessage>', '提交信息（目标 worktree 工作区有修改时必填）')
-    .option('--auto', '遇到冲突直接调用 AI 解决，不再询问')
+    .description(getCurrentLanguage() === 'en' ? 'Merge a validated worktree branch into the main worktree' : '合并某个已验证的 worktree 分支到主 worktree')
+    .option('-b, --branch <branchName>', getCurrentLanguage() === 'en' ? 'Branch name to merge (supports fuzzy match, lists all branches if not provided)' : '要合并的分支名（支持模糊匹配，不传则列出所有分支供选择）')
+    .option('-m, --message <commitMessage>', getCurrentLanguage() === 'en' ? 'Commit message (required when target worktree has uncommitted changes)' : '提交信息（目标 worktree 工作区有修改时必填）')
+    .option('--auto', getCurrentLanguage() === 'en' ? 'Resolve conflicts with AI automatically without prompting' : '遇到冲突直接调用 AI 解决，不再询问')
     .action(async (options: MergeOptions) => {
       await handleMerge(options);
     });
@@ -141,11 +142,11 @@ async function handleSquashIfNeeded(
 async function shouldCleanupAfterMerge(branchName: string): Promise<boolean> {
   const autoDelete = getConfigValue('autoDeleteBranch');
   if (autoDelete) {
-    printInfo(`已配置自动删除，merge 成功后将自动清理 worktree 和分支: ${branchName}`);
+    printInfo(MESSAGES.AUTO_DELETE_CONFIGURED(branchName));
     return true;
   }
   // 非交互模式下自动删除
-  return confirmAction(`是否删除对应的 worktree 和分支 (${branchName})？`, true);
+  return confirmAction(MESSAGES.CONFIRM_DELETE_WORKTREE_BRANCH(branchName), true);
 }
 
 /**
@@ -260,7 +261,7 @@ async function handleMerge(options: MergeOptions): Promise<void> {
       return;
     }
   } else {
-    printInfo('已跳过自动 pull/push，请手动执行 git pull && git push');
+    printInfo(getCurrentLanguage() === 'en' ? 'Auto pull/push skipped, please run git pull && git push manually' : '已跳过自动 pull/push，请手动执行 git pull && git push');
   }
 
   // 步骤 8：输出成功提示（根据是否有 message 选择对应模板）

@@ -1,6 +1,7 @@
 import Enquirer from 'enquirer';
 import { isNonInteractive } from './interactive.js';
 import { ClawtError } from '../errors/index.js';
+import { MESSAGES } from '../constants/index.js';
 
 /**
  * 多行交互式输入框
@@ -45,7 +46,7 @@ export async function promptCommitMessage(
 
   // 空输入视为无效
   if (!result.trim()) {
-    throw new ClawtError('提交信息不能为空');
+    throw new ClawtError(MESSAGES.COMMIT_MESSAGE_NOT_EMPTY);
   }
 
   return result.trim();

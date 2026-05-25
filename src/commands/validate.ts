@@ -37,6 +37,7 @@ import {
   removeExternalSymlinks,
 } from '../utils/index.js';
 import type { WorktreeResolveMessages } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /** validate 命令的分支解析消息配置 */
 const VALIDATE_RESOLVE_MESSAGES: WorktreeResolveMessages = {
@@ -53,10 +54,10 @@ const VALIDATE_RESOLVE_MESSAGES: WorktreeResolveMessages = {
 export function registerValidateCommand(program: Command): void {
   program
     .command('validate')
-    .description('在主 worktree 验证某个 worktree 分支的变更（通过验证分支）')
-    .option('-b, --branch <branchName>', '要验证的分支名（支持模糊匹配，不传则列出所有分支）')
-    .option('--clean', '清理 validate 状态（重置主 worktree 并删除快照）')
-    .option('-r, --run <command>', 'validate 成功后在主 worktree 中执行的命令')
+    .description(getCurrentLanguage() === 'en' ? 'Validate a worktree branch\'s changes in the main worktree (via validation branch)' : '在主 worktree 验证某个 worktree 分支的变更（通过验证分支）')
+    .option('-b, --branch <branchName>', getCurrentLanguage() === 'en' ? 'Branch name to validate (supports fuzzy match, lists all branches if not provided)' : '要验证的分支名（支持模糊匹配，不传则列出所有分支）')
+    .option('--clean', getCurrentLanguage() === 'en' ? 'Clean validate state (reset main worktree and delete snapshot)' : '清理 validate 状态（重置主 worktree 并删除快照）')
+    .option('-r, --run <command>', getCurrentLanguage() === 'en' ? 'Command to execute in the main worktree after successful validation' : 'validate 成功后在主 worktree 中执行的命令')
     .action(async (options: ValidateOptions) => {
       await handleValidate(options);
     });
@@ -114,7 +115,7 @@ async function handleValidateClean(options: ValidateOptions): Promise<void> {
   if (getConfigValue('confirmDestructiveOps')) {
     const confirmed = await confirmDestructiveAction(
       'git reset --hard + git clean -fd',
-      `重置主 worktree 并删除分支 ${branchName} 的 validate 快照`,
+      getCurrentLanguage() === 'en' ? `Reset main worktree and delete validate snapshot for branch ${branchName}` : `重置主 worktree 并删除分支 ${branchName} 的 validate 快照`,
     );
     if (!confirmed) {
       printInfo(MESSAGES.DESTRUCTIVE_OP_CANCELLED);
@@ -212,7 +213,7 @@ async function handleIncrementalValidate(targetWorktreePath: string, mainWorktre
       try {
         gitReadTree(oldStagedTreeHash, mainWorktreePath);
       } catch (error) {
-        logger.warn(`恢复暂存区失败: ${error}`);
+        logger.warn(getCurrentLanguage() === 'en' ? `Failed to restore staging area: ${error}` : `恢复暂存区失败: ${error}`);
       }
     }
     printInfo(MESSAGES.INCREMENTAL_VALIDATE_NO_CHANGES(branchName));

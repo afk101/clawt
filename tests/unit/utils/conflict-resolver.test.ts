@@ -1,5 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+// 同时重写 createMessages 使其直接选择 'zh-CN' 分支，确保 constants 模块加载时生成中文消息
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+    resetLanguageCache: vi.fn(),
+    createMessages: <T extends Record<string, { en: any; 'zh-CN': any }>>(
+      i18nMap: T,
+    ) => {
+      const result: any = {};
+      for (const key of Object.keys(i18nMap)) {
+        result[key] = i18nMap[key]['zh-CN'];
+      }
+      return result;
+    },
+  };
+});
+
 // mock logger
 vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -97,12 +117,12 @@ beforeEach(() => {
 describe('buildConflictResolvePrompt', () => {
   it('生成纯指令性 prompt（无参数）', () => {
     const prompt = buildConflictResolvePrompt();
-
-    expect(prompt).toContain('Git 合并冲突解决专家');
+    // CONFLICT_RESOLVE_PROMPT 始终为英文，不跟随语言切换
+    expect(prompt).toContain('Git merge conflict resolution expert');
     expect(prompt).toContain('git status');
     expect(prompt).toContain('git log');
-    expect(prompt).toContain('冲突标记');
-    expect(prompt).toContain('请直接开始');
+    expect(prompt).toContain('conflict markers');
+    expect(prompt).toContain('Please begin.');
   });
 });
 

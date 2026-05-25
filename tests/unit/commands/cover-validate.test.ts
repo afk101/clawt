@@ -5,6 +5,17 @@ vi.mock('../../../src/logger/index.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// mock i18n 模块，使 getCurrentLanguage 返回 'zh-CN' 以匹配中文断言
+// 同时导出 createMessages 供 constants 模块使用
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn().mockReturnValue('zh-CN'),
+    resetLanguageCache: vi.fn(),
+  };
+});
+
 vi.mock('../../../src/errors/index.js', () => ({
   ClawtError: class ClawtError extends Error {
     exitCode: number;
@@ -37,7 +48,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   getProjectWorktrees: vi.fn().mockReturnValue([{ path: '/path/feature', branch: 'feature' }]),
   findExactMatch: vi.fn().mockReturnValue({ path: '/path/feature', branch: 'feature' }),
   hasSnapshot: vi.fn().mockReturnValue(true),
-  readSnapshot: vi.fn().mockReturnValue({ treeHash: 'snapshot-tree-hash' }),
+  readSnapshot: vi.fn().mockReturnValue({ treeHash: 'snapshot-tree-hash', headCommitHash: '', stagedTreeHash: '' }),
   writeSnapshot: vi.fn(),
   gitAddAll: vi.fn(),
   gitWriteTree: vi.fn().mockReturnValue('current-tree-hash'),
@@ -95,7 +106,7 @@ beforeEach(() => {
   mockedGetProjectWorktrees.mockReturnValue([{ path: '/path/feature', branch: 'feature' }]);
   mockedFindExactMatch.mockReturnValue({ path: '/path/feature', branch: 'feature' });
   mockedHasSnapshot.mockReturnValue(true);
-  mockedReadSnapshot.mockReturnValue({ treeHash: 'snapshot-tree-hash' });
+  mockedReadSnapshot.mockReturnValue({ treeHash: 'snapshot-tree-hash', headCommitHash: '', stagedTreeHash: '' });
   mockedIsWorkingDirClean.mockReturnValue(false);
   mockedConfirmAction.mockResolvedValue(true);
   mockedGitWriteTree.mockReturnValue('current-tree-hash');

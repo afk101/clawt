@@ -13,6 +13,7 @@ import {
   printHint,
   printError,
 } from '../utils/index.js';
+import { getCurrentLanguage } from '../utils/i18n.js';
 
 /**
  * 注册 home 命令：快速切换回主工作分支
@@ -21,7 +22,7 @@ import {
 export function registerHomeCommand(program: Command): void {
   program
     .command('home')
-    .description('切换回主工作分支')
+    .description(getCurrentLanguage() === 'en' ? 'Switch back to the main work branch' : '切换回主工作分支')
     .action(async () => {
       await handleHome();
     });

@@ -11,6 +11,7 @@ import {
   UNKNOWN_DATE_GROUP,
   VALIDATE_BRANCH_PREFIX,
 } from '../constants/index.js';
+import { getCurrentLanguage } from './i18n.js';
 import {
   PANEL_FOOTER_SHORTCUTS,
   PANEL_FOOTER_COUNTDOWN,
@@ -218,7 +219,8 @@ export function renderDateSeparator(dateKey: string): string {
     return `${leftPad}${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)} ${chalk.bold.hex(PANEL_DATE_COLOR)(PANEL_UNKNOWN_DATE)} ${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)}`;
   }
   const relativeDate = formatRelativeDate(dateKey);
-  return `${leftPad}${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)} ${chalk.bold.hex(PANEL_DATE_COLOR)(dateKey)}${chalk.hex(PANEL_DATE_COLOR)(`（${relativeDate}）`)} ${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)}`;
+  const relativeDateText = getCurrentLanguage() === 'en' ? `(${relativeDate})` : `（${relativeDate}）`;
+  return `${leftPad}${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)} ${chalk.bold.hex(PANEL_DATE_COLOR)(dateKey)}${chalk.hex(PANEL_DATE_COLOR)(relativeDateText)} ${chalk.gray(PANEL_DATE_SEPARATOR_PREFIX)}`;
 }
 
 /**
@@ -324,12 +326,13 @@ function renderConfiguredBranchLine(main: MainWorktreeStatus): string {
  * @returns {string} 格式化的 diff 信息
  */
 function renderMainBranchDiff(main: MainWorktreeStatus): string {
+  const workingDirLabel = getCurrentLanguage() === 'en' ? 'Working dir:' : '工作区:';
   if (main.insertions === 0 && main.deletions === 0) {
-    return `工作区: ${chalk.green(MESSAGES.STATUS_CHANGE_CLEAN)}`;
+    return `${workingDirLabel} ${chalk.green(MESSAGES.STATUS_CHANGE_CLEAN)}`;
   }
   const insertText = chalk.green(`+${main.insertions}`);
   const deleteText = chalk.red(`-${main.deletions}`);
-  return `工作区: ${insertText} ${deleteText}`;
+  return `${workingDirLabel} ${insertText} ${deleteText}`;
 }
 
 /**
