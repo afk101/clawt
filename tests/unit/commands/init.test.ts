@@ -16,9 +16,13 @@ vi.mock('../../../src/constants/index.js', () => ({
     INIT_SET_SUCCESS: (key: string, value: string) => `✓ 项目配置 ${key} 已设置为 ${value}`,
   },
   PROJECT_CONFIG_DEFINITIONS: {
-    clawtMainWorkBranch: { defaultValue: '', description: '主 worktree 的工作分支名' },
-    validateRunCommand: { defaultValue: undefined, description: 'validate 成功后自动执行的命令' },
+    clawtMainWorkBranch: { defaultValue: '', description: 'Main worktree branch name' },
+    validateRunCommand: { defaultValue: undefined, description: 'Command to auto-run after validate succeeds' },
   },
+  getI18nProjectConfigDescriptions: () => ({
+    clawtMainWorkBranch: 'Main worktree branch name',
+    validateRunCommand: 'Command to auto-run after validate succeeds',
+  }),
 }));
 
 vi.mock('../../../src/utils/index.js', () => ({

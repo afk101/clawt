@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { Command as Cmd } from 'commander';
 import { logger } from '../logger/index.js';
-import { MESSAGES, PROJECT_CONFIG_DEFINITIONS } from '../constants/index.js';
+import { MESSAGES, PROJECT_CONFIG_DEFINITIONS, getI18nProjectConfigDescriptions } from '../constants/index.js';
 import type { InitOptions, InitShowOptions, ProjectConfig } from '../types/index.js';
 import {
   runPreChecks,
@@ -57,9 +57,15 @@ async function handleInitShow(options: InitShowOptions): Promise<void> {
 
   logger.info('init show 命令执行，进入交互式项目配置');
 
+  // 使用 i18n 后的描述替换 PROJECT_CONFIG_DEFINITIONS 中的中文 description
+  const i18nDescriptions = getI18nProjectConfigDescriptions();
+  const i18nDefinitions = Object.fromEntries(
+    Object.entries(PROJECT_CONFIG_DEFINITIONS).map(([k, def]) => [k, { ...def, description: i18nDescriptions[k as keyof typeof i18nDescriptions] }]),
+  ) as typeof PROJECT_CONFIG_DEFINITIONS;
+
   const { key, newValue } = await interactiveConfigEditor(
     config as Required<ProjectConfig>,
-    PROJECT_CONFIG_DEFINITIONS,
+    i18nDefinitions,
     { selectPrompt: MESSAGES.INIT_SELECT_PROMPT },
   );
 

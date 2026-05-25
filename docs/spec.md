@@ -11,7 +11,8 @@
 - [2. 核心概念](#2-核心概念)
   - [2.5 验证分支](#25-验证分支)
   - [2.6 项目级配置](#26-项目级配置)（详见 [project-config.md](./project-config.md)）
-  - [2.7 通用交互式配置编辑器](#27-通用交互式配置编辑器)
+  - [2.7 国际化（i18n）](#27-国际化i18n)
+  - [2.8 通用交互式配置编辑器](#28-通用交互式配置编辑器)
 - [3. 全局目录结构](#3-全局目录结构)
 - [4. 命令总览](#4-命令总览)
 - [5. 需求场景详细设计](#5-需求场景详细设计)
@@ -206,7 +207,49 @@ export const VALIDATE_BRANCH_PREFIX = 'clawt-validate-';
 
 详细的配置项列表、类型定义、工具函数和设置方式见 [项目级配置文档](./project-config.md)。
 
-### 2.7 通用交互式配置编辑器
+### 2.7 国际化（i18n）
+
+Clawt 支持中英双语界面，通过全局配置 `language` 字段控制输出语言。
+
+**核心机制：**
+
+- **语言配置**：`ClawtConfig.language`（`'en'` | `'zh-CN'`），默认 `'en'`
+- **语言获取**：`getCurrentLanguage()`（`src/utils/i18n.ts`），优先使用内存缓存，缓存不存在时从配置文件读取，读取失败默认 `'en'`
+- **消息国际化**：所有消息常量（`src/constants/messages/` 下）从单语字符串改为 `{ en, 'zh-CN' }` 双语映射，运行时通过 `createMessages()` 根据当前语言选择对应文本。导出的消息对象类型与原单语版本保持一致，消费方无需改动
+- **配置描述国际化**：`getI18nConfigDescriptions()` 和 `getI18nProjectConfigDescriptions()` 分别提供全局配置和项目配置项描述的国际化版本，供交互式配置编辑器使用
+- **CLI 描述国际化**：`src/constants/messages/cli-descriptions.ts` 集中管理 Commander.js 的命令描述和选项文本（双语映射），通过 `CLI_DESCRIPTIONS` 导出当前语言的描述对象
+
+**i18n 工具函数**（`src/utils/i18n.ts`）：
+
+| 函数 | 签名 | 说明 |
+| --- | --- | --- |
+| `getCurrentLanguage` | `() => Language` | 获取当前语言（优先缓存 → 配置文件 → 默认 `'en'`） |
+| `setCurrentLanguage` | `(lang: Language) => void` | 设置当前语言（用于测试和 CLI 初始化） |
+| `resetLanguageCache` | `() => void` | 重置语言缓存（配置变更后调用，使下次读取时重新加载） |
+| `createMessages` | `<T>(i18nMap: T) => { [K in keyof T]: ExtractLang<T[K]> }` | 从双语映射创建当前语言的消息对象 |
+
+**双语映射模式：**
+
+```typescript
+// 定义双语消息映射
+const MESSAGES_I18N = {
+  NOT_MAIN_WORKTREE: {
+    en: 'Please run clawt in the root directory of the main worktree',
+    'zh-CN': '请在主 worktree 的根目录下执行 clawt',
+  },
+  BRANCH_EXISTS: {
+    en: (name: string) => `Branch ${name} already exists`,
+    'zh-CN': (name: string) => `分支 ${name} 已存在`,
+  },
+};
+
+// 运行时根据语言选择
+export const MESSAGES = createMessages(MESSAGES_I18N);
+// MESSAGES.NOT_MAIN_WORKTREE → string（当前语言的文本）
+// MESSAGES.BRANCH_EXISTS → (name: string) => string（当前语言的函数）
+```
+
+### 2.8 通用交互式配置编辑器
 
 `interactiveConfigEditor`（`src/utils/config-strategy.ts`）是一个通用的交互式配置编辑函数，供全局配置（`config` 命令）和项目级配置（`init show` 子命令）复用。
 
@@ -356,6 +399,30 @@ async function interactiveConfigEditor<T extends object>(
 ---
 
 ## 6. 验证架构规则
+
+### 6.0 消息常量双语化
+
+`src/constants/messages/` 下所有消息常量已支持中英双语。每个消息常量文件的结构为：
+
+1. 定义双语映射对象（`*_I18N`），每个消息条目为 `{ en: ..., 'zh-CN': ... }` 结构
+2. 通过 `createMessages()` 运行时根据当前语言选择对应文本，导出的消息对象类型与原单语版本一致
+3. 消费方（各命令模块）无需改动，直接使用导出的消息对象即可
+
+```typescript
+// 定义双语映射
+const MESSAGES_I18N = {
+  SOME_MESSAGE: {
+    en: 'English text',
+    'zh-CN': '中文文本',
+  },
+};
+
+// 运行时导出
+export const MESSAGES = createMessages(MESSAGES_I18N);
+// MESSAGES.SOME_MESSAGE → 'English text' 或 '中文文本'（取决于 language 配置）
+```
+
+已双语化的消息常量文件包括：`common.ts`、`cli-descriptions.ts`、`init.ts`、`create.ts`、`run.ts`、`validate.ts`、`merge.ts`、`remove.ts`、`resume.ts`、`sync.ts`、`reset.ts`、`status.ts`、`alias.ts`、`completion.ts`、`home.ts`、`cover-validate.ts`、`projects.ts`、`tasks.ts`、`interactive-panel.ts`、`post-create.ts`、`config.ts`。
 
 以下规则适用于验证分支架构的所有实现工作：
 

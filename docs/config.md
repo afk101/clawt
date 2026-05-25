@@ -26,7 +26,7 @@ clawt config reset
 2. 列出所有配置项供用户选择（`Enquirer.Select`），每项显示：
    - 配置项名称
    - 当前值（布尔值绿色/黄色，字符串和数字青色）
-   - 配置项描述（暗淡色 dim）
+   - 配置项描述（暗淡色 dim，根据当前 `language` 配置显示中文或英文描述，通过 `getI18nConfigDescriptions()` 获取）
    - 对象类型配置项（如 `aliases`）标灰不可选，提示用户通过专用命令管理
 3. 用户选择某个配置项后，根据值类型自动选择提示策略：
    - **boolean 类型** → `Select`（true / false）
@@ -84,6 +84,7 @@ clawt config reset
 **实现要点：**
 
 - 配置项类型定义：`ConfigItemDefinition` 新增可选字段 `allowedValues`（`readonly string[]`），仅对 string 类型有效，用于枚举值校验和交互式 Select 提示
+- 配置描述国际化：`getI18nConfigDescriptions()`（`src/constants/config.ts`）根据当前语言返回中文或英文的配置项描述映射，供 `interactiveConfigEditor` 在构建选择列表时使用
 - 值解析与提示策略：`src/utils/config-strategy.ts` 中的 `parseConfigValue()`（CLI 字符串解析）和 `promptConfigValue()`（交互式提示），基于类型和 `allowedValues` 自动分发
 - 交互式配置编辑：`handleInteractiveConfigSet` 调用通用的 `interactiveConfigEditor`（`src/utils/config-strategy.ts`），传入 `CONFIG_DEFINITIONS` 和 `disabledKeys`（对象类型配置项禁用映射），不再在 config 命令中直接构建选择列表和调用 `promptConfigValue`
 - `saveConfig(config)`：`src/utils/config.ts` 中的通用配置写入函数，将完整配置对象持久化到文件

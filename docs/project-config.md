@@ -61,6 +61,9 @@ export const PROJECT_DEFAULT_CONFIG: Required<ProjectConfig> = deriveDefaultConf
 
 /** 项目配置项描述映射（从 PROJECT_CONFIG_DEFINITIONS 自动派生） */
 export const PROJECT_CONFIG_DESCRIPTIONS: Record<keyof Required<ProjectConfig>, string> = deriveConfigDescriptions(PROJECT_CONFIG_DEFINITIONS);
+
+/** 获取国际化项目配置项描述映射（根据当前语言返回中文或英文描述） */
+export function getI18nProjectConfigDescriptions(): Record<keyof Required<ProjectConfig>, string>;
 ```
 
 #### 相关类型定义
@@ -109,6 +112,12 @@ export type ProjectConfigDefinitions = {
 | `resolveClaudeCodeCommand` | `() => string` | 解析当前项目生效的 Claude Code 启动指令，优先级：项目级配置 > 全局配置 |
 | `normalizeProjectConfig` | `(config: ProjectConfig, key: string, value: unknown) => ProjectConfig` | 归一化项目配置：可选字段的空字符串等同于未设置，从对象中删除该键以保持 JSON 文件整洁 |
 
+**国际化函数**（位于 `src/constants/project-config.ts`）：
+
+| 函数 | 签名 | 说明 |
+| --- | --- | --- |
+| `getI18nProjectConfigDescriptions` | `() => Record<keyof Required<ProjectConfig>, string>` | 获取国际化项目配置项描述映射，根据当前语言返回中文或英文描述 |
+
 #### 设置方式
 
 通过 `clawt init` 命令设置（详见 [init.md](./init.md)）：
@@ -124,7 +133,7 @@ clawt init -b <branchName>
 clawt init show
 ```
 
-`init show` 子命令调用通用的 `interactiveConfigEditor`（`src/utils/config-strategy.ts`），基于 `PROJECT_CONFIG_DEFINITIONS` 构建配置项列表，提供交互式面板供用户查看和修改所有项目配置项。
+`init show` 子命令调用通用的 `interactiveConfigEditor`（`src/utils/config-strategy.ts`），基于 `PROJECT_CONFIG_DEFINITIONS` 构建配置项列表，提供交互式面板供用户查看和修改所有项目配置项。配置项描述通过 `getI18nProjectConfigDescriptions()` 获取国际化版本，根据当前 `language` 配置自动显示中文或英文。
 
 #### 前置校验
 
