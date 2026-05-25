@@ -60,7 +60,7 @@ Git Worktree 是 Git 原生支持的机制（`git worktree add`），它允许�
 
 ## 设计哲学
 
-> **人做的事情：思考需求、写 Prompt、审查代码。AI 做的事情：写代码。用 Git Worktree 作为两者之间的隔离层。**
+> **人做的事情：思考需求、写 Prompt、审查代码（可选）。AI 做的事情：写代码。用 Git Worktree 作为两者之间的隔离层。**
 
 ![架构图](https://p0.ssl.qhimg.com/t11b673bcd66632b91c744dad9c.png)
 

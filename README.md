@@ -58,7 +58,7 @@ Git Worktree is a native Git mechanism (`git worktree add`) that creates multipl
 
 ## Design Philosophy
 
-> **Human's job: think about requirements, write prompts, review code. AI's job: write code. Git Worktree is the isolation layer between them.**
+> **Human's job: think about requirements, write prompts, review code(Optional). AI's job: write code. Git Worktree is the isolation layer between them.**
 
 ![Architecture](https://p0.ssl.qhimg.com/t11b673bcd66632b91c744dad9c.png)
 
