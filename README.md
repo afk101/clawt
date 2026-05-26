@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/clawt.svg)](https://www.npmjs.com/package/clawt) [![GitHub](https://img.shields.io/badge/GHub-afk101%2Fclawt-blue)](https://github.com/afk101/clawt)
 
-**[English](./README.md)** | [中文](./README.zh-CN.md)
+**[English](./README.md)** | [中文](https://github.com/afk101/clawt/blob/main/README.zh-CN.md)
 
 Run multiple Claude Code Agent tasks in parallel based on Git Worktree — all agents' code changes are fully isolated from each other.
 
@@ -19,7 +19,7 @@ Claude Code can independently complete feature development, bug fixes, and refac
 
 This is how most developers use Claude Code today — **serial execution**:
 
-![Serial timeline](./docs/images/serial-timeline.png)
+![Serial timeline](https://raw.githubusercontent.com/afk101/clawt/main/docs/images/serial-timeline.png)
 
 **3 tasks total ≈ 49.5 min.** The biggest problem: **while Claude is working on task A, B, C — you're just waiting.**
 
@@ -33,7 +33,7 @@ The core idea is simple:
 
 Same 3 tasks, with Clawt:
 
-![Parallel timeline](./docs/images/parallel-timeline.png)
+![Parallel timeline](https://raw.githubusercontent.com/afk101/clawt/main/docs/images/parallel-timeline.png)
 
 **3 tasks total ≈ 26.5 min (parallel execution, sequential review)**
 
@@ -60,11 +60,11 @@ Git Worktree is a native Git mechanism (`git worktree add`) that creates multipl
 
 > **Human's job: think about requirements, write prompts, review code(Optional). AI's job: write code. Git Worktree is the isolation layer between them.**
 
-![Architecture](./docs/images/architecture.png)
+![Architecture](https://raw.githubusercontent.com/afk101/clawt/main/docs/images/architecture.png)
 
 > **Clawt does not modify, replace, or wrap Claude Code itself. It only manages "where" and "how many" Claude Code instances run — at a higher level.**
 
-![Layer architecture](./docs/images/layer-architecture.png)
+![Layer architecture](https://raw.githubusercontent.com/afk101/clawt/main/docs/images/layer-architecture.png)
 
 Everything you use inside each worktree is vanilla Claude Code — same interaction, same commands, same `CLAUDE.md`, same MCP config. Any Claude Code update automatically benefits Clawt with zero adaptation needed.
 
@@ -118,7 +118,7 @@ clawt status -i
 | `q` | Quit panel | — |
 
 Example:
-![Status panel](./docs/images/status-panel-en.png)
+![Status panel](https://raw.githubusercontent.com/afk101/clawt/main/docs/images/status-panel-en.png)
 > All operations can also be executed via standalone commands — see "Command Reference" below.
 
 ## Command Reference
