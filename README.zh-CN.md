@@ -19,7 +19,7 @@ Claude Code 可以独立完成需求开发、Bug 修复、代码重构等任务�
 
 这是大多数开发者使用 Claude Code 的现状——**串行执行**：
 
-![串行模式时间轴](https://p5.ssl.qhimg.com/d/inn/73aa5b47265e/upload_screenshot_1779706665.png)
+![串行模式时间轴](./docs/images/serial-timeline.png)
 
 **3 个任务总耗时 ≈ 49.5 分钟**。最大的问题是：**Claude 在执行任务的时候，你完全在干等。**
 
@@ -33,7 +33,7 @@ Claude Code 可以独立完成需求开发、Bug 修复、代码重构等任务�
 
 同样的 3 个任务，使用 Clawt 后：
 
-![并行模式时间轴](https://p5.ssl.qhimg.com/d/inn/737a5d53c9a0/2026-03-22-15-34-32-parallel-timeline.png)
+![并行模式时间轴](./docs/images/parallel-timeline.png)
 
 **3 个任务总耗时 ≈ 26.5 分钟（并行执行，串行验证）**
 
@@ -62,11 +62,11 @@ Git Worktree 是 Git 原生支持的机制（`git worktree add`），它允许�
 
 > **人做的事情：思考需求、写 Prompt、审查代码（可选）。AI 做的事情：写代码。用 Git Worktree 作为两者之间的隔离层。**
 
-![架构图](https://p2.ssl.qhimg.com/d/inn/52b6ed48d33f/upload_screenshot_1779706749.png)
+![架构图](./docs/images/architecture.png)
 
 > **Clawt 不修改、不替换、不包装 Claude Code 本身。它只是在更高一层管理"在哪里"以及"同时启动多少个" Claude Code。**
 
-![分层架构](https://p4.ssl.qhimg.com/d/inn/1e5b09fd7000/clawt-layer-architecture.png)
+![分层架构](./docs/images/layer-architecture.png)
 
 你在每个 Worktree 里使用的，就是原汁原味的 Claude Code——同样的交互方式、同样的命令、同样的 CLAUDE.md、同样的 MCP 配置。Claude Code 的任何更新，Clawt 自动受益，无需适配。
 
@@ -120,7 +120,7 @@ clawt status -i
 | `q` | 退出面板 | — |
 
 示例：
-![](https://p3.ssl.qhimg.com/d/inn/8a3779be2486/upload_screenshot_1772675658.png)
+![状态面板](./docs/images/status-panel-zh.png)
 > 所有操作也可通过独立命令执行，详见下方「命令一览」。
 
 ## 命令一览

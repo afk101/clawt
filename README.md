@@ -19,7 +19,7 @@ Claude Code can independently complete feature development, bug fixes, and refac
 
 This is how most developers use Claude Code today — **serial execution**:
 
-![Serial timeline](https://p5.ssl.qhimg.com/d/inn/73aa5b47265e/upload_screenshot_1779706665.png)
+![Serial timeline](./docs/images/serial-timeline.png)
 
 **3 tasks total ≈ 49.5 min.** The biggest problem: **while Claude is working on task A, B, C — you're just waiting.**
 
@@ -33,7 +33,7 @@ The core idea is simple:
 
 Same 3 tasks, with Clawt:
 
-![Parallel timeline](https://p5.ssl.qhimg.com/d/inn/737a5d53c9a0/2026-03-22-15-34-32-parallel-timeline.png)
+![Parallel timeline](./docs/images/parallel-timeline.png)
 
 **3 tasks total ≈ 26.5 min (parallel execution, sequential review)**
 
@@ -60,11 +60,11 @@ Git Worktree is a native Git mechanism (`git worktree add`) that creates multipl
 
 > **Human's job: think about requirements, write prompts, review code(Optional). AI's job: write code. Git Worktree is the isolation layer between them.**
 
-![Architecture](https://p2.ssl.qhimg.com/d/inn/52b6ed48d33f/upload_screenshot_1779706749.png)
+![Architecture](./docs/images/architecture.png)
 
 > **Clawt does not modify, replace, or wrap Claude Code itself. It only manages "where" and "how many" Claude Code instances run — at a higher level.**
 
-![Layer architecture](https://p4.ssl.qhimg.com/d/inn/1e5b09fd7000/clawt-layer-architecture.png)
+![Layer architecture](./docs/images/layer-architecture.png)
 
 Everything you use inside each worktree is vanilla Claude Code — same interaction, same commands, same `CLAUDE.md`, same MCP config. Any Claude Code update automatically benefits Clawt with zero adaptation needed.
 
@@ -118,7 +118,7 @@ clawt status -i
 | `q` | Quit panel | — |
 
 Example:
-![](https://p1.ssl.qhimg.com/d/inn/5c6aaa8400cf/upload_screenshot_1779703026.png)
+![Status panel](./docs/images/status-panel-en.png)
 > All operations can also be executed via standalone commands — see "Command Reference" below.
 
 ## Command Reference
