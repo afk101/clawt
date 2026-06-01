@@ -158,9 +158,44 @@ git restore --staged .
 > 此步骤结束后，目标 worktree 的代码保持原样，主 worktree 工作目录包含目标分支的全量变更。
 > 如果 patch apply 失败（兜底场景），`migrateChangesViaPatch` 返回 `{ success: false }`，进入自动 sync 交互流程（见下文 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)）。
 
+###### 幽灵文件检测（patch apply 前置拦截）
+
+在执行昂贵的 `git diff --binary` 之前，`migrateChangesViaPatch` 会先进行轻量级的**幽灵文件检测**，提前拦截一类常见的 patch apply 失败场景。
+
+**背景：** AI Agent（如 Claude Code）在 worktree 中工作时，可能会创建被 `.gitignore` 忽略的文件（如 `node_modules/` 下的依赖、构建产物等）。这些文件不受 git 跟踪，但当目标分支的 patch 中包含同名文件时，`git apply` 会因为"文件已存在于工作区中"而失败。由于这些文件被 `.gitignore` 忽略，`git clean -fd` 无法清理它们（需要 `git clean -fdx`），用户往往难以自行发现和定位。
+
+**检测流程：**
+
+1. **获取 patch 涉及的文件列表**：通过 `git diff --name-only HEAD...<branchName>` 轻量获取目标分支变更涉及的所有文件路径（不含二进制内容，远比 `--binary` 便宜）
+2. **筛选被 `.gitignore` 忽略的文件**：调用 `gitCheckIgnored()`（`src/utils/git-core.ts`），通过 `git check-ignore` 批量检测哪些文件被忽略规则匹配
+3. **确认文件物理存在**：对被忽略的文件进一步检查其是否真实存在于主 worktree 文件系统中（`existsSync`），只有同时满足"被忽略"和"物理存在"两个条件的才是幽灵文件
+4. **拦截并提示**：如果检测到幽灵文件，生成针对性的 `git clean -fdx` 清理命令（按直接父目录去重，通过 `buildCleanCommands()` 生成），输出清晰的错误提示后返回 `{ success: false }`
+
+**错误提示示例：**
+
+```
+检测到被 .gitignore 忽略的文件残留在主 worktree 中，导致变更无法应用：
+  - dist/bundle.js
+  - node_modules/.cache/temp.json
+
+请手动清理后重试：
+  git clean -fdx dist/
+  git clean -fdx node_modules/.cache/
+```
+
+> 幽灵文件检测失败后，同样进入 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)（询问用户是否执行 sync），但用户通常应根据提示先手动清理幽灵文件再重试 validate。
+> 如果 `git diff --name-only` 执行失败（如分支不存在），检测会静默跳过（降级为原有行为，让后续 apply 自行报错）。
+
+**实现要点：**
+
+- `detectIgnoredFilesInPatch(branchName, mainWorktreePath)`（`src/utils/validate-core.ts`）：检测 patch 中的幽灵文件，返回幽灵文件的相对路径列表
+- `gitCheckIgnored(paths, cwd)`（`src/utils/git-core.ts`）：封装 `git check-ignore` 命令，批量检测文件是否被忽略，退出码 1（无匹配）视为正常情况返回空数组
+- `buildCleanCommands(files)`（`src/utils/validate-core.ts`）：根据冲突文件列表，按直接父目录去重生成 `git clean -fdx <dir>/` 命令
+- 消息常量：`MESSAGES.VALIDATE_IGNORED_FILES_CONFLICT`（`src/constants/messages/validate.ts`）：双语提示，最多展示 10 个文件路径，超出部分显示总数
+
 ##### patch apply 失败后的自动 sync 流程
 
-当 patch apply 失败时，validate 不再直接退出，而是先通过 `ensureOnMainWorkBranch()` 确保主 worktree 切回主工作分支，然后通过 `handlePatchApplyFailure()` 函数进入交互流程：
+当 patch 迁移失败时（包括 patch apply 冲突和幽灵文件检测拦截两种情况），validate 不再直接退出，而是先通过 `ensureOnMainWorkBranch()` 确保主 worktree 切回主工作分支，然后通过 `handlePatchApplyFailure()` 函数进入交互流程：
 
 1. **询问用户**：提示 `是否立即执行 sync 同步主分支到 <branchName>？`
 2. **用户拒绝** → 输出提示 `请手动执行 clawt sync -b <branchName> 同步主分支后重试`，退出
@@ -170,10 +205,12 @@ git restore --staged .
 
 **实现要点：**
 
-- `migrateChangesViaPatch()`（`src/utils/validate-core.ts`）返回 `{ success: boolean }`，patch apply 失败时返回 `{ success: false }` 而非抛出异常
+- `migrateChangesViaPatch()`（`src/utils/validate-core.ts`）返回 `{ success: boolean }`，patch apply 失败或幽灵文件检测拦截时返回 `{ success: false }` 而非抛出异常
+- `detectIgnoredFilesInPatch(branchName, mainWorktreePath)`（`src/utils/validate-core.ts`）：幽灵文件检测函数，在 patch apply 之前调用，返回被 `.gitignore` 忽略且物理存在的文件列表
+- `gitCheckIgnored(paths, cwd)`（`src/utils/git-core.ts`）：封装 `git check-ignore`，批量检测文件是否被忽略规则匹配
 - `handleFirstValidate()` 和 `handleIncrementalValidate()` 为 `async` 函数，支持交互式确认
-- `handlePatchApplyFailure()`（`src/commands/validate.ts`）为异步函数，负责 patch 失败后的交互逻辑
-- 消息常量：`MESSAGES.VALIDATE_CONFIRM_AUTO_SYNC`、`MESSAGES.VALIDATE_AUTO_SYNC_START`、`MESSAGES.VALIDATE_AUTO_SYNC_DECLINED`（`src/constants/messages/validate.ts`）
+- `handlePatchApplyFailure()`（`src/commands/validate.ts`）为异步函数，负责 patch 迁移失败后的交互逻辑（含幽灵文件冲突和 patch apply 冲突两种场景）
+- 消息常量：`MESSAGES.VALIDATE_CONFIRM_AUTO_SYNC`、`MESSAGES.VALIDATE_AUTO_SYNC_START`、`MESSAGES.VALIDATE_AUTO_SYNC_DECLINED`、`MESSAGES.VALIDATE_IGNORED_FILES_CONFLICT`（`src/constants/messages/validate.ts`）
 
 ##### 步骤 5：保存快照为 git tree 对象
 
@@ -323,7 +360,7 @@ git checkout clawt-validate-<branchName>
 
 ##### 步骤 4：从目标分支获取最新全量变更
 
-通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 4）。如果 patch apply 失败，同样进入自动 sync 交互流程（见首次 validate 的 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)），validate 流程提前结束。
+通过 patch 方式从目标分支获取最新全量变更（流程同首次 validate 的步骤 4，包含幽灵文件前置检测）。如果幽灵文件检测拦截或 patch apply 失败，同样进入自动 sync 交互流程（见首次 validate 的 [patch apply 失败后的自动 sync 流程](#patch-apply-失败后的自动-sync-流程)），validate 流程提前结束。
 
 ##### 步骤 5：检测是否有新变更
 
