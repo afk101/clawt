@@ -1,11 +1,9 @@
 import { logger } from '../logger/index.js';
 import { ClawtError } from '../errors/index.js';
 import { MESSAGES } from '../constants/index.js';
-import { EXEC_MAX_BUFFER } from '../constants/git.js';
 import { getCurrentLanguage } from './i18n.js';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
 import {
   gitAddAll,
   gitCommit,
@@ -27,6 +25,7 @@ import {
   writeSnapshot,
   printWarning,
   gitCheckIgnored,
+  execCommand,
 } from './index.js';
 
 /**
@@ -65,10 +64,8 @@ export function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreeP
       didTempCommit = true;
     }
 
-    // 在主 worktree 执行三点 diff，获取目标分支自分叉点以来的全量变更
-    const patch = gitDiffBinaryAgainstBranch(branchName, mainWorktreePath);
-
-    // 检测被 .gitignore 忽略的残留文件（幽灵文件），在 apply 之前拦截
+    // 先执行轻量检测：检测被 .gitignore 忽略的残留文件（幽灵文件），在 apply 之前拦截
+    // 使用 --name-only 远比 --binary 便宜，检测到冲突时可跳过昂贵的 binary diff
     const ignoredFiles = detectIgnoredFilesInPatch(branchName, mainWorktreePath);
     if (ignoredFiles.length > 0) {
       const cleanCommands = buildCleanCommands(ignoredFiles);
@@ -76,6 +73,9 @@ export function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreeP
       printWarning(MESSAGES.VALIDATE_IGNORED_FILES_CONFLICT(ignoredFiles, cleanCommands));
       return { success: false };
     }
+
+    // 在主 worktree 执行三点 diff，获取目标分支自分叉点以来的全量变更
+    const patch = gitDiffBinaryAgainstBranch(branchName, mainWorktreePath);
 
     // 应用 patch 到主 worktree 工作目录
     if (patch.length > 0) {
@@ -212,25 +212,16 @@ export function switchToValidateBranch(branchName: string, mainWorktreePath: str
  * @returns {string[]} 幽灵文件的相对路径列表
  */
 export function detectIgnoredFilesInPatch(branchName: string, mainWorktreePath: string): string[] {
-  let patchFiles: string[];
   try {
-    const output = execSync(`git diff --name-only HEAD...${branchName}`, {
-      cwd: mainWorktreePath,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      maxBuffer: EXEC_MAX_BUFFER,
-    });
-    patchFiles = output.trim().split('\n').filter(Boolean);
+    const output = execCommand(`git diff --name-only HEAD...${branchName}`, { cwd: mainWorktreePath });
+    const patchFiles = output.split('\n').filter(Boolean);
+    if (patchFiles.length === 0) return [];
+
+    // 筛选被 .gitignore 忽略且物理存在的文件（幽灵文件）
+    return gitCheckIgnored(patchFiles, mainWorktreePath)
+      .filter(file => existsSync(join(mainWorktreePath, file)));
   } catch {
     // diff 失败时跳过检测，降级为当前行为（让 apply 自行报错）
     return [];
   }
-
-  if (patchFiles.length === 0) return [];
-
-  const ignoredFiles = gitCheckIgnored(patchFiles, mainWorktreePath);
-  if (ignoredFiles.length === 0) return [];
-
-  // 仅保留物理存在的文件（幽灵文件）
-  return ignoredFiles.filter(file => existsSync(join(mainWorktreePath, file)));
 }

@@ -10,19 +10,19 @@ vi.mock('node:fs', () => ({
   mkdirSync: vi.fn(),
 }));
 
-vi.mock('node:child_process', async () => {
-  const actual = await vi.importActual('node:child_process');
-  return { ...actual, execSync: vi.fn() };
+vi.mock('../../../src/utils/shell.js', async () => {
+  const actual = await vi.importActual('../../../src/utils/shell.js');
+  return { ...actual, execCommand: vi.fn() };
 });
 
 import { detectIgnoredFilesInPatch } from '../../../src/utils/validate-core.js';
 import { gitCheckIgnored } from '../../../src/utils/git-core.js';
 import { existsSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execCommand } from '../../../src/utils/shell.js';
 
 const mockGitCheckIgnored = vi.mocked(gitCheckIgnored);
 const mockExistsSync = vi.mocked(existsSync);
-const mockExecSync = vi.mocked(execSync);
+const mockExecCommand = vi.mocked(execCommand);
 
 describe('detectIgnoredFilesInPatch', () => {
   beforeEach(() => {
@@ -30,14 +30,14 @@ describe('detectIgnoredFilesInPatch', () => {
   });
 
   it('无幽灵文件时返回空数组', () => {
-    mockExecSync.mockReturnValue('src/a.ts\nsrc/b.ts\n');
+    mockExecCommand.mockReturnValue('src/a.ts\nsrc/b.ts');
     mockGitCheckIgnored.mockReturnValue([]);
     const result = detectIgnoredFilesInPatch('feature', '/main');
     expect(result).toEqual([]);
   });
 
   it('检测到幽灵文件时返回文件列表', () => {
-    mockExecSync.mockReturnValue('docs/superpowers/a.md\nsrc/b.ts\n');
+    mockExecCommand.mockReturnValue('docs/superpowers/a.md\nsrc/b.ts');
     mockGitCheckIgnored.mockReturnValue(['docs/superpowers/a.md']);
     mockExistsSync.mockImplementation((p: string) => p === '/main/docs/superpowers/a.md');
     const result = detectIgnoredFilesInPatch('feature', '/main');
@@ -45,7 +45,7 @@ describe('detectIgnoredFilesInPatch', () => {
   });
 
   it('被忽略但物理不存在的文件不包含在结果中', () => {
-    mockExecSync.mockReturnValue('docs/superpowers/a.md\n');
+    mockExecCommand.mockReturnValue('docs/superpowers/a.md');
     mockGitCheckIgnored.mockReturnValue(['docs/superpowers/a.md']);
     mockExistsSync.mockReturnValue(false);
     const result = detectIgnoredFilesInPatch('feature', '/main');
@@ -53,7 +53,7 @@ describe('detectIgnoredFilesInPatch', () => {
   });
 
   it('git diff --name-only 失败时返回空数组（降级）', () => {
-    mockExecSync.mockImplementation(() => { throw new Error('fatal'); });
+    mockExecCommand.mockImplementation(() => { throw new Error('fatal'); });
     const result = detectIgnoredFilesInPatch('feature', '/main');
     expect(result).toEqual([]);
   });

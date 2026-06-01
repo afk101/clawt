@@ -510,7 +510,7 @@ export function gitCheckIgnored(paths: string[], cwd?: string): string[] {
   if (paths.length === 0) return [];
 
   try {
-    const output = execSync(`git check-ignore ${paths.map(p => `"${p}"`).join(' ')}`, {
+    const output = execFileSync('git', ['check-ignore', '--', ...paths], {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
