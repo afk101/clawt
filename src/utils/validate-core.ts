@@ -30,6 +30,22 @@ import {
 } from './index.js';
 
 /**
+ * 根据冲突文件列表生成 git clean 清理命令
+ * 按直接父目录去重，生成针对性的清理命令
+ * @param {string[]} files - 冲突文件的相对路径列表
+ * @returns {string[]} 清理命令列表
+ */
+function buildCleanCommands(files: string[]): string[] {
+  const dirs = new Set<string>();
+  for (const file of files) {
+    const lastSlash = file.lastIndexOf('/');
+    const dir = lastSlash > 0 ? file.substring(0, lastSlash) : '.';
+    dirs.add(dir);
+  }
+  return Array.from(dirs).map(dir => `git clean -fdx ${dir}/`);
+}
+
+/**
  * 通过 patch 将目标分支的全量变更（已提交 + 未提交）迁移到主 worktree
  * 使用 git diff HEAD...branch --binary 获取变更，避免 stash 方式无法检测已提交 commit 的问题
  * @param {string} targetWorktreePath - 目标 worktree 路径
@@ -51,6 +67,15 @@ export function migrateChangesViaPatch(targetWorktreePath: string, mainWorktreeP
 
     // 在主 worktree 执行三点 diff，获取目标分支自分叉点以来的全量变更
     const patch = gitDiffBinaryAgainstBranch(branchName, mainWorktreePath);
+
+    // 检测被 .gitignore 忽略的残留文件（幽灵文件），在 apply 之前拦截
+    const ignoredFiles = detectIgnoredFilesInPatch(branchName, mainWorktreePath);
+    if (ignoredFiles.length > 0) {
+      const cleanCommands = buildCleanCommands(ignoredFiles);
+      logger.warn(`检测到 ${ignoredFiles.length} 个被忽略的残留文件冲突`);
+      printWarning(MESSAGES.VALIDATE_IGNORED_FILES_CONFLICT(ignoredFiles, cleanCommands));
+      return { success: false };
+    }
 
     // 应用 patch 到主 worktree 工作目录
     if (patch.length > 0) {
