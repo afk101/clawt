@@ -498,3 +498,26 @@ export function gitMergeAbort(cwd?: string): void {
 export function buildAutoSaveCommitMessage(mainBranch: string, branch: string): string {
   return `${AUTO_SAVE_COMMIT_MESSAGE_PREFIX} ${mainBranch} into ${branch}`;
 }
+
+/**
+ * 批量检测文件是否被 .gitignore 忽略
+ * 使用 git check-ignore 命令，退出码 1 表示无匹配（非错误）
+ * @param {string[]} paths - 要检测的文件路径列表
+ * @param {string} [cwd] - 工作目录
+ * @returns {string[]} 被忽略的文件路径列表
+ */
+export function gitCheckIgnored(paths: string[], cwd?: string): string[] {
+  if (paths.length === 0) return [];
+
+  try {
+    const output = execSync(`git check-ignore ${paths.map(p => `"${p}"`).join(' ')}`, {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    return output.trim().split('\n').filter(Boolean);
+  } catch {
+    // git check-ignore 退出码 1 表示无匹配文件，属于正常情况
+    return [];
+  }
+}
