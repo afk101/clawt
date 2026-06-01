@@ -40,6 +40,23 @@ const VALIDATE_MESSAGES_I18N = {
     'zh-CN': (branch: string) =>
       `变更迁移失败：目标分支与主分支差异过大\n  请先执行 clawt sync -b ${branch} 同步主分支后重试`,
   },
+  /** validate 检测到被 .gitignore 忽略的残留文件冲突 */
+  VALIDATE_IGNORED_FILES_CONFLICT: {
+    en: (files: string[], cleanCommands: string[]) => {
+      const maxDisplay = 10;
+      const displayed = files.slice(0, maxDisplay).map(f => `  - ${f}`).join('\n');
+      const more = files.length > maxDisplay ? `\n  ...(${files.length} files total)` : '';
+      const cmds = cleanCommands.map(c => `  ${c}`).join('\n');
+      return `Ignored files left in main worktree are blocking patch apply:\n${displayed}${more}\n\nPlease clean up manually and retry:\n${cmds}`;
+    },
+    'zh-CN': (files: string[], cleanCommands: string[]) => {
+      const maxDisplay = 10;
+      const displayed = files.slice(0, maxDisplay).map(f => `  - ${f}`).join('\n');
+      const more = files.length > maxDisplay ? `\n  ...（共 ${files.length} 个文件）` : '';
+      const cmds = cleanCommands.map(c => `  ${c}`).join('\n');
+      return `检测到被 .gitignore 忽略的文件残留在主 worktree 中，导致变更无法应用：\n${displayed}${more}\n\n请手动清理后重试：\n${cmds}`;
+    },
+  },
   /** validate 无可用 worktree */
   VALIDATE_NO_WORKTREES: {
     en: 'No worktrees available, please create one with clawt run or clawt create first',
