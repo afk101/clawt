@@ -26,6 +26,14 @@ vi.mock('../../../src/utils/index.js', () => ({
   printInfo: vi.fn(),
 }));
 
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn(() => 'zh'),
+  };
+});
+
 import { registerListCommand } from '../../../src/commands/list.js';
 import { runPreChecks, getProjectName, getProjectWorktrees, getWorktreeStatus, printInfo } from '../../../src/utils/index.js';
 
@@ -118,5 +126,59 @@ describe('handleList', () => {
     await program.parseAsync(['list'], { from: 'user' });
 
     expect(mockedGetWorktreeStatus).toHaveBeenCalled();
+  });
+
+  it('--json 输出包含 baseBranch 字段', async () => {
+    mockedGetProjectName.mockReturnValue('test-project');
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature', baseBranch: 'test' },
+    ]);
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const program = new Command();
+    program.exitOverride();
+    registerListCommand(program);
+    await program.parseAsync(['list', '--json'], { from: 'user' });
+
+    const jsonCall = consoleSpy.mock.calls.find((call) => {
+      try { JSON.parse(call[0]); return true; } catch { return false; }
+    });
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall![0]);
+    expect(parsed.worktrees[0].baseBranch).toBe('test');
+  });
+
+  it('文本输出包含来源分支（有元数据时）', async () => {
+    mockedGetProjectName.mockReturnValue('test-project');
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature', baseBranch: 'test' },
+    ]);
+    mockedGetWorktreeStatus.mockReturnValue({
+      commitCount: 3, insertions: 10, deletions: 5, hasDirtyFiles: false,
+    });
+
+    const program = new Command();
+    program.exitOverride();
+    registerListCommand(program);
+    await program.parseAsync(['list'], { from: 'user' });
+
+    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('<- test'));
+  });
+
+  it('文本输出包含"未记录"（无元数据时）', async () => {
+    mockedGetProjectName.mockReturnValue('test-project');
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
+    ]);
+    mockedGetWorktreeStatus.mockReturnValue({
+      commitCount: 3, insertions: 10, deletions: 5, hasDirtyFiles: false,
+    });
+
+    const program = new Command();
+    program.exitOverride();
+    registerListCommand(program);
+    await program.parseAsync(['list'], { from: 'user' });
+
+    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('未记录'));
   });
 });

@@ -16,6 +16,16 @@ import { getCurrentLanguage } from '../utils/i18n.js';
 // getWorktreeStatus 和 formatWorktreeStatus 仅在文本模式下使用
 
 /**
+ * 格式化来源分支展示文本
+ * @param {string | null} baseBranch - 来源分支
+ * @returns {string} 来源分支展示文本
+ */
+function formatBaseBranchInline(baseBranch: string | null): string {
+  const fallback = getCurrentLanguage() === 'en' ? 'Not recorded' : '未记录';
+  return `<- ${baseBranch ?? fallback}`;
+}
+
+/**
  * 注册 list 命令：列出当前项目所有 worktree
  * @param {Command} program - Commander 实例
  */
@@ -50,7 +60,7 @@ async function handleList(options: ListOptions): Promise<void> {
 }
 
 /**
- * 以 JSON 格式输出 worktree 列表（仅包含 path 和 branch）
+ * 以 JSON 格式输出 worktree 列表（包含 path、branch 和 baseBranch）
  * @param {string} projectName - 项目名称
  * @param {import('../types/index.js').WorktreeInfo[]} worktrees - worktree 列表
  */
@@ -61,6 +71,7 @@ function printListAsJson(projectName: string, worktrees: import('../types/index.
     worktrees: worktrees.map((wt) => ({
       path: wt.path,
       branch: wt.branch,
+      baseBranch: wt.baseBranch,
     })),
   };
 
@@ -87,7 +98,7 @@ function printListAsText(projectName: string, worktrees: import('../types/index.
       const isIdle = status ? isWorktreeIdle(status) : false;
       const pathDisplay = isIdle ? chalk.hex('#FF8C00')(wt.path) : wt.path;
 
-      printInfo(`  ${pathDisplay}   [${wt.branch}]`);
+      printInfo(`  ${pathDisplay}   [${wt.branch}]   ${formatBaseBranchInline(wt.baseBranch)}`);
 
       if (status) {
         printInfo(`    ${formatWorktreeStatus(status)}`);
