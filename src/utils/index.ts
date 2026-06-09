@@ -76,6 +76,7 @@ export { removeExternalSymlinks } from './symlink-guard.js';
 export { multilineInput, promptCommitMessage } from './prompt.js';
 export { launchInteractiveClaude, hasClaudeSessionHistory, launchInteractiveClaudeInNewTerminal } from './claude.js';
 export { getSnapshotPath, hasSnapshot, getSnapshotModifiedTime, readSnapshotTreeHash, readSnapshot, writeSnapshot, removeSnapshot, removeProjectSnapshots, getProjectSnapshotBranches } from './validate-snapshot.js';
+export { removeWorktreeMetadata } from './worktree-metadata.js';
 export { findExactMatch, findFuzzyMatches, promptGroupedMultiSelectBranches, resolveTargetWorktree, resolveTargetWorktrees, groupWorktreesByDate, buildGroupedChoices, buildGroupMembershipMap, formatRelativeDate, getWorktreeCreatedDate, getWorktreeCreatedTime } from './worktree-matcher.js';
 export type { WorktreeResolveMessages, WorktreeMultiResolveMessages } from './worktree-matcher.js';
 export { ProgressRenderer } from './progress.js';

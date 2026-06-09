@@ -57,6 +57,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   guardMainWorkBranch: vi.fn().mockResolvedValue(undefined),
   guardMainWorkBranchExists: vi.fn(),
   isNonInteractive: vi.fn().mockReturnValue(false),
+  removeWorktreeMetadata: vi.fn(),
 }));
 
 import { registerRemoveCommand } from '../../../src/commands/remove.js';
@@ -75,6 +76,7 @@ import {
   printHint,
   resolveTargetWorktrees,
   getCurrentBranch,
+  removeWorktreeMetadata,
 } from '../../../src/utils/index.js';
 
 const mockedGetProjectName = vi.mocked(getProjectName);
@@ -90,6 +92,7 @@ const mockedPrintError = vi.mocked(printError);
 const mockedPrintHint = vi.mocked(printHint);
 const mockedResolveTargetWorktrees = vi.mocked(resolveTargetWorktrees);
 const mockedGetCurrentBranch = vi.mocked(getCurrentBranch);
+const mockedRemoveWorktreeMetadata = vi.mocked(removeWorktreeMetadata);
 
 beforeEach(() => {
   vi.mocked(runPreChecks).mockReset();
@@ -107,6 +110,7 @@ beforeEach(() => {
   mockedResolveTargetWorktrees.mockReset();
   mockedGetCurrentBranch.mockReset();
   mockedGetCurrentBranch.mockReturnValue('main');
+  mockedRemoveWorktreeMetadata.mockReset();
 });
 
 describe('registerRemoveCommand', () => {
@@ -133,6 +137,8 @@ describe('handleRemove', () => {
 
     expect(mockedRemoveWorktreeByPath).toHaveBeenCalledTimes(2);
     expect(mockedDeleteBranch).toHaveBeenCalledTimes(2);
+    expect(mockedRemoveWorktreeMetadata).toHaveBeenCalledWith('test-project', 'feature-1');
+    expect(mockedRemoveWorktreeMetadata).toHaveBeenCalledWith('test-project', 'feature-2');
     expect(mockedRemoveProjectSnapshots).toHaveBeenCalledWith('test-project');
   });
 

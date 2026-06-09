@@ -304,7 +304,10 @@ async function interactiveConfigEditor<T extends object>(
 │       ├── <branchName>.staged          # 每个分支一个 staged tree hash 快照文件（存储 validate 结束时暂存区对应的 tree hash，用于无变更时恢复）
 │       └── ...
 ├── projects/<project-name>/             # 项目级配置目录
-│   └── config.json                      # 项目级配置（含 clawtMainWorkBranch）
+│   ├── config.json                      # 项目级配置（含 clawtMainWorkBranch）
+│   └── worktrees/                       # worktree 元数据目录（记录来源分支等信息）
+│       ├── <branchName>.json            # 每个 worktree 的元数据文件（含 branch、baseBranch、createdAt）
+│       └── ...
 └── worktrees/                           # 所有 worktree 的统一存放目录
     └── <project-name>/                  # 以项目名分组
         ├── <branchName>/                # n=1 时直接使用分支名

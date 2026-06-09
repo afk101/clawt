@@ -144,6 +144,7 @@ clawt merge [-m <commitMessage>]
      git branch -D clawt-validate-<branchName>
      # 修剪 worktree 引用
      git worktree prune
+     # 清理该分支的来源分支元数据文件
      # 如果项目 worktree 目录为空，则清理空目录
      ```
    - 输出清理成功提示：`✓ 已清理 worktree 和分支: <branchName>`

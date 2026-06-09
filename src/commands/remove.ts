@@ -24,6 +24,7 @@ import {
   getValidateBranchName,
   deleteValidateBranch,
   getCurrentBranch,
+  removeWorktreeMetadata,
 } from '../utils/index.js';
 import type { WorktreeMultiResolveMessages } from '../utils/index.js';
 import { getCurrentLanguage } from '../utils/i18n.js';
@@ -120,6 +121,8 @@ async function handleRemove(options: RemoveOptions): Promise<void> {
       deleteValidateBranch(wt.branch);
       // 清理该分支对应的 validate 快照
       removeSnapshot(projectName, wt.branch);
+      // 清理该分支的来源分支元数据
+      removeWorktreeMetadata(projectName, wt.branch);
       printSuccess(MESSAGES.WORKTREE_REMOVED(wt.path));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

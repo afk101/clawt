@@ -70,6 +70,7 @@ git branch -D <branchName>
 # 无条件删除验证分支（不受用户确认控制，存在则删除）
 git branch -D clawt-validate-<branchName>
 # 无条件清理该分支对应的 validate 快照
+# 无条件清理该分支的元数据文件（~/.clawt/projects/<projectName>/worktrees/<branchName>.json）
 ```
 
 8. 如果使用 `--all` 模式，额外清理整个项目的 validate 快照目录。
@@ -86,5 +87,6 @@ git branch -D clawt-validate-<branchName>
 - 分支解析逻辑复用公共模块 `resolveTargetWorktrees`（`src/utils/worktree-matcher.ts`）
 - 验证分支删除通过 `deleteValidateBranch`（`src/utils/validate-branch.ts`），内部判断分支是否存在后才执行删除
 - 快照清理通过 `removeSnapshot` 和 `removeProjectSnapshots`（`src/utils/validate-snapshot.ts`）
+- 元数据清理通过 `removeWorktreeMetadata`（`src/utils/worktree-metadata.ts`），删除 `~/.clawt/projects/<projectName>/worktrees/<branchName>.json`，失败时仅记录日志不抛异常（best-effort 语义）
 
 ---
