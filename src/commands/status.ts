@@ -141,6 +141,7 @@ async function collectWorktreeDetailedStatusAsync(worktree: WorktreeInfo, projec
     insertions: diffStat.insertions,
     deletions: diffStat.deletions,
     createdAt,
+    baseBranch: worktree.baseBranch,
   };
 }
 
@@ -362,6 +363,9 @@ function printWorktreeItem(wt: WorktreeDetailedStatus): void {
     printInfo(`    ${chalk.green(lang === 'en' ? 'In sync with main' : '与主分支同步')}`);
   }
 
+  // 来源分支
+  printInfo(`    ${chalk.gray(formatBaseBranchLine(wt.baseBranch))}`);
+
   // 分支创建时间
   if (wt.createdAt) {
     const relativeTime = formatRelativeTime(wt.createdAt);
@@ -399,6 +403,18 @@ function formatChangeStatusLabel(status: WorktreeDetailedStatus['changeStatus'])
     case 'clean':
       return chalk.gray(MESSAGES.STATUS_CHANGE_CLEAN);
   }
+}
+
+/**
+ * 格式化来源分支展示行
+ * @param {string | null} baseBranch - 来源分支
+ * @returns {string} 来源分支展示文本
+ */
+function formatBaseBranchLine(baseBranch: string | null): string {
+  const lang = getCurrentLanguage();
+  const label = lang === 'en' ? 'Base branch' : '来源分支';
+  const fallback = lang === 'en' ? 'Not recorded' : '未记录';
+  return `${label}: ${baseBranch ?? fallback}`;
 }
 
 /**

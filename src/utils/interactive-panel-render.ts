@@ -259,6 +259,9 @@ export function renderWorktreeBlock(wt: WorktreeDetailedStatus, isSelected: bool
     lines.push(`${indent}${chalk.green(PANEL_SYNCED_WITH_MAIN)}`);
   }
 
+  // 来源分支
+  lines.push(`${indent}${chalk.gray(formatPanelBaseBranchLine(wt.baseBranch))}`);
+
   // 分支创建时间
   if (wt.createdAt) {
     const relativeTime = formatRelativeTime(wt.createdAt);
@@ -299,6 +302,18 @@ function formatChangeStatusLabel(status: WorktreeDetailedStatus['changeStatus'])
     case 'clean':
       return chalk.gray(MESSAGES.STATUS_CHANGE_CLEAN);
   }
+}
+
+/**
+ * 格式化面板模式来源分支展示行
+ * @param {string | null} baseBranch - 来源分支
+ * @returns {string} 来源分支展示文本
+ */
+function formatPanelBaseBranchLine(baseBranch: string | null): string {
+  const lang = getCurrentLanguage();
+  const label = lang === 'en' ? 'Base branch' : '来源分支';
+  const fallback = lang === 'en' ? 'Not recorded' : '未记录';
+  return `${label}: ${baseBranch ?? fallback}`;
 }
 
 /**

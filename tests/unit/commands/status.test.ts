@@ -33,6 +33,14 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
   };
 });
 
+vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/utils/i18n.js')>();
+  return {
+    ...actual,
+    getCurrentLanguage: vi.fn(() => 'zh'),
+  };
+});
+
 vi.mock('../../../src/utils/index.js', () => ({
   runPreChecks: vi.fn(),
   getProjectName: vi.fn(),
@@ -369,5 +377,71 @@ describe('handleStatus', () => {
     const parsed = JSON.parse(jsonCall![0]);
     expect(parsed.main.insertions).toBe(0);
     expect(parsed.main.deletions).toBe(0);
+  });
+
+  it('--json 输出包含 baseBranch 字段', async () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature', baseBranch: 'test' },
+    ]);
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    await program.parseAsync(['status', '--json'], { from: 'user' });
+
+    const jsonCall = consoleSpy.mock.calls.find((call) => {
+      try { JSON.parse(call[0]); return true; } catch { return false; }
+    });
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall![0]);
+    expect(parsed.worktrees[0].baseBranch).toBe('test');
+  });
+
+  it('--json 输出 baseBranch 为 null 时字段值为 null', async () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
+    ]);
+
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    await program.parseAsync(['status', '--json'], { from: 'user' });
+
+    const jsonCall = consoleSpy.mock.calls.find((call) => {
+      try { JSON.parse(call[0]); return true; } catch { return false; }
+    });
+    expect(jsonCall).toBeDefined();
+    const parsed = JSON.parse(jsonCall![0]);
+    expect(parsed.worktrees[0].baseBranch).toBeNull();
+  });
+
+  it('文本模式显示来源分支行', async () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature', baseBranch: 'test' },
+    ]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    await program.parseAsync(['status'], { from: 'user' });
+
+    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('来源分支: test'));
+  });
+
+  it('文本模式 baseBranch 为 null 时显示未记录', async () => {
+    mockedGetProjectWorktrees.mockReturnValue([
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
+    ]);
+
+    const program = new Command();
+    program.exitOverride();
+    registerStatusCommand(program);
+    await program.parseAsync(['status'], { from: 'user' });
+
+    expect(mockedPrintInfo).toHaveBeenCalledWith(expect.stringContaining('来源分支: 未记录'));
   });
 });
