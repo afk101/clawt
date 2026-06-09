@@ -29,13 +29,14 @@ clawt status [--json] [-i | --interactive]
    - 加载项目配置（`loadProjectConfig()`），读取配置的主工作分支名（`clawtMainWorkBranch`）
    - 检测配置的主工作分支是否存在（`checkBranchExists()`）
 3. **收集各 worktree 详细状态**：
-   - 获取项目所有 worktree（`getProjectWorktrees()`）
+   - 获取项目所有 worktree（`getProjectWorktrees()`），每个 worktree 携带 `baseBranch`（来源分支，无元数据时为 null）
    - 对每个 worktree 收集以下信息：
      - **变更状态**（优先级：合并冲突 > 未提交修改 > 已提交 > 无变更）
      - **行数差异**（新增/删除行数，通过 `getDiffStat()` 获取）
      - **提交差异**（相对于主分支的领先提交数 `getCommitCountAhead()` 和落后提交数 `getCommitCountBehind()`）
      - **快照时间**（validate 快照文件的 mtime，通过 `getSnapshotModifiedTime()` 获取，返回 ISO 8601 时间字符串或 null）
      - **创建时间**（通过 `getWorktreeCreatedTime()` 从文件系统 birthtime 获取 worktree 目录的创建时间）
+     - **来源分支**（`baseBranch`，从 `~/.clawt/projects/<projectName>/worktrees/<branchName>.json` 读取，无元数据时显示"未记录"）
 4. **收集 validate 快照摘要**：
    - 通过 `getProjectSnapshotBranches()` 扫描快照目录下的 `.tree` 文件获取所有存在快照的分支名
    - 统计快照总数和孤立快照数（对应 worktree 已不存在的快照）
@@ -73,6 +74,7 @@ clawt status [--json] [-i | --interactive]
     +120 -30
     3 个本地提交
     与主分支同步
+    来源分支: main
     创建于 3 天前
     上次验证: 2 小时前
 
@@ -80,6 +82,7 @@ clawt status [--json] [-i | --interactive]
     +45 -10
     1 个本地提交
     落后主分支 2 个提交
+    来源分支: test
     创建于 1 天前
     ✗ 未验证
 
@@ -105,6 +108,7 @@ clawt status [--json] [-i | --interactive]
 - 行数变更（`+N -N`）：仅在有变更时展示，独立一行
 - 本地提交数（`N 个本地提交`）：仅在有提交时展示，独立一行（黄色）
 - 与主分支同步状态：始终展示，独立一行（落后时显示黄色，同步时显示绿色）
+- 来源分支（`来源分支: <branchName>`）：始终展示，独立一行（灰色）；无元数据时显示 `来源分支: 未记录`
 
 **创建时间行：**
 
@@ -139,6 +143,7 @@ clawt status [--json] [-i | --interactive]
     {
       "path": "~/.clawt/worktrees/main-project/feature-login",
       "branch": "feature-login",
+      "baseBranch": "main",
       "changeStatus": "committed",
       "commitsAhead": 3,
       "commitsBehind": 0,
@@ -214,6 +219,7 @@ clawt status [--json] [-i | --interactive]
     +120 -30
     3 个本地提交
     与主分支同步
+    来源分支: main
     创建于 3 天前
     上次验证: 2 小时前
 
@@ -221,6 +227,7 @@ clawt status [--json] [-i | --interactive]
     +45 -10
     1 个本地提交
     落后主分支 2 个提交
+    来源分支: test
     创建于 1 天前
     ✗ 未验证
 
@@ -228,6 +235,7 @@ clawt status [--json] [-i | --interactive]
 
   fix-bug   [无变更]
     与主分支同步
+    来源分支: 未记录
     创建于 5 天前
     ✗ 未验证
 

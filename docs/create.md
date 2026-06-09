@@ -50,6 +50,7 @@ clawt create -b <branchName> [-n <count>] [--no-post-create]
    - 若 `n > 1`：校验 `branchName-1` 到 `branchName-n`
    - 所有分支名在创建任何 worktree **之前**完成全部校验
 8. **批量创建 worktree + 验证分支**
+   - 创建前记录当前所在分支为来源分支（`baseBranch`），保存到 `~/.clawt/projects/<projectName>/worktrees/<branchName>.json`
    - 若 `n = 1`：
      ```bash
      git worktree add -b <branchName> ~/.clawt/worktrees/<project>/<branchName>
