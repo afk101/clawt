@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { PROJECTS_CONFIG_DIR } from '../constants/index.js';
 import { safeStringify } from './json.js';
 import { ensureDir } from './fs.js';
@@ -23,7 +23,7 @@ export function getWorktreeMetadataPath(projectName: string, branchName: string)
  */
 export function saveWorktreeMetadata(projectName: string, metadata: WorktreeMetadata): void {
   const metadataPath = getWorktreeMetadataPath(projectName, metadata.branch);
-  const metadataDir = join(PROJECTS_CONFIG_DIR, projectName, 'worktrees');
+  const metadataDir = dirname(metadataPath);
 
   try {
     ensureDir(metadataDir);
@@ -49,7 +49,13 @@ export function loadWorktreeMetadata(projectName: string, branchName: string): W
 
   try {
     const content = readFileSync(metadataPath, 'utf-8');
-    return JSON.parse(content) as WorktreeMetadata;
+    const parsed = JSON.parse(content);
+    // 校验必要字段，防止不安全的类型断言
+    if (!parsed || typeof parsed !== 'object' || !parsed.branch || !parsed.baseBranch) {
+      logger.warn(`worktree 元数据格式无效: ${metadataPath}`);
+      return null;
+    }
+    return parsed as WorktreeMetadata;
   } catch (error) {
     logger.warn(`解析 worktree 元数据失败: ${metadataPath}`, error);
     return null;
@@ -58,6 +64,8 @@ export function loadWorktreeMetadata(projectName: string, branchName: string): W
 
 /**
  * 删除 worktree 来源分支元数据
+ *
+ * 删除失败时仅记录日志，不抛出异常（best-effort 语义）。
  * @param {string} projectName - 项目名
  * @param {string} branchName - 分支名
  */

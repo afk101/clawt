@@ -16,10 +16,11 @@ vi.mock('../../../src/constants/index.js', async (importOriginal) => {
   };
 });
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import {
   getWorktreeMetadataPath,
   loadWorktreeMetadata,
+  removeWorktreeMetadata,
   saveWorktreeMetadata,
 } from '../../../src/utils/worktree-metadata.js';
 
@@ -57,5 +58,34 @@ describe('worktree metadata', () => {
   it('元数据不存在时返回 null', () => {
     vi.mocked(existsSync).mockReturnValue(false);
     expect(loadWorktreeMetadata('demo', 'missing')).toBeNull();
+  });
+
+  it('removeWorktreeMetadata 正常删除文件', () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    removeWorktreeMetadata('demo', 'feature');
+    expect(rmSync).toHaveBeenCalledWith('/tmp/clawt-projects/demo/worktrees/feature.json');
+  });
+
+  it('removeWorktreeMetadata 文件不存在时不报错且不调用 rmSync', () => {
+    vi.mocked(existsSync).mockReturnValue(false);
+    // 不应抛出异常
+    expect(() => removeWorktreeMetadata('demo', 'missing')).not.toThrow();
+    expect(rmSync).not.toHaveBeenCalled();
+  });
+
+  it('loadWorktreeMetadata JSON 损坏时返回 null', () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue('{ invalid json !!!');
+    expect(loadWorktreeMetadata('demo', 'corrupt')).toBeNull();
+  });
+
+  it('loadWorktreeMetadata 元数据格式无效（缺少 baseBranch）时返回 null', () => {
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(readFileSync).mockReturnValue(JSON.stringify({
+      branch: 'feature',
+      // 缺少 baseBranch 字段
+      createdAt: '2026-06-09T10:30:00.000Z',
+    }));
+    expect(loadWorktreeMetadata('demo', 'feature')).toBeNull();
   });
 });
