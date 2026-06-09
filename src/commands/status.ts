@@ -23,6 +23,7 @@ import {
   InteractivePanel,
   loadProjectConfig,
   checkBranchExists,
+  formatBaseBranchLine,
 } from '../utils/index.js';
 import { getCurrentLanguage } from '../utils/i18n.js';
 
@@ -403,18 +404,6 @@ function formatChangeStatusLabel(status: WorktreeDetailedStatus['changeStatus'])
     case 'clean':
       return chalk.gray(MESSAGES.STATUS_CHANGE_CLEAN);
   }
-}
-
-/**
- * 格式化来源分支展示行
- * @param {string | null} baseBranch - 来源分支
- * @returns {string} 来源分支展示文本
- */
-function formatBaseBranchLine(baseBranch: string | null): string {
-  const lang = getCurrentLanguage();
-  const label = lang === 'en' ? 'Base branch' : '来源分支';
-  const fallback = lang === 'en' ? 'Not recorded' : '未记录';
-  return `${label}: ${baseBranch ?? fallback}`;
 }
 
 /**

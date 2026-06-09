@@ -14,8 +14,8 @@ export interface WorktreeInfo {
   path: string;
   /** 分支名 */
   branch: string;
-  /** 创建 worktree 时所在的来源分支，无元数据时为 null */
-  baseBranch: string | null;
+  /** 创建 worktree 时所在的来源分支，无元数据时为 undefined 或 null */
+  baseBranch?: string | null;
 }
 
 /** worktree 变更统计信息 */

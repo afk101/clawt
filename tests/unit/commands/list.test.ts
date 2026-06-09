@@ -24,6 +24,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   formatWorktreeStatus: vi.fn(),
   isWorktreeIdle: vi.fn(),
   printInfo: vi.fn(),
+  formatBaseBranchInline: vi.fn((baseBranch: string | null | undefined) => `<- ${baseBranch ?? '未记录'}`),
 }));
 
 vi.mock('../../../src/utils/i18n.js', async (importOriginal) => {

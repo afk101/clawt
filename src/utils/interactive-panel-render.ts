@@ -30,7 +30,7 @@ import {
   PANEL_COMMITS_BEHIND,
 } from '../constants/messages/index.js';
 import type { StatusResult, WorktreeDetailedStatus, MainWorktreeStatus } from '../types/index.js';
-import { formatRelativeTime, groupWorktreesByDate, formatRelativeDate } from './index.js';
+import { formatRelativeTime, groupWorktreesByDate, formatRelativeDate, formatBaseBranchLine } from './index.js';
 
 /** 面板行类型 */
 export interface PanelLine {
@@ -136,7 +136,7 @@ export function buildPanelFrame(
  * @returns {number[]} 按显示顺序排列的原始索引数组
  */
 export function buildDisplayOrder(worktrees: WorktreeDetailedStatus[]): number[] {
-  const worktreeInfos = worktrees.map((wt) => ({ path: wt.path, branch: wt.branch, baseBranch: null }));
+  const worktreeInfos = worktrees.map((wt) => ({ path: wt.path, branch: wt.branch, baseBranch: wt.baseBranch }));
   const groups = groupWorktreesByDate(worktreeInfos);
 
   // 构建分支名到原始索引的映射
@@ -164,7 +164,7 @@ export function buildGroupedWorktreeLines(worktrees: WorktreeDetailedStatus[], s
   const panelLines: PanelLine[] = [];
 
   // 构建临时 WorktreeInfo 兼容结构用于分组（groupWorktreesByDate 需要 path 字段）
-  const worktreeInfos = worktrees.map((wt) => ({ path: wt.path, branch: wt.branch, baseBranch: null }));
+  const worktreeInfos = worktrees.map((wt) => ({ path: wt.path, branch: wt.branch, baseBranch: wt.baseBranch }));
   const groups = groupWorktreesByDate(worktreeInfos);
 
   // 构建分支名到原始索引的映射
@@ -260,7 +260,7 @@ export function renderWorktreeBlock(wt: WorktreeDetailedStatus, isSelected: bool
   }
 
   // 来源分支
-  lines.push(`${indent}${chalk.gray(formatPanelBaseBranchLine(wt.baseBranch))}`);
+  lines.push(`${indent}${chalk.gray(formatBaseBranchLine(wt.baseBranch))}`);
 
   // 分支创建时间
   if (wt.createdAt) {
@@ -302,18 +302,6 @@ function formatChangeStatusLabel(status: WorktreeDetailedStatus['changeStatus'])
     case 'clean':
       return chalk.gray(MESSAGES.STATUS_CHANGE_CLEAN);
   }
-}
-
-/**
- * 格式化面板模式来源分支展示行
- * @param {string | null} baseBranch - 来源分支
- * @returns {string} 来源分支展示文本
- */
-function formatPanelBaseBranchLine(baseBranch: string | null): string {
-  const lang = getCurrentLanguage();
-  const label = lang === 'en' ? 'Base branch' : '来源分支';
-  const fallback = lang === 'en' ? 'Not recorded' : '未记录';
-  return `${label}: ${baseBranch ?? fallback}`;
 }
 
 /**

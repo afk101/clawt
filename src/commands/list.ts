@@ -11,19 +11,10 @@ import {
   formatWorktreeStatus,
   isWorktreeIdle,
   printInfo,
+  formatBaseBranchInline,
 } from '../utils/index.js';
 import { getCurrentLanguage } from '../utils/i18n.js';
-// getWorktreeStatus 和 formatWorktreeStatus 仅在文本模式下使用
-
-/**
- * 格式化来源分支展示文本
- * @param {string | null} baseBranch - 来源分支
- * @returns {string} 来源分支展示文本
- */
-function formatBaseBranchInline(baseBranch: string | null): string {
-  const fallback = getCurrentLanguage() === 'en' ? 'Not recorded' : '未记录';
-  return `<- ${baseBranch ?? fallback}`;
-}
+// getWorktreeStatus、formatWorktreeStatus 和 formatBaseBranchInline 仅在文本模式下使用
 
 /**
  * 注册 list 命令：列出当前项目所有 worktree

@@ -49,6 +49,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   formatRelativeTime: vi.fn((iso: string) => iso ? '3 天前' : null),
   groupWorktreesByDate: vi.fn(() => new Map()),
   formatRelativeDate: vi.fn(() => '3 天前'),
+  formatBaseBranchLine: vi.fn((baseBranch: string | null | undefined) => `来源分支: ${baseBranch ?? '未记录'}`),
 }));
 
 import { renderWorktreeBlock } from '../../../src/utils/interactive-panel-render.js';

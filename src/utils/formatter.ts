@@ -246,6 +246,28 @@ export function formatLocalISOString(date: Date): string {
 }
 
 /**
+ * 格式化来源分支展示行（用于 status 文本输出和交互面板）
+ * @param {string | null | undefined} baseBranch - 来源分支
+ * @returns {string} 格式化的来源分支文本，如 "来源分支: test" 或 "来源分支: 未记录"
+ */
+export function formatBaseBranchLine(baseBranch: string | null | undefined): string {
+  const lang = getCurrentLanguage();
+  const label = lang === 'en' ? 'Base branch' : '来源分支';
+  const fallback = lang === 'en' ? 'Not recorded' : '未记录';
+  return `${label}: ${baseBranch ?? fallback}`;
+}
+
+/**
+ * 格式化来源分支内联展示（用于 list 文本输出）
+ * @param {string | null | undefined} baseBranch - 来源分支
+ * @returns {string} 格式化的来源分支内联文本，如 "<- test" 或 "<- 未记录"
+ */
+export function formatBaseBranchInline(baseBranch: string | null | undefined): string {
+  const fallback = getCurrentLanguage() === 'en' ? 'Not recorded' : '未记录';
+  return `<- ${baseBranch ?? fallback}`;
+}
+
+/**
  * 生成任务模板文件名，格式：clawt-tasks-YYYY-MM-DD-HH-mm-ss.md
  * @param {string} prefix - 文件名前缀
  * @returns {string} 带时间戳的文件名

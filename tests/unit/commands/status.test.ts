@@ -60,6 +60,7 @@ vi.mock('../../../src/utils/index.js', () => ({
   printSeparator: vi.fn(),
   loadProjectConfig: vi.fn().mockReturnValue(null),
   checkBranchExists: vi.fn().mockReturnValue(true),
+  formatBaseBranchLine: vi.fn((baseBranch: string | null | undefined) => `来源分支: ${baseBranch ?? '未记录'}`),
 }));
 
 import { registerStatusCommand } from '../../../src/commands/status.js';

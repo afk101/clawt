@@ -36,13 +36,13 @@ export function createWorktrees(branchName: string, count: number): WorktreeInfo
   // 3. 校验所有分支是否都不存在（在创建任何 worktree 之前）
   validateBranchesNotExist(branchNames);
 
-  // 4. 确保项目 worktree 目录存在
-  const projectDir = getProjectWorktreeDir();
+  // 4. 获取项目名并确保 worktree 目录存在
+  const projectName = getProjectName();
+  const projectDir = join(WORKTREES_DIR, projectName);
   ensureDir(projectDir);
 
   // 5. 记录当前分支作为来源分支
   const baseBranch = getCurrentBranch();
-  const projectName = getProjectName();
 
   // 6. 串行创建 worktree 及对应验证分支，并保存元数据
   const results: WorktreeInfo[] = [];
@@ -69,13 +69,13 @@ export function createWorktreesByBranches(branchNames: string[]): WorktreeInfo[]
   // 1. 校验所有分支是否都不存在
   validateBranchesNotExist(branchNames);
 
-  // 2. 确保项目 worktree 目录存在
-  const projectDir = getProjectWorktreeDir();
+  // 2. 获取项目名并确保 worktree 目录存在
+  const projectName = getProjectName();
+  const projectDir = join(WORKTREES_DIR, projectName);
   ensureDir(projectDir);
 
   // 3. 记录当前分支作为来源分支
   const baseBranch = getCurrentBranch();
-  const projectName = getProjectName();
 
   // 4. 串行创建 worktree 及对应验证分支，并保存元数据
   const results: WorktreeInfo[] = [];
@@ -97,7 +97,8 @@ export function createWorktreesByBranches(branchNames: string[]): WorktreeInfo[]
  * @returns {WorktreeInfo[]} 有效的 worktree 列表
  */
 export function getProjectWorktrees(): WorktreeInfo[] {
-  const projectDir = getProjectWorktreeDir();
+  const projectName = getProjectName();
+  const projectDir = join(WORKTREES_DIR, projectName);
 
   if (!existsSync(projectDir)) {
     return [];
@@ -109,7 +110,6 @@ export function getProjectWorktrees(): WorktreeInfo[] {
     worktreeListOutput.split('\n').map((line) => line.split(/\s+/)[0]),
   );
 
-  const projectName = getProjectName();
   const entries = readdirSync(projectDir, { withFileTypes: true });
   const worktrees: WorktreeInfo[] = [];
 
@@ -152,7 +152,7 @@ export function cleanupWorktrees(worktrees: WorktreeInfo[]): void {
     }
   }
   gitWorktreePrune();
-  const projectDir = getProjectWorktreeDir();
+  const projectDir = join(WORKTREES_DIR, projectName);
   removeEmptyDir(projectDir);
 }
 
