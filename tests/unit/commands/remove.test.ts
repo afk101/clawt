@@ -121,8 +121,8 @@ describe('registerRemoveCommand', () => {
 describe('handleRemove', () => {
   it('--all 移除所有 worktree（autoDeleteBranch=true）', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature-1', branch: 'feature-1' },
-      { path: '/path/feature-2', branch: 'feature-2' },
+      { path: '/path/feature-1', branch: 'feature-1', baseBranch: null },
+      { path: '/path/feature-2', branch: 'feature-2', baseBranch: null },
     ]);
     mockedGetConfigValue.mockReturnValue(true);
 
@@ -138,11 +138,11 @@ describe('handleRemove', () => {
 
   it('-b 精确匹配时通过 resolveTargetWorktrees 解析并移除', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
-      { path: '/path/other', branch: 'other' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
+      { path: '/path/other', branch: 'other', baseBranch: null },
     ]);
     mockedResolveTargetWorktrees.mockResolvedValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetConfigValue.mockReturnValue(true);
 
@@ -158,14 +158,14 @@ describe('handleRemove', () => {
 
   it('-b 模糊匹配多个时通过 resolveTargetWorktrees 解析并批量移除', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature-1', branch: 'feature-1' },
-      { path: '/path/feature-2', branch: 'feature-2' },
-      { path: '/path/other', branch: 'other' },
+      { path: '/path/feature-1', branch: 'feature-1', baseBranch: null },
+      { path: '/path/feature-2', branch: 'feature-2', baseBranch: null },
+      { path: '/path/other', branch: 'other', baseBranch: null },
     ]);
     // 模拟用户多选了两个
     mockedResolveTargetWorktrees.mockResolvedValue([
-      { path: '/path/feature-1', branch: 'feature-1' },
-      { path: '/path/feature-2', branch: 'feature-2' },
+      { path: '/path/feature-1', branch: 'feature-1', baseBranch: null },
+      { path: '/path/feature-2', branch: 'feature-2', baseBranch: null },
     ]);
     mockedGetConfigValue.mockReturnValue(true);
 
@@ -179,11 +179,11 @@ describe('handleRemove', () => {
 
   it('未指定 --all 或 -b 时通过 resolveTargetWorktrees 展示多选列表', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature-1', branch: 'feature-1' },
-      { path: '/path/feature-2', branch: 'feature-2' },
+      { path: '/path/feature-1', branch: 'feature-1', baseBranch: null },
+      { path: '/path/feature-2', branch: 'feature-2', baseBranch: null },
     ]);
     mockedResolveTargetWorktrees.mockResolvedValue([
-      { path: '/path/feature-1', branch: 'feature-1' },
+      { path: '/path/feature-1', branch: 'feature-1', baseBranch: null },
     ]);
     mockedGetConfigValue.mockReturnValue(true);
 
@@ -203,10 +203,10 @@ describe('handleRemove', () => {
 
   it('autoDeleteBranch=false 时询问用户是否删除分支', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedResolveTargetWorktrees.mockResolvedValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetConfigValue.mockReturnValue(false);
     mockedConfirmAction.mockResolvedValue(false);
@@ -225,7 +225,7 @@ describe('handleRemove', () => {
 
   it('-b 指定不存在的分支时 resolveTargetWorktrees 抛出错误', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/other', branch: 'other' },
+      { path: '/path/other', branch: 'other', baseBranch: null },
     ]);
     mockedResolveTargetWorktrees.mockRejectedValue(new Error('未找到与 "nonexistent" 匹配的分支'));
 
@@ -240,8 +240,8 @@ describe('handleRemove', () => {
 
   it('移除过程中部分失败时汇报并抛出错误', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature-1', branch: 'feature-1' },
-      { path: '/path/feature-2', branch: 'feature-2' },
+      { path: '/path/feature-1', branch: 'feature-1', baseBranch: null },
+      { path: '/path/feature-2', branch: 'feature-2', baseBranch: null },
     ]);
     mockedGetConfigValue.mockReturnValue(true);
     // 第一个成功，第二个失败

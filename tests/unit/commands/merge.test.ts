@@ -149,7 +149,7 @@ const mockedHandleMergeConflict = vi.mocked(handleMergeConflict);
 const mockedPromptCommitMessage = vi.mocked(promptCommitMessage);
 const mockedIsNonInteractive = vi.mocked(isNonInteractive);
 
-const worktree = { path: '/path/feature', branch: 'feature' };
+const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
 
 beforeEach(() => {
   mockedGetGitTopLevel.mockReturnValue('/repo');

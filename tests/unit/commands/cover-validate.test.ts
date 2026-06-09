@@ -45,8 +45,8 @@ vi.mock('../../../src/utils/index.js', () => ({
   getProjectName: vi.fn().mockReturnValue('test-project'),
   getGitTopLevel: vi.fn().mockReturnValue('/repo'),
   getCurrentBranch: vi.fn().mockReturnValue('clawt-validate-feature'),
-  getProjectWorktrees: vi.fn().mockReturnValue([{ path: '/path/feature', branch: 'feature' }]),
-  findExactMatch: vi.fn().mockReturnValue({ path: '/path/feature', branch: 'feature' }),
+  getProjectWorktrees: vi.fn().mockReturnValue([{ path: '/path/feature', branch: 'feature', baseBranch: null }]),
+  findExactMatch: vi.fn().mockReturnValue({ path: '/path/feature', branch: 'feature', baseBranch: null }),
   hasSnapshot: vi.fn().mockReturnValue(true),
   readSnapshot: vi.fn().mockReturnValue({ treeHash: 'snapshot-tree-hash', headCommitHash: '', stagedTreeHash: '' }),
   writeSnapshot: vi.fn(),
@@ -103,8 +103,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   // 恢复默认 mock 值
   mockedGetCurrentBranch.mockReturnValue('clawt-validate-feature');
-  mockedGetProjectWorktrees.mockReturnValue([{ path: '/path/feature', branch: 'feature' }]);
-  mockedFindExactMatch.mockReturnValue({ path: '/path/feature', branch: 'feature' });
+  mockedGetProjectWorktrees.mockReturnValue([{ path: '/path/feature', branch: 'feature', baseBranch: null }]);
+  mockedFindExactMatch.mockReturnValue({ path: '/path/feature', branch: 'feature', baseBranch: null });
   mockedHasSnapshot.mockReturnValue(true);
   mockedReadSnapshot.mockReturnValue({ treeHash: 'snapshot-tree-hash', headCommitHash: '', stagedTreeHash: '' });
   mockedIsWorkingDirClean.mockReturnValue(false);

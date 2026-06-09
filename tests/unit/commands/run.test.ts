@@ -263,7 +263,7 @@ describe('handleRun', () => {
   it('未传 --tasks 时创建单个 worktree 并打开交互式界面', async () => {
     mockedSanitizeBranchName.mockReturnValue('feature');
     mockedCheckBranchExists.mockReturnValue(false);
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedCreateWorktrees.mockReturnValue([worktree]);
 
     const program = new Command();
@@ -290,8 +290,8 @@ describe('handleRun', () => {
 
   it('传 --tasks 时创建对应数量 worktree 并并行执行', async () => {
     const worktrees = [
-      { path: '/path/feat-1', branch: 'feat-1' },
-      { path: '/path/feat-2', branch: 'feat-2' },
+      { path: '/path/feat-1', branch: 'feat-1', baseBranch: null },
+      { path: '/path/feat-2', branch: 'feat-2', baseBranch: null },
     ];
     mockedCreateWorktrees.mockReturnValue(worktrees);
 
@@ -314,7 +314,7 @@ describe('handleRun', () => {
   });
 
   it('任务执行失败时在通知中报告', async () => {
-    const worktrees = [{ path: '/path/feat-1', branch: 'feat-1' }];
+    const worktrees = [{ path: '/path/feat-1', branch: 'feat-1', baseBranch: null }];
     mockedCreateWorktrees.mockReturnValue(worktrees);
 
     const jsonOutput = JSON.stringify({
@@ -334,7 +334,7 @@ describe('handleRun', () => {
   });
 
   it('子进程发生错误时返回失败结果', async () => {
-    const worktrees = [{ path: '/path/feat-1', branch: 'feat-1' }];
+    const worktrees = [{ path: '/path/feat-1', branch: 'feat-1', baseBranch: null }];
     mockedCreateWorktrees.mockReturnValue(worktrees);
 
     // 创建会触发 error 事件的子进程
@@ -359,9 +359,9 @@ describe('handleRun', () => {
   it('传 --concurrency 限制并发数', async () => {
     mockedParseConcurrency.mockReturnValue(1);
     const worktrees = [
-      { path: '/path/feat-1', branch: 'feat-1' },
-      { path: '/path/feat-2', branch: 'feat-2' },
-      { path: '/path/feat-3', branch: 'feat-3' },
+      { path: '/path/feat-1', branch: 'feat-1', baseBranch: null },
+      { path: '/path/feat-2', branch: 'feat-2', baseBranch: null },
+      { path: '/path/feat-3', branch: 'feat-3', baseBranch: null },
     ];
     mockedCreateWorktrees.mockReturnValue(worktrees);
 
@@ -389,8 +389,8 @@ describe('handleRun', () => {
 
   it('--concurrency 为 0 时不限制并发', async () => {
     const worktrees = [
-      { path: '/path/feat-1', branch: 'feat-1' },
-      { path: '/path/feat-2', branch: 'feat-2' },
+      { path: '/path/feat-1', branch: 'feat-1', baseBranch: null },
+      { path: '/path/feat-2', branch: 'feat-2', baseBranch: null },
     ];
     mockedCreateWorktrees.mockReturnValue(worktrees);
 
@@ -418,9 +418,9 @@ describe('handleRun', () => {
     mockedParseConcurrency.mockReturnValue(2);
 
     const worktrees = [
-      { path: '/path/feat-1', branch: 'feat-1' },
-      { path: '/path/feat-2', branch: 'feat-2' },
-      { path: '/path/feat-3', branch: 'feat-3' },
+      { path: '/path/feat-1', branch: 'feat-1', baseBranch: null },
+      { path: '/path/feat-2', branch: 'feat-2', baseBranch: null },
+      { path: '/path/feat-3', branch: 'feat-3', baseBranch: null },
     ];
     mockedCreateWorktrees.mockReturnValue(worktrees);
 
@@ -450,8 +450,8 @@ describe('handleRun', () => {
       { branch: 'fix-bug', task: '修复问题' },
     ]);
     const worktrees = [
-      { path: '/path/feat-login', branch: 'feat-login' },
-      { path: '/path/fix-bug', branch: 'fix-bug' },
+      { path: '/path/feat-login', branch: 'feat-login', baseBranch: null },
+      { path: '/path/fix-bug', branch: 'fix-bug', baseBranch: null },
     ];
     mockedCreateWorktreesByBranches.mockReturnValue(worktrees);
 
@@ -480,8 +480,8 @@ describe('handleRun', () => {
       { task: '任务2' },
     ]);
     const worktrees = [
-      { path: '/path/feat-1', branch: 'feat-1' },
-      { path: '/path/feat-2', branch: 'feat-2' },
+      { path: '/path/feat-1', branch: 'feat-1', baseBranch: null },
+      { path: '/path/feat-2', branch: 'feat-2', baseBranch: null },
     ];
     mockedCreateWorktrees.mockReturnValue(worktrees);
 

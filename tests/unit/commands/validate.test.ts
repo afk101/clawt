@@ -155,7 +155,7 @@ const mockedSwitchToValidateBranch = vi.mocked(switchToValidateBranch);
 const mockedExecuteRunCommand = vi.mocked(executeRunCommand);
 const mockedGetValidateRunCommand = vi.mocked(getValidateRunCommand);
 
-const worktree = { path: '/path/feature', branch: 'feature' };
+const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
 
 beforeEach(() => {
   mockedGetGitTopLevel.mockReturnValue('/repo');

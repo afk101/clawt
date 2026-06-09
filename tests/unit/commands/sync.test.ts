@@ -110,7 +110,7 @@ describe('registerSyncCommand', () => {
 
 describe('handleSync', () => {
   it('目标 worktree 干净时直接合并', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktree.mockResolvedValue(worktree);
     mockedIsWorkingDirClean.mockReturnValue(true);
@@ -126,7 +126,7 @@ describe('handleSync', () => {
   });
 
   it('目标 worktree 有未提交变更时自动保存后合并', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktree.mockResolvedValue(worktree);
     mockedIsWorkingDirClean.mockReturnValue(false);
@@ -145,7 +145,7 @@ describe('handleSync', () => {
   });
 
   it('合并冲突时输出警告并返回', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktree.mockResolvedValue(worktree);
     mockedIsWorkingDirClean.mockReturnValue(true);
@@ -162,7 +162,7 @@ describe('handleSync', () => {
   });
 
   it('合并失败（非冲突错误）时向上抛出', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktree.mockResolvedValue(worktree);
     mockedIsWorkingDirClean.mockReturnValue(true);

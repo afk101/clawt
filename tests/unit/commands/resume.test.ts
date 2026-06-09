@@ -125,7 +125,7 @@ describe('registerResumeCommand', () => {
 
 describe('handleResume', () => {
   it('传 -b 时走标准解析流程', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
     mockedGetConfigValue.mockReturnValue(true);
@@ -143,8 +143,8 @@ describe('handleResume', () => {
 
   it('不传 -b 且多个 worktree 时默认使用分组多选', async () => {
     const worktrees = [
-      { path: '/path/feature-a', branch: 'feature-a' },
-      { path: '/path/feature-b', branch: 'feature-b' },
+      { path: '/path/feature-a', branch: 'feature-a', baseBranch: null },
+      { path: '/path/feature-b', branch: 'feature-b', baseBranch: null },
     ];
     mockedGetProjectWorktrees.mockReturnValue(worktrees);
     mockedPromptGroupedMultiSelectBranches.mockResolvedValue([worktrees[0]]);
@@ -163,7 +163,7 @@ describe('handleResume', () => {
   });
 
   it('仅 1 个 worktree 时走标准流程', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
     mockedGetConfigValue.mockReturnValue(true);
@@ -180,7 +180,7 @@ describe('handleResume', () => {
 
 describe('handleResume — resumeInPlace 配置', () => {
   it('resumeInPlace 为 true 时，单选在当前终端就地恢复', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
     mockedGetConfigValue.mockReturnValue(true);
@@ -196,7 +196,7 @@ describe('handleResume — resumeInPlace 配置', () => {
   });
 
   it('resumeInPlace 为 false 时，单选在新终端 Tab 中恢复', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
     mockedGetConfigValue.mockReturnValue(false);
@@ -214,7 +214,7 @@ describe('handleResume — resumeInPlace 配置', () => {
   });
 
   it('resumeInPlace 为 false 且无历史会话时，传 false 给新终端启动', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedResolveTargetWorktrees.mockResolvedValue([worktree]);
     mockedGetConfigValue.mockReturnValue(false);
@@ -230,8 +230,8 @@ describe('handleResume — resumeInPlace 配置', () => {
 
   it('多选时不受 resumeInPlace 影响，始终在新 Tab 中打开', async () => {
     const worktrees = [
-      { path: '/path/feature-a', branch: 'feature-a' },
-      { path: '/path/feature-b', branch: 'feature-b' },
+      { path: '/path/feature-a', branch: 'feature-a', baseBranch: null },
+      { path: '/path/feature-b', branch: 'feature-b', baseBranch: null },
     ];
     mockedGetProjectWorktrees.mockReturnValue(worktrees);
     mockedPromptGroupedMultiSelectBranches.mockResolvedValue(worktrees);
@@ -251,8 +251,8 @@ describe('handleResume — resumeInPlace 配置', () => {
 
   it('用户未选择任何分支时直接退出', async () => {
     const worktrees = [
-      { path: '/path/feature-a', branch: 'feature-a' },
-      { path: '/path/feature-b', branch: 'feature-b' },
+      { path: '/path/feature-a', branch: 'feature-a', baseBranch: null },
+      { path: '/path/feature-b', branch: 'feature-b', baseBranch: null },
     ];
     mockedGetProjectWorktrees.mockReturnValue(worktrees);
     mockedPromptGroupedMultiSelectBranches.mockResolvedValue([]);
@@ -270,7 +270,7 @@ describe('handleResume — resumeInPlace 配置', () => {
 
 describe('handleResume — 非交互式追问', () => {
   it('--prompt + -b 有历史会话时传 [true]', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedFindExactMatch.mockReturnValue(worktree);
     mockedHasClaudeSessionHistory.mockReturnValue(true);
@@ -296,7 +296,7 @@ describe('handleResume — 非交互式追问', () => {
   });
 
   it('--prompt + -b 无历史会话时传 [false]', async () => {
-    const worktree = { path: '/path/feature', branch: 'feature' };
+    const worktree = { path: '/path/feature', branch: 'feature', baseBranch: null };
     mockedGetProjectWorktrees.mockReturnValue([worktree]);
     mockedFindExactMatch.mockReturnValue(worktree);
     mockedHasClaudeSessionHistory.mockReturnValue(false);
@@ -339,7 +339,7 @@ describe('handleResume — 非交互式追问', () => {
 
   it('--prompt 指定的分支不存在时报错', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/other', branch: 'other' },
+      { path: '/path/other', branch: 'other', baseBranch: null },
     ]);
     mockedFindExactMatch.mockReturnValue(undefined);
 
@@ -354,8 +354,8 @@ describe('handleResume — 非交互式追问', () => {
 
   it('-f 批量追问模式', async () => {
     const worktrees = [
-      { path: '/path/feat-a', branch: 'feat-a' },
-      { path: '/path/feat-b', branch: 'feat-b' },
+      { path: '/path/feat-a', branch: 'feat-a', baseBranch: null },
+      { path: '/path/feat-b', branch: 'feat-b', baseBranch: null },
     ];
     mockedLoadTaskFile.mockReturnValue([
       { branch: 'feat-a', task: '追问任务A' },
@@ -390,7 +390,7 @@ describe('handleResume — 非交互式追问', () => {
       { branch: 'nonexistent', task: '追问任务' },
     ]);
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feat-a', branch: 'feat-a' },
+      { path: '/path/feat-a', branch: 'feat-a', baseBranch: null },
     ]);
     mockedFindExactMatch.mockReturnValue(undefined);
 
@@ -404,7 +404,7 @@ describe('handleResume — 非交互式追问', () => {
   });
 
   it('-f + -c 传递并发数', async () => {
-    const worktree = { path: '/path/feat-a', branch: 'feat-a' };
+    const worktree = { path: '/path/feat-a', branch: 'feat-a', baseBranch: null };
     mockedLoadTaskFile.mockReturnValue([
       { branch: 'feat-a', task: '追问' },
     ]);
@@ -429,9 +429,9 @@ describe('handleResume — 非交互式追问', () => {
 
   it('-f 批量追问按 worktree 独立检查会话历史', async () => {
     const worktrees = [
-      { path: '/path/feat-a', branch: 'feat-a' },
-      { path: '/path/feat-b', branch: 'feat-b' },
-      { path: '/path/feat-c', branch: 'feat-c' },
+      { path: '/path/feat-a', branch: 'feat-a', baseBranch: null },
+      { path: '/path/feat-b', branch: 'feat-b', baseBranch: null },
+      { path: '/path/feat-c', branch: 'feat-c', baseBranch: null },
     ];
     mockedLoadTaskFile.mockReturnValue([
       { branch: 'feat-a', task: '任务A' },

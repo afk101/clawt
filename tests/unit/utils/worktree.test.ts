@@ -54,6 +54,18 @@ vi.mock('../../../src/utils/validate-branch.js', () => ({
   deleteValidateBranch: vi.fn(),
 }));
 
+// mock git-branch
+vi.mock('../../../src/utils/git-branch.js', () => ({
+  getCurrentBranch: vi.fn().mockReturnValue('main'),
+}));
+
+// mock worktree-metadata
+vi.mock('../../../src/utils/worktree-metadata.js', () => ({
+  saveWorktreeMetadata: vi.fn(),
+  loadWorktreeMetadata: vi.fn().mockReturnValue(null),
+  removeWorktreeMetadata: vi.fn(),
+}));
+
 import { existsSync, readdirSync } from 'node:fs';
 import {
   getProjectName,
@@ -68,6 +80,8 @@ import {
 } from '../../../src/utils/git.js';
 import { sanitizeBranchName, validateBranchesNotExist } from '../../../src/utils/branch.js';
 import { ensureDir, removeEmptyDir } from '../../../src/utils/fs.js';
+import { getCurrentBranch } from '../../../src/utils/git-branch.js';
+import { saveWorktreeMetadata, loadWorktreeMetadata, removeWorktreeMetadata } from '../../../src/utils/worktree-metadata.js';
 import { createWorktrees, createWorktreesByBranches, getProjectWorktrees, cleanupWorktrees, getWorktreeStatus } from '../../../src/utils/worktree.js';
 import { createWorktreeInfo } from '../../helpers/fixtures.js';
 
@@ -80,6 +94,10 @@ const mockedDeleteBranch = vi.mocked(deleteBranch);
 const mockedGetCommitCountAhead = vi.mocked(getCommitCountAhead);
 const mockedGetDiffStat = vi.mocked(getDiffStat);
 const mockedIsWorkingDirClean = vi.mocked(isWorkingDirClean);
+const mockedGetCurrentBranch = vi.mocked(getCurrentBranch);
+const mockedSaveWorktreeMetadata = vi.mocked(saveWorktreeMetadata);
+const mockedLoadWorktreeMetadata = vi.mocked(loadWorktreeMetadata);
+const mockedRemoveWorktreeMetadata = vi.mocked(removeWorktreeMetadata);
 
 describe('createWorktrees', () => {
   it('单个 worktree 创建', () => {
@@ -104,6 +122,17 @@ describe('createWorktrees', () => {
     expect(sanitizeBranchName).toHaveBeenCalledWith('feature');
     expect(validateBranchesNotExist).toHaveBeenCalled();
     expect(ensureDir).toHaveBeenCalled();
+  });
+
+  it('创建 worktree 时记录当前分支为来源分支', () => {
+    mockedGetCurrentBranch.mockReturnValue('test');
+    const result = createWorktrees('feature', 1);
+    expect(result[0].baseBranch).toBe('test');
+    expect(mockedSaveWorktreeMetadata).toHaveBeenCalledWith('my-project', {
+      branch: 'feature',
+      baseBranch: 'test',
+      createdAt: expect.any(String),
+    });
   });
 });
 
@@ -152,6 +181,36 @@ describe('getProjectWorktrees', () => {
     expect(result).toHaveLength(1);
     expect(result[0].branch).toBe('feature');
   });
+
+  it('获取 worktree 时读取来源分支', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedGitWorktreeList.mockReturnValue(
+      '/repo  abc [main]\n/tmp/test-worktrees/my-project/feature  def [feature]',
+    );
+    mockedReaddirSync.mockReturnValue([
+      { name: 'feature', isDirectory: () => true },
+    ] as any);
+    mockedLoadWorktreeMetadata.mockReturnValue({
+      branch: 'feature',
+      baseBranch: 'test',
+      createdAt: '2026-06-09T10:30:00.000Z',
+    });
+    const result = getProjectWorktrees();
+    expect(result[0].baseBranch).toBe('test');
+  });
+
+  it('获取 worktree 时无元数据则 baseBranch 为 null', () => {
+    mockedExistsSync.mockReturnValue(true);
+    mockedGitWorktreeList.mockReturnValue(
+      '/repo  abc [main]\n/tmp/test-worktrees/my-project/feature  def [feature]',
+    );
+    mockedReaddirSync.mockReturnValue([
+      { name: 'feature', isDirectory: () => true },
+    ] as any);
+    mockedLoadWorktreeMetadata.mockReturnValue(null);
+    const result = getProjectWorktrees();
+    expect(result[0].baseBranch).toBeNull();
+  });
 });
 
 describe('cleanupWorktrees', () => {
@@ -175,6 +234,12 @@ describe('cleanupWorktrees', () => {
     ];
     // 不应抛出异常
     expect(() => cleanupWorktrees(worktrees)).not.toThrow();
+  });
+
+  it('清理 worktree 时删除元数据', () => {
+    const worktrees = [createWorktreeInfo({ branch: 'a', path: '/path/a' })];
+    cleanupWorktrees(worktrees);
+    expect(mockedRemoveWorktreeMetadata).toHaveBeenCalledWith('my-project', 'a');
   });
 });
 

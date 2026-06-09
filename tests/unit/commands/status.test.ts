@@ -122,7 +122,7 @@ describe('handleStatus', () => {
 
   it('--json 输出完整 JSON 结构', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetCommitDivergenceAsync.mockResolvedValue({ ahead: 2, behind: 0 });
     mockedGetDiffStatAsync.mockResolvedValue({ insertions: 10, deletions: 5 });
@@ -148,7 +148,7 @@ describe('handleStatus', () => {
 
   it('有 worktree 时收集正确的变更状态', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     // 模拟冲突状态：porcelain 输出包含 UU 前缀的行
     mockedGetStatusPorcelainAsync.mockResolvedValue('UU src/conflict-file.ts');
@@ -187,7 +187,7 @@ describe('handleStatus', () => {
   it('快照摘要包含总数和孤立数', async () => {
     mockedGetProjectSnapshotBranches.mockReturnValue(['feature', 'deleted-branch']);
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
 
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -207,7 +207,7 @@ describe('handleStatus', () => {
 
   it('uncommitted 变更状态正确检测', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     // 模拟未提交修改：porcelain 输出包含修改但非冲突的行
     mockedGetStatusPorcelainAsync.mockResolvedValue(' M src/file.ts');  // 目标 worktree 有未提交修改
@@ -228,7 +228,7 @@ describe('handleStatus', () => {
 
   it('createdAt 字段包含在 JSON 输出中', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetWorktreeCreatedTime.mockReturnValue('2026-02-20T14:30:00+08:00');
 
@@ -248,7 +248,7 @@ describe('handleStatus', () => {
 
   it('snapshotTime 字段包含在 JSON 输出中', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetSnapshotModifiedTime.mockReturnValue('2026-02-22T10:00:00.000Z');
 
@@ -268,7 +268,7 @@ describe('handleStatus', () => {
 
   it('文本模式显示分支创建时间', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetWorktreeCreatedTime.mockReturnValue('2026-02-20T14:30:00+08:00');
     mockedFormatRelativeTime.mockReturnValue('2 天前');
@@ -285,7 +285,7 @@ describe('handleStatus', () => {
 
   it('文本模式 createdAt 为 null 时不显示创建时间', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetWorktreeCreatedTime.mockReturnValue(null);
 
@@ -301,7 +301,7 @@ describe('handleStatus', () => {
 
   it('文本模式无快照时显示未验证警示', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetSnapshotModifiedTime.mockReturnValue(null);
 
@@ -317,7 +317,7 @@ describe('handleStatus', () => {
 
   it('文本模式有快照时显示上次验证时间', async () => {
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetSnapshotModifiedTime.mockReturnValue('2026-02-22T10:00:00.000Z');
     mockedFormatRelativeTime.mockReturnValue('5 小时前');

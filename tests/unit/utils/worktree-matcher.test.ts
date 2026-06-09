@@ -272,7 +272,7 @@ describe('groupWorktreesByDate', () => {
 
 describe('buildGroupedChoices', () => {
   it('构建的 choices 包含全局全选、分隔线、组全选和分支', () => {
-    const groups = new Map<string, Array<{ path: string; branch: string }>>([
+    const groups = new Map<string, Array<{ path: string; branch: string; baseBranch: string | null }>>([
       ['2026-02-26', [
         createWorktreeInfo({ branch: 'feature-auth' }),
         createWorktreeInfo({ branch: 'feature-login' }),
@@ -317,7 +317,7 @@ describe('buildGroupedChoices', () => {
 
 describe('buildGroupMembershipMap', () => {
   it('构建组全选 name 到分支 name 列表的正确映射', () => {
-    const groups = new Map<string, Array<{ path: string; branch: string }>>([
+    const groups = new Map<string, Array<{ path: string; branch: string; baseBranch: string | null }>>([
       ['2026-02-26', [
         createWorktreeInfo({ branch: 'feature-auth' }),
         createWorktreeInfo({ branch: 'feature-login' }),

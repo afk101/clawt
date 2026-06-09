@@ -9,6 +9,7 @@ export function createWorktreeInfo(overrides: Partial<WorktreeInfo> = {}): Workt
   return {
     path: '/Users/test/.clawt/worktrees/my-project/feature-branch',
     branch: 'feature-branch',
+    baseBranch: null,
     ...overrides,
   };
 }

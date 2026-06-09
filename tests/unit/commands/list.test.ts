@@ -69,7 +69,7 @@ describe('handleList', () => {
   it('有 worktree 时文本输出', async () => {
     mockedGetProjectName.mockReturnValue('test-project');
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetWorktreeStatus.mockReturnValue({
       commitCount: 3, insertions: 10, deletions: 5, hasDirtyFiles: false,
@@ -86,7 +86,7 @@ describe('handleList', () => {
   it('--json 输出 JSON 格式', async () => {
     mockedGetProjectName.mockReturnValue('test-project');
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -108,7 +108,7 @@ describe('handleList', () => {
   it('worktree 状态不可用时显示提示', async () => {
     mockedGetProjectName.mockReturnValue('test-project');
     mockedGetProjectWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
     mockedGetWorktreeStatus.mockReturnValue(null);
 

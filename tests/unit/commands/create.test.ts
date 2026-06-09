@@ -67,7 +67,7 @@ describe('registerCreateCommand', () => {
 describe('handleCreate', () => {
   it('成功创建 worktree', async () => {
     mockedCreateWorktrees.mockReturnValue([
-      { path: '/path/feature', branch: 'feature' },
+      { path: '/path/feature', branch: 'feature', baseBranch: null },
     ]);
 
     const program = new Command();
@@ -82,8 +82,8 @@ describe('handleCreate', () => {
 
   it('支持 -n 指定创建数量', async () => {
     mockedCreateWorktrees.mockReturnValue([
-      { path: '/path/feature-1', branch: 'feature-1' },
-      { path: '/path/feature-2', branch: 'feature-2' },
+      { path: '/path/feature-1', branch: 'feature-1', baseBranch: null },
+      { path: '/path/feature-2', branch: 'feature-2', baseBranch: null },
     ]);
 
     const program = new Command();

@@ -155,7 +155,7 @@ async function shouldCleanupAfterMerge(branchName: string): Promise<boolean> {
  * @param {string} branchName - 分支名
  */
 function cleanupWorktreeAndBranch(worktreePath: string, branchName: string): void {
-  cleanupWorktrees([{ path: worktreePath, branch: branchName }]);
+  cleanupWorktrees([{ path: worktreePath, branch: branchName, baseBranch: null }]);
   printSuccess(MESSAGES.WORKTREE_CLEANED(branchName));
 }
 

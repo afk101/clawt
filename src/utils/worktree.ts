@@ -6,6 +6,8 @@ import { createWorktree as gitCreateWorktree, getProjectName, gitWorktreeList, r
 import { sanitizeBranchName, generateBranchNames, validateBranchesNotExist } from './branch.js';
 import { ensureDir, removeEmptyDir } from './fs.js';
 import { createValidateBranch, deleteValidateBranch } from './validate-branch.js';
+import { getCurrentBranch } from './git-branch.js';
+import { saveWorktreeMetadata, loadWorktreeMetadata, removeWorktreeMetadata } from './worktree-metadata.js';
 import type { WorktreeInfo, WorktreeStatus } from '../types/index.js';
 
 /**
@@ -38,13 +40,18 @@ export function createWorktrees(branchName: string, count: number): WorktreeInfo
   const projectDir = getProjectWorktreeDir();
   ensureDir(projectDir);
 
-  // 5. 串行创建 worktree 及对应验证分支
+  // 5. 记录当前分支作为来源分支
+  const baseBranch = getCurrentBranch();
+  const projectName = getProjectName();
+
+  // 6. 串行创建 worktree 及对应验证分支，并保存元数据
   const results: WorktreeInfo[] = [];
   for (const name of branchNames) {
     const worktreePath = join(projectDir, name);
     gitCreateWorktree(name, worktreePath);
     createValidateBranch(name);
-    results.push({ path: worktreePath, branch: name });
+    saveWorktreeMetadata(projectName, { branch: name, baseBranch, createdAt: new Date().toISOString() });
+    results.push({ path: worktreePath, branch: name, baseBranch });
     logger.info(`worktree 创建完成: ${worktreePath} (分支: ${name})`);
   }
 
@@ -66,13 +73,18 @@ export function createWorktreesByBranches(branchNames: string[]): WorktreeInfo[]
   const projectDir = getProjectWorktreeDir();
   ensureDir(projectDir);
 
-  // 3. 串行创建 worktree 及对应验证分支
+  // 3. 记录当前分支作为来源分支
+  const baseBranch = getCurrentBranch();
+  const projectName = getProjectName();
+
+  // 4. 串行创建 worktree 及对应验证分支，并保存元数据
   const results: WorktreeInfo[] = [];
   for (const name of branchNames) {
     const worktreePath = join(projectDir, name);
     gitCreateWorktree(name, worktreePath);
     createValidateBranch(name);
-    results.push({ path: worktreePath, branch: name });
+    saveWorktreeMetadata(projectName, { branch: name, baseBranch, createdAt: new Date().toISOString() });
+    results.push({ path: worktreePath, branch: name, baseBranch });
     logger.info(`worktree 创建完成: ${worktreePath} (分支: ${name})`);
   }
 
@@ -97,6 +109,7 @@ export function getProjectWorktrees(): WorktreeInfo[] {
     worktreeListOutput.split('\n').map((line) => line.split(/\s+/)[0]),
   );
 
+  const projectName = getProjectName();
   const entries = readdirSync(projectDir, { withFileTypes: true });
   const worktrees: WorktreeInfo[] = [];
 
@@ -107,9 +120,12 @@ export function getProjectWorktrees(): WorktreeInfo[] {
     const fullPath = join(projectDir, entry.name);
     // 交叉验证：路径必须在 git worktree list 中
     if (registeredPaths.has(fullPath)) {
+      // 读取来源分支元数据，无元数据时 baseBranch 为 null
+      const metadata = loadWorktreeMetadata(projectName, entry.name);
       worktrees.push({
         path: fullPath,
         branch: entry.name,
+        baseBranch: metadata?.baseBranch ?? null,
       });
     }
   }
@@ -122,11 +138,14 @@ export function getProjectWorktrees(): WorktreeInfo[] {
  * @param {WorktreeInfo[]} worktrees - 待清理的 worktree 列表
  */
 export function cleanupWorktrees(worktrees: WorktreeInfo[]): void {
+  const projectName = getProjectName();
   for (const wt of worktrees) {
     try {
       removeWorktreeByPath(wt.path);
       deleteBranch(wt.branch);
       deleteValidateBranch(wt.branch);
+      // 删除来源分支元数据
+      removeWorktreeMetadata(projectName, wt.branch);
       logger.info(`已清理 worktree 和分支: ${wt.branch}`);
     } catch (error) {
       logger.error(`清理 worktree 失败: ${wt.path} - ${error}`);

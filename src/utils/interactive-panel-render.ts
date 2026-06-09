@@ -136,7 +136,7 @@ export function buildPanelFrame(
  * @returns {number[]} 按显示顺序排列的原始索引数组
  */
 export function buildDisplayOrder(worktrees: WorktreeDetailedStatus[]): number[] {
-  const worktreeInfos = worktrees.map((wt) => ({ path: wt.path, branch: wt.branch }));
+  const worktreeInfos = worktrees.map((wt) => ({ path: wt.path, branch: wt.branch, baseBranch: null }));
   const groups = groupWorktreesByDate(worktreeInfos);
 
   // 构建分支名到原始索引的映射
@@ -164,7 +164,7 @@ export function buildGroupedWorktreeLines(worktrees: WorktreeDetailedStatus[], s
   const panelLines: PanelLine[] = [];
 
   // 构建临时 WorktreeInfo 兼容结构用于分组（groupWorktreesByDate 需要 path 字段）
-  const worktreeInfos = worktrees.map((wt) => ({ path: wt.path, branch: wt.branch }));
+  const worktreeInfos = worktrees.map((wt) => ({ path: wt.path, branch: wt.branch, baseBranch: null }));
   const groups = groupWorktreesByDate(worktreeInfos);
 
   // 构建分支名到原始索引的映射
